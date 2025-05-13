@@ -82,11 +82,6 @@ separator
 AUTO_CONFIG_SUCCESS=0
 show_progress "Импорт конфигурации sing-box"
 
-sleep 1
-read -p "$(echo -e "  ${FG_ACCENT}▷ URL подписки на конфигурацию (Enter для ручного ввода): ${RESET}")" CONFIG_URL
-
-
-
 # Создание сетевого интерфейса
 configure_proxy() {
     show_progress "Создание сетевого интерфейса proxy..."
