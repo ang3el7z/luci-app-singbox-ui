@@ -85,6 +85,9 @@ show_success "Вернулись к основному скрипту"
 
 network_check
 
+sleep 1
+read -p "$(echo -e "  ${FG_ACCENT}▷ URL подписки на конфигурацию (Enter для ручного ввода): ${RESET}")" CONFIG_URL
+
 # Проверяем, что URL не пустой
 if [ -n "$CONFIG_URL" ]; then
     MAX_ATTEMPTS=2  # Максимальное количество попыток загрузки
@@ -115,6 +118,7 @@ if [ -n "$CONFIG_URL" ]; then
         # Если загрузка не удалась, увеличиваем счетчик попыток
         if [ $ATTEMPT -lt $MAX_ATTEMPTS ]; then
             show_warning "Попробую снова..."
+            network_check
         fi
         
         ATTEMPT=$((ATTEMPT + 1))  # Увеличиваем счетчик попыток
