@@ -1,5 +1,5 @@
 # luci-app-singbox-ui
-Веб-интерфейс для Sing-Box на OpenWRT
+Веб-интерфейс для Sing-Box на OpenWrt 23.05.5
 
 [🇬🇧 Read in English](./README.md)
 
