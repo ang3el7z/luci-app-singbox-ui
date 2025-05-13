@@ -9,3 +9,7 @@ wget -O /root/install-singbox-ui.sh https://raw.githubusercontent.com/Vancltkin/
 
 # install-singbox
 wget -O /root/install-singbox.sh https://raw.githubusercontent.com/Vancltkin/luci-app-singbox-ui/main/other/install-singbox.sh && chmod 0755 /root/install.sh && sh /root/install-singbox.sh
+
+# other helps
+ - Connect router -> ssh root@192.168.1.1
+ - REFRESH OPENWRT (Fix visibility plugin) -> CNTRL + SHIFT + I
