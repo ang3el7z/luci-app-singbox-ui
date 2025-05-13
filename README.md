@@ -1,13 +1,28 @@
 # luci-app-singbox-ui
+Web interface for Sing-Box on OpenWRT
+
+[🇷🇺 Читать на русском](./README.ru.md)
+
+**luci-app-singbox-ui** is a simple, personal web interface for managing the Sing-Box service on OpenWRT.
+
+## Features
+- Control the Sing-Box service (start/stop/restart)
+- Add subscriptions via URL or paste JSON manually
+- Store and edit multiple configs in the browser
+- Enable auto-update of config via URL
+
+# Installation
+
+## luci-app-singbox-ui
 web interface for singbox
 
-# install-singbox+singbox-ui
+## install-singbox+singbox-ui
 wget -O /root/install-singbox+singbox-ui.sh https://raw.githubusercontent.com/Vancltkin/luci-app-singbox-ui/main/other/install-singbox+singbox-ui.sh && chmod 0755 /root/install-singbox+singbox-ui.sh && sh /root/install-singbox+singbox-ui.sh
 
-# install-singbox-ui
+## install-singbox-ui
 wget -O /root/install-singbox-ui.sh https://raw.githubusercontent.com/Vancltkin/luci-app-singbox-ui/main/other/install-singbox-ui.sh && chmod 0755 /root/install-singbox-ui.sh && sh /root/install-singbox-ui.sh
 
-# install-singbox
+## install-singbox
 wget -O /root/install-singbox.sh https://raw.githubusercontent.com/Vancltkin/luci-app-singbox-ui/main/other/install-singbox.sh && chmod 0755 /root/install.sh && sh /root/install-singbox.sh
 
 # screenshot
