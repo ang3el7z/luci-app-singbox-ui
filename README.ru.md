@@ -13,9 +13,6 @@
 
 # Установка
 
-## luci-app-singbox-ui
-web interface for singbox
-
 ## Установить singbox+singbox-ui
 wget -O /root/install-singbox+singbox-ui.sh https://raw.githubusercontent.com/Vancltkin/luci-app-singbox-ui/main/other/install-singbox+singbox-ui.sh && chmod 0755 /root/install-singbox+singbox-ui.sh && sh /root/install-singbox+singbox-ui.sh
 
