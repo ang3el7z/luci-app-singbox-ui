@@ -1,6 +1,6 @@
 {
     "luci-app-singbox-ui": {
-        "description": "Sing-box management access",
+        "description": "Singbox-UI management access",
         "read": {
             "file": {
                 "/etc/init.d/sing-box": [ "exec" ],

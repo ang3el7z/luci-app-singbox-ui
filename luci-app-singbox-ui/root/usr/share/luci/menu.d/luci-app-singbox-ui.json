@@ -11,7 +11,7 @@
                 "luci-app-singbox-ui"
             ],
             "uci": {
-                "singb": true
+                "singbox-ui": true
             }
         }
     }

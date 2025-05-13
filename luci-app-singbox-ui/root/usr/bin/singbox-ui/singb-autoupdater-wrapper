@@ -1,0 +1,13 @@
+#!/bin/sh
+
+while true; do
+  logger -t singbox-ui-autoupdater "Running updater"
+  if /usr/bin/singbox-ui/singbox-ui-updater /etc/sing-box/url_config.json /etc/sing-box/config.json; then
+    logger -t singbox-ui-autoupdater "Update OK, reloading sing-box"
+    /etc/init.d/sing-box reload
+  else
+    logger -t singbox-ui-autoupdater "Update failed"
+  fi
+
+  sleep "${INTERVAL}"
+done
