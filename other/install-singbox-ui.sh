@@ -37,11 +37,21 @@ show_success() {
     echo -e "${INDENT}${CHECK} ${FG_SUCCESS}$1${RESET}\n"
 }
 
+show_error() {
+    echo -e "${INDENT}${CROSS} ${FG_ERROR}$1${RESET}\n"
+}
+
 header
+# Обновление репозиториев и установка зависимостей
+show_progress "Обновление пакетов и установка зависимостей..."
+opkg update && opkg install openssh-sftp-server nano curl jq
+[ $? -eq 0 ] && show_success "Зависимости успешно установлены" || show_error "Ошибка установки зависимостей"
+separator
+
 show_progress "Начало установки singbox-ui..."
 wget -O /root/luci-app-singbox-ui.ipk https://github.com/Vancltkin/singb/releases/latest/download/luci-app-singbox-ui.ipk
 chmod 0755 /root/luci-app-singbox-ui.ipk
-opkg update && opkg install openssh-sftp-server nano curl jq
-opkg install /root/luci-app-singb.ipk
+opkg update
+opkg install /root/luci-app-singbox-ui.ipk
 /etc/init.d/uhttpd restart
 show_success "Установка завершена"
