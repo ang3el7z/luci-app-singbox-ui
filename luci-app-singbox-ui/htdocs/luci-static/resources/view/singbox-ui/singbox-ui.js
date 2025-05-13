@@ -96,7 +96,7 @@ function createUpdateConfigButton(section, tabName, config) {
     try {
       const url = (await loadFile(`/etc/sing-box/url_${config.name}`)).trim();
       if (!url) throw new Error('URL is empty');
-      const result = await fs.exec('/usr/bin/singb/singb-updater', [
+      const result = await fs.exec('/usr/bin/singbox-ui/singbox-ui-updater', [
         `/etc/sing-box/url_${config.name}`,
         `/etc/sing-box/${config.name}`
       ]);
@@ -191,8 +191,8 @@ function createSubscribeEditor(section, tabName, config){
 
 async function getAutoUpdaterStatus() {
   try {
-    const res = await fs.exec('/etc/init.d/singb-autoupdater', ['status']);
-    return res.stdout.trim().toLowerCase();   // "running" или "stopped"
+    const res = await fs.exec('/etc/init.d/singbox-ui-autoupdater', ['status']);
+    return res.stdout.trim().toLowerCase();
   } catch {
     return 'stopped';
   }
@@ -206,12 +206,12 @@ function createSwitchAutoUpdaterButton(section, tabName, autoStatus) {
         btn.inputstyle = 'loading';
     try {
       if (autoStatus === 'running') {
-        await fs.exec('/etc/init.d/singb-autoupdater', ['disable']);
-        await fs.exec('/etc/init.d/singb-autoupdater', ['stop']);
+        await fs.exec('/etc/init.d/singbox-ui-autoupdater', ['disable']);
+        await fs.exec('/etc/init.d/singbox-ui-autoupdater', ['stop']);
         notify('info', 'Auto-Updater Stopped');
       } else {
-        await fs.exec('/etc/init.d/singb-autoupdater', ['enable']);
-        await fs.exec('/etc/init.d/singb-autoupdater', ['start']);
+        await fs.exec('/etc/init.d/singbox-ui-autoupdater', ['enable']);
+        await fs.exec('/etc/init.d/singbox-ui-autoupdater', ['start']);
         notify('info', 'Auto-Updater Started');
       }
     } catch (e) {

@@ -1,14 +1,14 @@
 {
-    "admin/services/singb": {
-        "title": "Singb",
+    "admin/services/singbox-ui": {
+        "title": "Singbox-UI",
         "order": 42,
         "action": {
             "type": "view",
-            "path": "singb/singb"
+            "path": "singbox-ui/singbox-ui"
         },
         "depends": {
             "acl": [
-                "luci-app-singb"
+                "luci-app-singbox-ui"
             ],
             "uci": {
                 "singb": true

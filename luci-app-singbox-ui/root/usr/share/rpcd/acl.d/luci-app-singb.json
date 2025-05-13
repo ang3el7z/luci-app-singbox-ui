@@ -1,22 +1,22 @@
 {
-    "luci-app-singb": {
+    "luci-app-singbox-ui": {
         "description": "Sing-box management access",
         "read": {
             "file": {
                 "/etc/init.d/sing-box": [ "exec" ],
-                "/etc/init.d/singb-autoupdater": [ "exec" ],
+                "/etc/init.d/singbox-ui-autoupdater": [ "exec" ],
                 "/etc/sing-box/*": ["read"],
-                "/usr/bin/singb/*": ["exec"],
+                "/usr/bin/singbox-ui/*": ["exec"],
                 "/tmp/*": ["read"]
             },
-            "uci": ["singb"]
+            "uci": ["singbox-ui"]
         },
         "write": {
             "file": {
                 "/etc/sing-box/*": ["write"],
                 "/tmp/*": ["write"]
             },
-            "uci": ["singb"]
+            "uci": ["singbox-ui"]
         }
     }
 }
