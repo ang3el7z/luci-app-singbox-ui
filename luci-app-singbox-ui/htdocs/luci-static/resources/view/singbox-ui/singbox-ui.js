@@ -27,7 +27,7 @@ const isValidConfig = (config) => {
 const notify = (type, msg) => ui.addNotification(null, msg, type);
 
 const getInputValueByKey = (key) => {
-  const id = `widget.cbid.singb.main.${key}`;
+  const id = `widget.cbid.singbox-ui.main.${key}`;
   return document.querySelector(`#${CSS.escape(id)}`)?.value.trim();
 };
 
@@ -200,7 +200,7 @@ async function getAutoUpdaterStatus() {
 
 function createSwitchAutoUpdaterButton(section, tabName, autoStatus) {
     const btn = section.taboption(tabName, form.Button, 'auto_updater_config', 'Auto-Updater');
-    btn.title = (autoStatus === 'running') ? 'Auto-Updater Stopp' : 'Auto-Updater Start';
+    btn.title = (autoStatus === 'running') ? 'Auto-Updater Stop' : 'Auto-Updater Start';
     btn.inputstyle = (autoStatus === 'running') ? 'negative' : 'positive';
     btn.onclick = async () => {
         btn.inputstyle = 'loading';
@@ -229,7 +229,7 @@ return view.extend({
   handleReset: null,
 
   async render() {
-    const m = new form.Map('singb', 'Singb Configuration');
+    const m = new form.Map('singbox-ui', 'Singbox-UI Configuration');
     const s = m.section(form.TypedSection, 'main', 'Control Panel');
     s.anonymous = true;
     s.tab('service', 'Service Management');
