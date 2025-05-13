@@ -161,6 +161,24 @@ function createSetMainButton(section, tabName, config) {
   };
 }
 
+function createClearButton(section, tabName, config) {
+    const btn = section.taboption(tabName, form.Button, `clear_${config.name}`, 'Clear Config');
+    btn.inputstyle = 'negative';
+    btn.onclick = async () => {
+    try {
+      await saveFile(`/etc/sing-box/${config.name}`, '{}', 'Config cleared');
+      await saveFile(`/etc/sing-box/url_${config.name}`, '', 'URL cleared');
+      if (config.name === 'config.json') {
+        await fs.exec('/etc/init.d/sing-box', ['stop']);
+        notify('info', 'Service stopped');
+      }
+      setTimeout(() => location.reload(), 500);
+    } catch (e) {
+      notify('error', `Failed to clear ${config.label}: ${e.message}`);
+    }
+  };
+}
+
 function configContent(section, tabName, config){
     createConfigEditor(section, tabName, config);
     createSaveContentButton(section, tabName, config);
@@ -198,7 +216,8 @@ async function getAutoUpdaterStatus() {
   }
 }
 
-function createSwitchAutoUpdaterButton(section, tabName, autoStatus) {
+function createSwitchAutoUpdaterButton(section, tabName, autoStatus, config) {
+  if (config.name !== 'config.json') return;
     const btn = section.taboption(tabName, form.Button, 'auto_updater_config', 'Auto-Updater');
     btn.title = (autoStatus === 'running') ? 'Auto-Updater Stop' : 'Auto-Updater Start';
     btn.inputstyle = (autoStatus === 'running') ? 'negative' : 'positive';
@@ -265,11 +284,10 @@ return view.extend({
       s.tab(tab, config.label);
 
       subscribeURL(s, tab, config);
-      if (config.name === 'config.json') {
-        createSwitchAutoUpdaterButton(s, tab, autoStatus);
-      }
+      createSwitchAutoUpdaterButton(s, tab, autoStatus, config);
       configContent(s, tab, config);
       createSetMainButton(s, tab, config);
+      createClearButton(s, tab, config);
     });
 
     return m.render();
