@@ -2,6 +2,6 @@ FROM openwrt/sdk:x86_64-v23.05.5
 
 RUN ./scripts/feeds update -a && ./scripts/feeds install luci-base && mkdir -p /builder/package/feeds/utilites/ && mkdir -p /builder/package/feeds/luci/
 
-COPY ./luci-app-singb /builder/package/feeds/luci/luci-app-singb
+COPY ./luci-app-singbox-ui /builder/package/feeds/luci/luci-app-singbox-ui
 
-RUN make defconfig && make package/luci-app-singb/compile V=s -j4
+RUN make defconfig && make package/luci-app-singbox-ui/compile V=s -j4
