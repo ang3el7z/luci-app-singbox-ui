@@ -1,0 +1,18 @@
+{
+    "admin/services/singb": {
+        "title": "Singb",
+        "order": 42,
+        "action": {
+            "type": "view",
+            "path": "singb/singb"
+        },
+        "depends": {
+            "acl": [
+                "luci-app-singb"
+            ],
+            "uci": {
+                "singb": true
+            }
+        }
+    }
+}
