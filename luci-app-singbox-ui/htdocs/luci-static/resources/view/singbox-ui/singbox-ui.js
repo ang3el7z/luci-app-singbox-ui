@@ -162,7 +162,7 @@ function createSetMainButton(section, tabName, config) {
 }
 
 function createClearButton(section, tabName, config) {
-    const btn = section.taboption(tabName, form.Button, `clear_${config.name}`, 'Clear Config');
+    const btn = section.taboption(tabName, form.Button, `clear_${config.name}`, 'Clear All');
     btn.inputstyle = 'negative';
     btn.onclick = async () => {
     try {
