@@ -1,0 +1,221 @@
+{
+    "log": {
+        "level": "error",
+ 	"output": "/tmp/sing-box-wrt.log",
+        "timestamp": true
+    },
+    "inbounds": [
+        {
+            "type": "tun",
+            "tag": "tun-in",
+            "domain_strategy": "prefer_ipv4",
+            "interface_name": "singtun0",
+            "address": [
+                "172.19.0.1\/30"
+            ],
+            "mtu": 1400,
+            "auto_route": true,
+            "strict_route": true,
+            "endpoint_independent_nat": false,
+            "stack": "mixed",
+            "platform": {
+                "http_proxy": {
+                    "enabled": false,
+                    "server": "127.0.0.1",
+                    "server_port": 2080
+                }
+            }
+        },
+        {
+            "type": "mixed",
+            "tag": "in"
+        }
+    ],
+    "dns": {
+        "servers": [
+            {
+                "tag": "dns_direct",
+                "address": "~dns~",
+                "address_resolver": "dns-remote",
+                "strategy": "prefer_ipv4",
+                "detour": "direct"
+            },
+            {
+                "tag": "dns-remote",
+                "address": "tcp:\/\/8.8.8.8",
+                "address_strategy": "prefer_ipv4",
+                "strategy": "prefer_ipv4",
+                "detour": "direct"
+            }
+        ],
+        "rules": [
+            {
+                "outbound": "any",
+                "server": "dns-direct",
+                "disable_cache": false
+            }
+        ],
+        "strategy": "ipv4_only",
+        "independent_cache": true
+    },
+    "outbounds": [
+        {
+            "flow": "xtls-rprx-vision",
+            "packet_encoding": "",
+            "server": "~domain~",
+            "server_port": 443,
+            "tls": {
+                "enabled": true,
+                "insecure": false,
+                "reality": {
+                    "enabled": true,
+                    "public_key": "~public_key~",
+                    "short_id": "~short_id~"
+                },
+                "server_name": "~server_name~",
+                "utls": {
+                    "enabled": true,
+                    "fingerprint": "chrome"
+                }
+            },
+            "uuid": "~uid~",
+            "type": "vless",
+            "domain_strategy": "ipv4_only",
+            "tag": "~outbound~"
+        },
+        {
+            "type": "direct",
+            "tag": "direct"
+        }
+    ],
+    "route": {
+        "auto_detect_interface": true,
+        "override_android_vpn": true,
+        "rules": [
+            {
+                "action": "sniff"
+            },
+            {
+                "protocol": "dns",
+                "action": "hijack-dns"
+            },
+            {
+                "inbound": "in",
+                "action": "resolve",
+                "strategy": "prefer_ipv4"
+            },
+            {
+                "inbound": "in",
+                "action": "sniff",
+                "timeout": "1s"
+            },
+            {
+                "protocol": "bittorrent",
+                "outbound": "direct"
+            },
+            {
+                "ip_is_private": true,
+                "outbound": "direct"
+            },
+            {
+                "protocol": "quic",
+                "outbound": "block"
+            },
+            {
+                "addruleset": true,
+                "outbound": "direct"
+            },
+            {
+                "addruleset": true,
+                "createruleset": [
+                    {
+                        "name": "pac",
+                        "interval": "30s",
+                        "rules": [
+                            {
+                                "domain_suffix": "~pac~"
+                            }
+                        ]
+                    }
+                ],
+                "outbound": "~outbound~"
+            },
+            {
+                "addruleset": true,
+                "createruleset": [
+                    {
+                        "name": "subnet",
+                        "interval": "30s",
+                        "rules": [
+                            {
+                                "ip_cidr": "~subnet~"
+                            }
+                        ]
+                    }
+                ],
+                "outbound": "~outbound~"
+            },
+            {
+                "addruleset": true,
+                "createruleset": [
+                    {
+                        "name": "package",
+                        "interval": "30s",
+                        "rules": [
+                            {
+                                "package_name": "~package~"
+                            }
+                        ]
+                    }
+                ],
+                "outbound": "~outbound~"
+            },
+            {
+                "addruleset": true,
+                "createruleset": [
+                    {
+                        "name": "process",
+                        "interval": "30s",
+                        "rules": [
+                            {
+                                "process_name": "~process~"
+                            }
+                        ]
+                    }
+                ],
+                "outbound": "~outbound~"
+            },
+            {
+                "addruleset": true,
+                "createruleset": [
+                    {
+                        "name": "block",
+                        "interval": "30s",
+                        "rules": [
+                            {
+                                "domain_suffix": "~block~"
+                            }
+                        ]
+                    }
+                ],
+                "action": "reject"
+            },
+            {
+                "addruleset": true,
+                "createruleset": [
+                    {
+                        "name": "warp",
+                        "interval": "30s",
+                        "rules": [
+                            {
+                                "domain_suffix": "~warp~"
+                            }
+                        ]
+                    }
+                ],
+                "outbound": "~outbound~"
+            }
+        ],
+        "final": "direct"
+    }
+}
