@@ -85,7 +85,7 @@ show_warning "Вернулись к основному скрипту"
 
 network_check
 
-sleep 1
+sleep 5
 read -p "$(echo -e "  ${FG_ACCENT}▷ URL подписки на конфигурацию (Enter для ручного ввода): ${RESET}")" CONFIG_URL
 
 # Проверяем, что URL не пустой
