@@ -48,7 +48,7 @@ opkg update && opkg install openssh-sftp-server nano curl jq
 separator
 
 show_progress "Начало установки singbox-ui..."
-wget -O /root/luci-app-singbox-ui.ipk https://github.com/Vancltkin/singb/releases/latest/download/luci-app-singbox-ui.ipk
+wget -O /root/luci-app-singbox-ui.ipk https://github.com/Vancltkin/luci-app-singbox-ui/releases/latest/download/luci-app-singbox-ui.ipk
 chmod 0755 /root/luci-app-singbox-ui.ipk
 opkg update
 opkg install /root/luci-app-singbox-ui.ipk
