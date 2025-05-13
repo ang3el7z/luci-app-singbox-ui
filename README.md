@@ -31,3 +31,4 @@ wget -O /root/install-singbox.sh https://raw.githubusercontent.com/Vancltkin/luc
 # other helps
  - Connect router -> ssh root@192.168.1.1
  - REFRESH OPENWRT (Fix visibility plugin) -> CNTRL + SHIFT + I
+ - [openwrt-template-openwrt_2.11.json](https://raw.githubusercontent.com/Vancltkin/luci-app-singbox-ui/main/other/file/openwrt-template-openwrt_2.11.json)  
