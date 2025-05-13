@@ -23,7 +23,6 @@ separator() {
 }
 
 header() {
-    clear
     separator
     echo -e "${BG_ACCENT}${FG_MAIN}                Установка и настройка sing-box                ${RESET}"
     separator
