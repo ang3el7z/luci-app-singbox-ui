@@ -47,6 +47,12 @@ show_warning() {
 
 header
 
+# Обновление репозиториев и установка зависимостей
+show_progress "Обновление пакетов и установка зависимостей..."
+opkg update && opkg install openssh-sftp-server nano curl jq
+[ $? -eq 0 ] && show_success "Зависимости успешно установлены" || show_error "Ошибка установки зависимостей"
+separator
+
 network_check() {
 # Параметры проверки
     timeout=200      # Общее время ожидания (сек)
@@ -85,7 +91,8 @@ show_warning "Вернулись к основному скрипту"
 
 network_check
 
-sleep 5
+sleep 15
+
 read -p "$(echo -e "  ${FG_ACCENT}▷ URL подписки на конфигурацию (Enter для ручного ввода): ${RESET}")" CONFIG_URL
 
 # Проверяем, что URL не пустой
