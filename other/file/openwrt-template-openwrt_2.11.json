@@ -1,8 +1,17 @@
 {
     "log": {
         "level": "error",
- 	"output": "/tmp/sing-box-wrt.log",
+        "output": "/tmp/sing-box-wrt-yt.log",
         "timestamp": true
+    },
+    "experimental": {
+        "clash_api": {
+            "external_controller": "0.0.0.0:9090",
+            "external_ui": "dashboard"
+        },
+        "cache_file": {
+            "enabled": true
+        }
     },
     "inbounds": [
         {
@@ -11,11 +20,14 @@
             "domain_strategy": "prefer_ipv4",
             "interface_name": "singtun0",
             "address": [
-                "172.19.0.1\/30"
+                "172.19.0.1/30"
             ],
             "mtu": 1400,
             "auto_route": true,
             "strict_route": true,
+            "auto_redirect": true,
+            "auto_redirect_input_mark": "0x2023",
+            "auto_redirect_output_mark": "0x2024",
             "endpoint_independent_nat": false,
             "stack": "mixed",
             "platform": {
@@ -42,7 +54,7 @@
             },
             {
                 "tag": "dns-remote",
-                "address": "tcp:\/\/8.8.8.8",
+                "address": "tcp://8.8.8.8",
                 "address_strategy": "prefer_ipv4",
                 "strategy": "prefer_ipv4",
                 "detour": "direct"
@@ -59,6 +71,10 @@
         "independent_cache": true
     },
     "outbounds": [
+        {
+            "type": "direct",
+            "tag": "direct"
+        },
         {
             "flow": "xtls-rprx-vision",
             "packet_encoding": "",
@@ -84,8 +100,26 @@
             "tag": "~outbound~"
         },
         {
-            "type": "direct",
-            "tag": "direct"
+            "packet_encoding": "",
+            "server": "wgsufk.fun",
+            "server_port": 443,
+            "tls": {
+                "enabled": true,
+                "insecure": false,
+                "server_name": "wgsufk.fun",
+                "utls": {
+                    "enabled": true,
+                    "fingerprint": "chrome"
+                }
+            },
+            "uuid": "130ad488-69f8-455a-a26b-73221f2865a4",
+            "type": "vless",
+            "domain_strategy": "ipv4_only",
+            "tag": "proxyh2",
+            "transport": {
+                "type": "ws",
+                "path": "/wsb8f2cefc"
+            }
         }
     ],
     "route": {
@@ -199,6 +233,10 @@
                     }
                 ],
                 "action": "reject"
+            },
+            {
+                "addruleset": true,
+                "outbound": "proxyh2"
             },
             {
                 "addruleset": true,
