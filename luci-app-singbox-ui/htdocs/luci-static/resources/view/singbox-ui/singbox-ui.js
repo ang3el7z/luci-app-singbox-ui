@@ -241,6 +241,14 @@ function createSwitchAutoUpdaterButton(section, tabName, autoStatus, config) {
   };
 }
 
+function createDashboardButton(section) {
+    const dash = section.taboption('service', form.Button, 'dashboard', 'Dashboard');
+    dash.inputstyle = 'apply';
+    dash.onclick = () => {
+        window.open('http://192.168.1.1:9090/ui/', '_blank');
+    };
+}
+
 // Main view
 return view.extend({
   handleSave: null,
@@ -267,6 +275,9 @@ return view.extend({
       const clr = colors[status] || 'orange';
       return `<span style="color: ${clr}; font-weight: bold;">${txt}</span>`;
     };
+
+    // Navigate yacd
+    createDashboardButton(s);
 
     // Service action buttons
     ['start','stop','restart','reload'].forEach(a => createServiceButton(s, a, status));
