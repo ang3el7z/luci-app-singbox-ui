@@ -241,11 +241,26 @@ function createSwitchAutoUpdaterButton(section, tabName, autoStatus, config) {
   };
 }
 
-function createDashboardButton(section) {
+function createDashboardButton(section, status) {
+  if (status !== 'running') return;
     const dash = section.taboption('service', form.Button, 'dashboard', 'Dashboard');
     dash.inputstyle = 'apply';
     dash.onclick = () => {
         window.open('http://192.168.1.1:9090/ui/', '_blank');
+    };
+}
+
+function createStatusDisp(s, status){
+    const statusDisp = s.taboption('service', form.DummyValue, 'service_status', 'Service Status');
+    statusDisp.rawhtml = true;
+    statusDisp.cfgvalue = () => {
+      const colors = { running: 'green', inactive: 'orange', error: 'red' };
+      const txt = (status === 'running') ? 'Running'
+                 : (status === 'inactive') ? 'Inactive'
+                 : (status === 'error') ? 'Error fetching status'
+                 : status;
+      const clr = colors[status] || 'orange';
+      return `<span style="color: ${clr}; font-weight: bold;">${txt}</span>`;
     };
 }
 
@@ -263,21 +278,12 @@ return view.extend({
     s.tab('config', 'Edit Config');
 
     const status = await getStatus();
-    // Service status display
-    const statusDisp = s.taboption('service', form.DummyValue, 'service_status', 'Service Status');
-    statusDisp.rawhtml = true;
-    statusDisp.cfgvalue = () => {
-      const colors = { running: 'green', inactive: 'orange', error: 'red' };
-      const txt = (status === 'running') ? 'Running'
-                 : (status === 'inactive') ? 'Inactive'
-                 : (status === 'error') ? 'Error fetching status'
-                 : status;
-      const clr = colors[status] || 'orange';
-      return `<span style="color: ${clr}; font-weight: bold;">${txt}</span>`;
-    };
 
-    // Navigate yacd
-    createDashboardButton(s);
+    // Service status display
+    createStatusDisp(s, status);
+
+    // Navigate to yacd
+    createDashboardButton(s, status);
 
     // Service action buttons
     ['start','stop','restart','reload'].forEach(a => createServiceButton(s, a, status));
