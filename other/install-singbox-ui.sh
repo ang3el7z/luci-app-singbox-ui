@@ -60,3 +60,8 @@ chmod +x /etc/init.d/singbox-ui-autoupdater
 chmod +x /usr/bin/singbox-ui/singbox-ui-autoupdater-wrapper
 chmod +x /usr/bin/singbox-ui/singbox-ui-updater
 show_success "Доступы получены"
+
+show_progress "Очистка файлов..."
+rm "/root/luci-app-singbox-ui.ipk"
+rm -- "$0"
+show_success "Файлы удалены!"
