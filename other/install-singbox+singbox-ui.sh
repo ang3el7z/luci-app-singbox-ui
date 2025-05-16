@@ -25,7 +25,7 @@ separator() {
 header() {
     clear
     separator
-    echo -e "${BG_ACCENT}${FG_MAIN}                Установка и настройка sing-box + singbox-ui                ${RESET}"
+    echo -e "${BG_ACCENT}${FG_MAIN}                Начало установки               ${RESET}"
     separator
 }
 
@@ -46,12 +46,6 @@ show_warning() {
 }
 
 header
-
-# Обновление репозиториев и установка зависимостей
-show_progress "Обновление пакетов и установка зависимостей..."
-opkg update && opkg install openssh-sftp-server nano curl jq
-[ $? -eq 0 ] && show_success "Зависимости успешно установлены" || show_error "Ошибка установки зависимостей"
-separator
 
 network_check() {
 # Параметры проверки
