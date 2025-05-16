@@ -195,4 +195,7 @@ show_success "Сервис успешно запущен"
 separator
 echo -e "${BG_ACCENT}${FG_MAIN} Установка завершена! Доступ к панели: http://192.168.1.1 ${RESET}"
 separator
+
+show_progress "Очистка файлов..."
 rm -- "$0"
+show_success "Файлы удалены!"
