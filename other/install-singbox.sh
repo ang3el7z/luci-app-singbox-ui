@@ -131,3 +131,8 @@ service firewall reload >/dev/null 2>&1
 
 show_progress "Перезапуск network..."
 service network restart
+
+show_progress "Очистка файлов..."
+rm -- "$0"
+show_success "Файлы удалены!"
+
