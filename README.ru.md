@@ -29,6 +29,7 @@ wget -O /root/install-singbox.sh https://raw.githubusercontent.com/Vancltkin/luc
 ![image](https://github.com/user-attachments/assets/74739f36-c734-4787-afb0-1cc70b07bf7d)
 
 # Дополнительно
+ - ssh-keygen -R 192.168.1.1
  - Подключение к роутеру -> ssh root@192.168.1.1
  - Обновить OPENWRT (Fix visibility plugin) -> CNTRL + SHIFT + I
  - [openwrt-правильный шаблон-openwrt_2.11.json](https://raw.githubusercontent.com/Vancltkin/luci-app-singbox-ui/main/other/file/openwrt-template-openwrt_2.11.json)
