@@ -13,7 +13,6 @@ check_server() {
   [ "$code" -ge 200 ] && [ "$code" -lt 400 ]
 }
 
-
 update_config() {
   /usr/bin/singbox-ui/singbox-ui-updater /etc/sing-box/url_config.json $TARGET_FILE
 }
