@@ -100,6 +100,12 @@ function createUpdateConfigButton(section, tabName, config) {
         `/etc/sing-box/url_${config.name}`,
         `/etc/sing-box/${config.name}`
       ]);
+      
+      if (result.code === 2) {
+      notify('info', 'No changes detected in config');
+      return;
+      }
+      
       if (result.code !== 0) throw new Error(result.stderr || result.stdout || 'Unknown error');
 
       if (config.name === 'config.json') {
