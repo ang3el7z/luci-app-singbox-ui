@@ -37,19 +37,35 @@ command -v jq >/dev/null || {
 }
 
 TMP_FILE="${TARGET_FILE}.tmp.$$"
+TMP_RAW="${TMP_FILE}.download"
 
 logger -t singbox-ui-updater "Downloading config from $CONFIG_URL"
-curl -fsSL "$CONFIG_URL" | jq . > "$TMP_FILE" 2>&1 || {
-    logger -t singbox-ui-updater "Download failed: $(cat $TMP_FILE)"
-    rm -f "$TMP_FILE"
+
+curl -fsSL "$CONFIG_URL" -o "$TMP_RAW" || {
+    logger -t singbox-ui-updater "Download failed from $CONFIG_URL"
+    rm -f "$TMP_RAW"
     exit 1
 }
 
-mv "$TMP_FILE" "$TARGET_FILE" || {
-    logger -t singbox-ui-updater "File move failed: $TMP_FILE -> $TARGET_FILE"
+jq . "$TMP_RAW" > "$TMP_FILE" || {
+    logger -t singbox-ui-updater "Invalid JSON received"
+    rm -f "$TMP_RAW" "$TMP_FILE"
     exit 1
 }
 
+rm -f "$TMP_RAW"
+
+if [ -f "$TARGET_FILE" ]; then
+    OLD_HASH=$(sha256sum "$TARGET_FILE" | awk '{print $1}')
+    NEW_HASH=$(sha256sum "$TMP_FILE" | awk '{print $1}')
+    if [ "$OLD_HASH" = "$NEW_HASH" ]; then
+        logger -t singbox-ui-updater "No changes detected in config"
+        rm -f "$TMP_FILE"
+        exit 2
+    fi
+fi
+
+mv "$TMP_FILE" "$TARGET_FILE"
 logger -t singbox-ui-updater "Config updated successfully"
 echo "Success"
 exit 0
