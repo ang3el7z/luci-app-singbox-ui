@@ -1,13 +1,37 @@
 #!/bin/sh
 
+ERROR_FLAG="/tmp/singbox-ui-error.flag"
+INTERVAL_OK=900      # 15 минут
+INTERVAL_FAIL=120    # 2 минуты
+
 while true; do
   logger -t singbox-ui-autoupdater "Running updater"
-  if /usr/bin/singbox-ui/singbox-ui-updater /etc/sing-box/url_config.json /etc/sing-box/config.json; then
-    logger -t singbox-ui-autoupdater "Update OK, reloading sing-box"
-    /etc/init.d/sing-box reload
-  else
-    logger -t singbox-ui-autoupdater "Update failed"
-  fi
 
-  sleep "${INTERVAL}"
+  /usr/bin/singbox-ui/singbox-ui-updater /etc/sing-box/url_config.json /etc/sing-box/config.json
+  RESULT=$?
+
+  if [ "$RESULT" = 0 ] || [ "$RESULT" = 2 ]; then
+    if [ -f "$ERROR_FLAG" ]; then
+      logger -t singbox-ui-autoupdater "Network/config restored, starting singbox"
+      /etc/init.d/sing-box start
+      rm -f "$ERROR_FLAG"
+    fi
+
+    if [ "$RESULT" = 0 ]; then
+      logger -t singbox-ui-autoupdater "Config updated, singbox reload"
+      /etc/init.d/sing-box reload
+    else
+      logger -t singbox-ui-autoupdater "No changes in config"
+    fi
+
+    sleep $INTERVAL_OK
+  else
+    logger -t singbox-ui-autoupdater "Updater failed"
+    if [ ! -f "$ERROR_FLAG" ]; then
+      logger -t singbox-ui-autoupdater "Stopping singbox"
+      /etc/init.d/sing-box stop
+      touch "$ERROR_FLAG"
+    fi
+    sleep $INTERVAL_FAIL
+  fi
 done
