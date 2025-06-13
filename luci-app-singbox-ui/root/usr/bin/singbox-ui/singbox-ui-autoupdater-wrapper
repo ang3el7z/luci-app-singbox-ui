@@ -1,37 +1,80 @@
 #!/bin/sh
 
 ERROR_FLAG="/tmp/singbox-ui-error.flag"
-INTERVAL_OK=900      # 15 минут
-INTERVAL_FAIL=120    # 2 минуты
+INTERVAL_HEALTH=60     # 1 минута
+CHECKS_TO_UPDATE=15    # Кол-во успешных health check перед обновлением
+MAX_FAILS=2            # Максимум подряд неудачных health check перед остановкой
+
+CONFIG_URL=$(cat /etc/sing-box/url_config.json)
+TARGET_FILE="/etc/sing-box/config.json"
+
+check_server() {
+  code=$(curl -s -o /dev/null -w "%{http_code}" -m 5 "$CONFIG_URL")
+  [ "$code" -ge 200 ] && [ "$code" -lt 400 ]
+}
+
+
+update_config() {
+  /usr/bin/singbox-ui/singbox-ui-updater /etc/sing-box/url_config.json $TARGET_FILE
+}
+
+success_counter=0
+fail_counter=0
 
 while true; do
-  logger -t singbox-ui-autoupdater "Running updater"
+  if check_server; then
+    success_counter=$((success_counter + 1))
+    fail_counter=0
+    logger -t singbox-ui-autoupdater "Health Check success: (success count: #$success_counter / Checks to update: $CHECKS_TO_UPDATE)"
 
-  /usr/bin/singbox-ui/singbox-ui-updater /etc/sing-box/url_config.json /etc/sing-box/config.json
-  RESULT=$?
-
-  if [ "$RESULT" = 0 ] || [ "$RESULT" = 2 ]; then
     if [ -f "$ERROR_FLAG" ]; then
-      logger -t singbox-ui-autoupdater "Network/config restored, starting singbox"
-      /etc/init.d/sing-box start
-      rm -f "$ERROR_FLAG"
-    fi
+      # Был сбой, но сеть восстановилась — обновляем конфиг и запускаем singbox
+      RESULT=$(update_config)
+      CODE=$?
 
-    if [ "$RESULT" = 0 ]; then
-      logger -t singbox-ui-autoupdater "Config updated, singbox reload"
-      /etc/init.d/sing-box reload
+      if [ "$CODE" = 0 ] || [ "$CODE" = 2 ]; then
+        logger -t singbox-ui-autoupdater "Network/config restored, starting singbox"
+        /etc/init.d/sing-box start
+        rm -f "$ERROR_FLAG"
+        success_counter=0
+      else
+        logger -t singbox-ui-autoupdater "Updater failed during recovery"
+      fi
+
     else
-      logger -t singbox-ui-autoupdater "No changes in config"
+      if [ "$success_counter" -ge "$CHECKS_TO_UPDATE" ]; then
+        logger -t singbox-ui-autoupdater "StartUpdate: Running config update"
+
+        RESULT=$(update_config)
+        CODE=$?
+
+        if [ "$CODE" = 0 ]; then
+          logger -t singbox-ui-autoupdater "Config updated, reloading singbox"
+          /etc/init.d/sing-box reload
+          success_counter=0
+        elif [ "$CODE" = 2 ]; then
+          logger -t singbox-ui-autoupdater "No changes in config"
+          success_counter=0
+        else
+          logger -t singbox-ui-autoupdater "Updater failed"
+          /etc/init.d/sing-box stop
+          touch "$ERROR_FLAG"
+          success_counter=0
+        fi
+      fi
     fi
 
-    sleep $INTERVAL_OK
   else
-    logger -t singbox-ui-autoupdater "Updater failed"
-    if [ ! -f "$ERROR_FLAG" ]; then
-      logger -t singbox-ui-autoupdater "Stopping singbox"
+    fail_counter=$((fail_counter + 1))
+    success_counter=0
+    logger -t singbox-ui-autoupdater "Health Check failed: (fail count: #$fail_counter / Checks to stop: $MAX_FAILS)"
+
+    if [ "$fail_counter" -ge "$MAX_FAILS" ] && [ ! -f "$ERROR_FLAG" ]; then
+      logger -t singbox-ui-autoupdater "Stopping singbox due to $fail_counter consecutive failed health checks"
       /etc/init.d/sing-box stop
       touch "$ERROR_FLAG"
     fi
-    sleep $INTERVAL_FAIL
   fi
+
+  sleep $INTERVAL_HEALTH
 done
