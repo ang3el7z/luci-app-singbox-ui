@@ -19,9 +19,9 @@ const isValidJson = str => {
 
 const notify = (type, msg) => ui.addNotification(null, msg, type);
 
-const getValue = key => {
-  const el = document.querySelector(`#${CSS.escape(key)}`);
-  return el ? el.value.trim() : '';
+const getInputValueByKey = (key) => {
+  const id = `widget.cbid.singbox-ui.main.${key}`;
+  return document.querySelector(`#${CSS.escape(id)}`)?.value.trim();
 };
 
 async function loadFile(path) {
@@ -191,7 +191,7 @@ function createSaveConfigButton(section, tab, config) {
   btn.inputtitle = 'Save';
 
   btn.onclick = async () => {
-    const val = getValue(key);
+    const val = getInputValueByKey(key);
     if (!val) return notify('error', 'Config is empty');
     if (!isValidJson(val)) return notify('error', 'Invalid JSON');
     await saveFile(`/etc/sing-box/${config.name}`, val, 'Config saved');
@@ -221,7 +221,7 @@ function createSaveUrlButton(section, tab, config) {
   btn.inputtitle = 'Save URL';
 
   btn.onclick = async () => {
-    const url = getValue(key);
+    const url = getInputValueByKey(key);
     if (!url) return notify('error', 'URL empty');
     if (!isValidUrl(url)) return notify('error', 'Invalid URL');
     await saveFile(`/etc/sing-box/url_${config.name}`, url, 'URL saved');
