@@ -19,10 +19,20 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "Using version: $VERSION"
 
-      # Обновляем только PKG_VERSION в Makefile
+      # Проверяем наличие Makefile
+      - name: Verify files
+        run: |
+          ls -la
+          if [ ! -f "Makefile" ]; then
+            echo "::error::Makefile not found in working directory!"
+            exit 1
+          fi
+
+      # Обновляем PKG_VERSION в Makefile
       - name: Update Makefile version
         run: |
           sed -i "s/^PKG_VERSION:=.*/PKG_VERSION:=${{ steps.extract_version.outputs.version }}/" Makefile
+          echo "Updated Makefile:"
           cat Makefile
 
       - name: Build Docker image
@@ -35,11 +45,12 @@ jobs:
         run: |
           docker create --name singbox-container singbox-ui:ci
           docker cp singbox-container:/builder/bin/packages/x86_64/luci/luci-app-singbox-ui_${{ steps.extract_version.outputs.version }}*.ipk ./
-          docker rm singbox-container
+          docker rm -f singbox-container
 
       - name: Rename IPK
         run: |
           mv luci-app-singbox-ui_*.ipk luci-app-singbox-ui-${{ steps.extract_version.outputs.version }}.ipk
+          ls -la
 
       - name: Create release
         uses: softprops/action-gh-release@v2.0.8
