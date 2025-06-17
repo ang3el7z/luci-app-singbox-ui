@@ -18,7 +18,7 @@ LUCI_LANGUAGES:=en ru
 define Package/$(PKG_NAME)/install
 	# etc | Optional defaults config
 	$(INSTALL_DIR) $(1)/etc/config
-	$(INSTALL_BIN) ./root/etc/config/* $(1)/etc/config/
+	$(INSTALL_DATA) ./root/etc/config/* $(1)/etc/config/
 
 	# etc | Init script (singbox-ui-autoupdater)
 	$(INSTALL_DIR) $(1)/etc/init.d
@@ -26,7 +26,7 @@ define Package/$(PKG_NAME)/install
 
 	# etc | Need defaults (config files)
 	$(INSTALL_DIR) $(1)/etc/sing-box
-	$(INSTALL_BIN) ./root/etc/sing-box/* $(1)/etc/sing-box/
+	$(INSTALL_DATA) ./root/etc/sing-box/* $(1)/etc/sing-box/
 
 	# etc | Optional defaults
 	$(INSTALL_DIR) $(1)/etc/uci-defaults
