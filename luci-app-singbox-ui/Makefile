@@ -36,7 +36,6 @@ define Package/$(PKG_NAME)/install
 	$(INSTALL_DIR) $(1)/usr/bin/singbox-ui
 	$(INSTALL_BIN) ./root/usr/bin/singbox-ui/* $(1)/usr/bin/singbox-ui/
 
-
 	# usr | LuCI menu
 	$(INSTALL_DIR) $(1)/usr/share/luci/menu.d
 	$(INSTALL_DATA) ./root/usr/share/luci/menu.d/* $(1)/usr/share/luci/menu.d/
