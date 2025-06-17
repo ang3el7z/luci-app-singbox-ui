@@ -18,6 +18,12 @@ jobs:
           VERSION=${GITHUB_REF#refs/tags/v}
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "Using version: $VERSION"
+          
+      # Получаем текущую дату
+      - name: Get current date
+        id: current_date
+        run: |
+          echo "date=$(date +'%Y-%m-%d %H:%M:%S %Z')" >> $GITHUB_OUTPUT
 
       # Обновляем версию в Makefile
       - name: Update package version
@@ -43,17 +49,9 @@ jobs:
 
       - name: Prepare release package
         run: |
-          # Извлекаем версию
           VERSION=${{ steps.extract_version.outputs.version }}
-          
-          # Создаем директорию для релиза
           mkdir -p release
-          
-          # Копируем пакет с добавлением версии в имя
           cp ./bin/luci-app-singbox-ui*.ipk ./release/luci-app-singbox-ui-$VERSION.ipk
-          
-          # Для отладки
-          echo "Release directory contents:"
           ls -la release
 
       - name: Create GitHub release
@@ -62,4 +60,7 @@ jobs:
           files: release/*.ipk
           tag_name: ${{ github.ref }}
           name: "Singbox UI ${{ steps.extract_version.outputs.version }}"
-          body: "LuCI app for Singbox UI version ${{ steps.extract_version.outputs.version }}"
+          body: |
+            LuCI app for Singbox UI version ${{ steps.extract_version.outputs.version }}
+            Build date: ${{ steps.current_date.outputs.date }}
+          overwrite: true
