@@ -38,17 +38,23 @@ jobs:
 
       - name: Copy file from Docker container
         run: |
-          docker cp singbox-ui:/builder/bin/packages/x86_64/luci/luci-app-singbox-ui_${{ steps.extract_version.outputs.version }}*.ipk ./
+          docker cp singbox-ui:/builder/bin/packages/x86_64/luci/. ./bin/
           docker rm singbox-ui
 
-      - name: Rename and prepare release
+      - name: Prepare release package
         run: |
-          # Переименовываем с версией
-          mv luci-app-singbox-ui_*.ipk luci-app-singbox-ui-${{ steps.extract_version.outputs.version }}.ipk
+          # Извлекаем версию
+          VERSION=${{ steps.extract_version.outputs.version }}
           
           # Создаем директорию для релиза
           mkdir -p release
-          mv luci-app-singbox-ui-*.ipk release/
+          
+          # Копируем пакет с добавлением версии в имя
+          cp ./bin/luci-app-singbox-ui*.ipk ./release/luci-app-singbox-ui-$VERSION.ipk
+          
+          # Для отладки
+          echo "Release directory contents:"
+          ls -la release
 
       - name: Create GitHub release
         uses: softprops/action-gh-release@v2.0.8
