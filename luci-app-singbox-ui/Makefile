@@ -5,7 +5,7 @@ PKG_VERSION:=1.2.1
 PKG_RELEASE:=13
 
 LUCI_TITLE:=LuCI singbox-ui app
-LUCI_DEPENDS:=+luci-base +sing-box
+LUCI_DEPENDS:=+luci-base +sing-box +nano +curl +jq
 LUCI_PKGARCH:=all
 LUCI_LANG.ru:=Русский (Russian)
 LUCI_LANG.en:=English
