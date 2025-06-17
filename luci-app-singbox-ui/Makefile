@@ -1,7 +1,7 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-singbox-ui
-PKG_VERSION:=1.2.2
+PKG_VERSION:=1.1.3c
 PKG_RELEASE:=14
 
 LUCI_TITLE:=LuCI singbox-ui app
