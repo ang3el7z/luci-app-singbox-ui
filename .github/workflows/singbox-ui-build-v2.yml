@@ -19,18 +19,16 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "Using version: $VERSION"
 
-      # Проверяем наличие Makefile
-      - name: Verify files
+      # Переходим в директорию с пакетом
+      - name: Change to package directory
         run: |
+          cd luci-app-singbox-ui
           ls -la
-          if [ ! -f "Makefile" ]; then
-            echo "::error::Makefile not found in working directory!"
-            exit 1
-          fi
 
       # Обновляем PKG_VERSION в Makefile
       - name: Update Makefile version
         run: |
+          cd luci-app-singbox-ui
           sed -i "s/^PKG_VERSION:=.*/PKG_VERSION:=${{ steps.extract_version.outputs.version }}/" Makefile
           echo "Updated Makefile:"
           cat Makefile
@@ -44,6 +42,7 @@ jobs:
       - name: Extract IPK from container
         run: |
           docker create --name singbox-container singbox-ui:ci
+          # Обновляем путь к IPK файлу с учетом структуры
           docker cp singbox-container:/builder/bin/packages/x86_64/luci/luci-app-singbox-ui_${{ steps.extract_version.outputs.version }}*.ipk ./
           docker rm -f singbox-container
 
