@@ -1,4 +1,4 @@
-name: Build packages
+name: Build and Release
 on:
   push:
     tags:
@@ -11,7 +11,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4.2.1
 
-      # Извлекаем версию из тега (формат: vX.Y.Z)
+      # Извлекаем версию из тега
       - name: Extract version
         id: extract_version
         run: |
@@ -19,35 +19,31 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "Using version: $VERSION"
 
-      # Подменяем версию в Makefile
-      - name: Update version in Makefile
+      # Обновляем только PKG_VERSION в Makefile
+      - name: Update Makefile version
         run: |
           sed -i "s/^PKG_VERSION:=.*/PKG_VERSION:=${{ steps.extract_version.outputs.version }}/" Makefile
-          sed -i "s/^PKG_RELEASE:=.*/PKG_RELEASE:=1/" Makefile
           cat Makefile
 
-      - name: Build and push
+      - name: Build Docker image
         uses: docker/build-push-action@v6.9.0
         with:
           context: .
           tags: singbox-ui:ci
 
-      - name: Create Docker container
-        run: docker create --name singbox-ui singbox-ui:ci
-
-      - name: Copy file from Docker container
+      - name: Extract IPK from container
         run: |
-          docker cp singbox-ui:/builder/bin/packages/x86_64/luci/. ./bin/
-          
-      - name: Filter IPK files
+          docker create --name singbox-container singbox-ui:ci
+          docker cp singbox-container:/builder/bin/packages/x86_64/luci/luci-app-singbox-ui_${{ steps.extract_version.outputs.version }}*.ipk ./
+          docker rm singbox-container
+
+      - name: Rename IPK
         run: |
-          mkdir -p ./filtered-bin
-          cp ./bin/luci-app-singbox-ui*.ipk ./filtered-bin/luci-app-singbox-ui-${{ steps.extract_version.outputs.version }}.ipk
+          mv luci-app-singbox-ui_*.ipk luci-app-singbox-ui-${{ steps.extract_version.outputs.version }}.ipk
 
-      - name: Remove Docker container
-        run: docker rm singbox-ui
-
-      - name: Release
+      - name: Create release
         uses: softprops/action-gh-release@v2.0.8
         with:
-          files: ./filtered-bin/*.ipk
+          files: luci-app-singbox-ui-*.ipk
+          tag_name: ${{ github.ref }}
+          name: Singbox UI ${{ steps.extract_version.outputs.version }}
