@@ -56,4 +56,4 @@ jobs:
         with:
           files: luci-app-singbox-ui-*.ipk
           tag_name: ${{ github.ref }}
-          name: Singbox UI ${{ steps.extract_version.outputs.version }}
+          name: Singbox-ui ${{ steps.extract_version.outputs.version }}
