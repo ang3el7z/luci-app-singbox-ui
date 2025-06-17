@@ -19,14 +19,8 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "Using version: $VERSION"
 
-      # Переходим в директорию с пакетом
-      - name: Change to package directory
-        run: |
-          cd luci-app-singbox-ui
-          ls -la
-
-      # Обновляем PKG_VERSION в Makefile
-      - name: Update Makefile version
+      # Обновляем версию в Makefile
+      - name: Update package version
         run: |
           cd luci-app-singbox-ui
           sed -i "s/^PKG_VERSION:=.*/PKG_VERSION:=${{ steps.extract_version.outputs.version }}/" Makefile
@@ -39,21 +33,27 @@ jobs:
           context: .
           tags: singbox-ui:ci
 
-      - name: Extract IPK from container
-        run: |
-          docker create --name singbox-container singbox-ui:ci
-          # Обновляем путь к IPK файлу с учетом структуры
-          docker cp singbox-container:/builder/bin/packages/x86_64/luci/luci-app-singbox-ui_${{ steps.extract_version.outputs.version }}*.ipk ./
-          docker rm -f singbox-container
+      - name: Create Docker container
+        run: docker create --name singbox-ui singbox-ui:ci
 
-      - name: Rename IPK
+      - name: Copy file from Docker container
         run: |
+          docker cp singbox-ui:/builder/bin/packages/x86_64/luci/luci-app-singbox-ui_${{ steps.extract_version.outputs.version }}*.ipk ./
+          docker rm singbox-ui
+
+      - name: Rename and prepare release
+        run: |
+          # Переименовываем с версией
           mv luci-app-singbox-ui_*.ipk luci-app-singbox-ui-${{ steps.extract_version.outputs.version }}.ipk
-          ls -la
+          
+          # Создаем директорию для релиза
+          mkdir -p release
+          mv luci-app-singbox-ui-*.ipk release/
 
-      - name: Create release
+      - name: Create GitHub release
         uses: softprops/action-gh-release@v2.0.8
         with:
-          files: luci-app-singbox-ui-*.ipk
+          files: release/*.ipk
           tag_name: ${{ github.ref }}
-          name: Singbox-ui ${{ steps.extract_version.outputs.version }}
+          name: "Singbox UI ${{ steps.extract_version.outputs.version }}"
+          body: "LuCI app for Singbox UI version ${{ steps.extract_version.outputs.version }}"
