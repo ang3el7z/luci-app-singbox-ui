@@ -149,8 +149,12 @@ async function createServiceButton(section, sbStatus) {
     }
 }
 
-function createToggleHealthUpdaterButton(section, tab, huStatus, config) {
+async function createToggleHealthUpdaterButton(section, tab, huStatus, config) {
   if (config.name !== 'config.json') return;
+
+  const urlPath = `/etc/sing-box/url_${config.name}`;
+  const urlContent = (await loadFile(urlPath)).trim();
+  if (!isValidUrl(urlContent)) return;
 
   const btn = section.taboption(
     tab, form.Button,
@@ -182,6 +186,7 @@ function createToggleHealthUpdaterButton(section, tab, huStatus, config) {
     }
   };
 }
+
 
 function createDashboardButton(section, status) {
   if (status !== 'running') return;
@@ -260,37 +265,40 @@ function createSaveUrlButton(section, tab, config) {
     if (!url) return notify('error', 'URL empty');
     if (!isValidUrl(url)) return notify('error', 'Invalid URL');
     await saveFile(`/etc/sing-box/url_${config.name}`, url, 'URL saved');
+    setTimeout(() => location.reload(), 800);
   };
 }
 
-function createUpdateConfigButton(section, tab, config) {
-  const btn = section.taboption(tab, form.Button, `update_cfg_${config.name}`, 'Update Config');
-  btn.inputstyle = 'reload';
-  btn.title = `Fetch & update from URL`;
-  btn.inputtitle = 'Update';
-
-  btn.onclick = async () => {
-    try {
-      const url = (await loadFile(`/etc/sing-box/url_${config.name}`)).trim();
-      if (!url) throw Error('URL is empty');
-      const r = await fs.exec(
-        '/usr/bin/singbox-ui/singbox-ui-updater',
-        [`/etc/sing-box/url_${config.name}`, `/etc/sing-box/${config.name}`]
-      );
-      if (r.code === 2) return notify('info', 'No changes detected');
-      if (r.code !== 0) throw new Error(r.stderr || r.stdout || 'Unknown');
-      if (config.name === 'config.json') {
-        await execService('sing-box', 'reload');
-        notify('info', 'Main config reloaded');
-      } else {
-        notify('info', `Updated ${config.label}`);
+async function createUpdateConfigButton(section, tab, config) {
+    const urlPath = `/etc/sing-box/url_${config.name}`;
+    const urlContent = (await loadFile(urlPath)).trim();
+    if (!isValidUrl(urlContent)) return;
+  
+    const btn = section.taboption(tab, form.Button, `update_cfg_${config.name}`, 'Update Config');
+    btn.inputstyle = 'reload';
+    btn.title = `Fetch & update from URL`;
+    btn.inputtitle = 'Update';
+  
+    btn.onclick = async () => {
+      try {
+        const r = await fs.exec(
+          '/usr/bin/singbox-ui/singbox-ui-updater',
+          [`/etc/sing-box/url_${config.name}`, `/etc/sing-box/${config.name}`]
+        );
+        if (r.code === 2) return notify('info', 'No changes detected');
+        if (r.code !== 0) throw new Error(r.stderr || r.stdout || 'Unknown');
+        if (config.name === 'config.json') {
+          await execService('sing-box', 'reload');
+          notify('info', 'Main config reloaded');
+        } else {
+          notify('info', `Updated ${config.label}`);
+        }
+      } catch (e) {
+        notify('error', 'Update failed: ' + e.message);
+      } finally {
+        setTimeout(() => location.reload(), 800);
       }
-    } catch (e) {
-      notify('error', 'Update failed: ' + e.message);
-    } finally {
-      setTimeout(() => location.reload(), 800);
-    }
-  };
+    };
 }
 
 function createSetAsMainConfigButton(section, tab, config) {
@@ -373,18 +381,18 @@ return view.extend({
       { name: 'config3.json', label: 'Backup Config #2' }
     ];
 
-    configs.forEach(cfg => {
-      const tab = cfg.name === 'config.json' ? 'main_config' : `config_${cfg.name}`;
-      s.tab(tab, cfg.label);
-      createSubscribeEditor(s, tab, cfg);
-      createSaveUrlButton(s, tab, cfg);
-      createUpdateConfigButton(s, tab, cfg);
-      createToggleHealthUpdaterButton(s, tab, huStatus, cfg);
-      createConfigEditor(s, tab, cfg);
-      createSaveConfigButton(s, tab, cfg);
-      createSetAsMainConfigButton(s, tab, cfg);
-      createClearConfigButton(s, tab, cfg);
-    });
+    for (const cfg of configs) {
+        const tab = cfg.name === 'config.json' ? 'main_config' : `config_${cfg.name}`;
+        s.tab(tab, cfg.label);
+        createSubscribeEditor(s, tab, cfg);
+        createSaveUrlButton(s, tab, cfg);
+        await createUpdateConfigButton(s, tab, cfg);
+        await createToggleHealthUpdaterButton(s, tab, huStatus, cfg);
+        createConfigEditor(s, tab, cfg);
+        createSaveConfigButton(s, tab, cfg);
+        createSetAsMainConfigButton(s, tab, cfg);
+        createClearConfigButton(s, tab, cfg);
+    }
 
     return m.render();
   }
