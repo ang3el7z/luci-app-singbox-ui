@@ -14,13 +14,13 @@
 # Установка
 
 ## Установить singbox (tun mode) + singbox-ui
-wget -O /root/install-singbox+singbox-ui.sh https://raw.githubusercontent.com/Vancltkin/luci-app-singbox-ui/main/other/install-singbox+singbox-ui.sh && chmod 0755 /root/install-singbox+singbox-ui.sh && sh /root/install-singbox+singbox-ui.sh
+wget -O /root/install-singbox+singbox-ui.sh https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/install-singbox+singbox-ui.sh && chmod 0755 /root/install-singbox+singbox-ui.sh && sh /root/install-singbox+singbox-ui.sh
 
 ## Установить singbox-ui
-wget -O /root/install-singbox-ui.sh https://raw.githubusercontent.com/Vancltkin/luci-app-singbox-ui/main/other/install-singbox-ui.sh && chmod 0755 /root/install-singbox-ui.sh && sh /root/install-singbox-ui.sh
+wget -O /root/install-singbox-ui.sh https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/install-singbox-ui.sh && chmod 0755 /root/install-singbox-ui.sh && sh /root/install-singbox-ui.sh
 
 ## Установить singbox (tun mode)
-wget -O /root/install-singbox.sh https://raw.githubusercontent.com/Vancltkin/luci-app-singbox-ui/main/other/install-singbox.sh && chmod 0755 /root/install-singbox.sh && sh /root/install-singbox.sh
+wget -O /root/install-singbox.sh https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/install-singbox.sh && chmod 0755 /root/install-singbox.sh && sh /root/install-singbox.sh
 
 # Скриншот
 
@@ -32,6 +32,6 @@ wget -O /root/install-singbox.sh https://raw.githubusercontent.com/Vancltkin/luc
  - ssh-keygen -R 192.168.1.1
  - Подключение к роутеру -> ssh root@192.168.1.1
  - Обновить OPENWRT (Fix visibility plugin) -> CNTRL + SHIFT + I
- - [openwrt-правильный шаблон-openwrt_2.11.json](https://raw.githubusercontent.com/Vancltkin/luci-app-singbox-ui/main/other/file/openwrt-template-openwrt_2.11.json)
- - ["tun" interface выдает низкую скорость](https://github.com/Vancltkin/luci-app-singbox-ui/issues/1)
+ - [openwrt-правильный шаблон-openwrt_2.11.json](https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/file/openwrt-template-openwrt_2.11.json)
+ - ["tun" interface выдает низкую скорость](https://github.com/ang3el7z/luci-app-singbox-ui/issues/1)
 
