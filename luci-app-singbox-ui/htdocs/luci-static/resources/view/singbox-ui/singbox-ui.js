@@ -80,24 +80,30 @@ function createServiceButton(section, action, status) {
   };
 }
 
-function createServiceWithHealthUpdaterButton(section, sbStatus) {
-    const running = (sbStatus === 'running');
+function createServiceWithHealthUpdaterButton(section, sbStatus, huStatus) {
+    const sbRunning = (sbStatus === 'running');
+    const huRunning = (huStatus === 'running');
+  
+    const bothRunning = sbRunning && huRunning;
+    const bothStopped = !sbRunning && !huRunning;
+  
+    if (!(bothRunning || bothStopped)) return;
   
     const btn = section.taboption(
       'service', form.Button,
       'svc_toggle_all',
-      running ? 'Stop All' : 'Start All'
+      bothRunning ? 'Stop All' : 'Start All'
     );
   
-    btn.inputstyle = running ? 'remove' : 'apply';
-    btn.title = running 
+    btn.inputstyle = bothRunning ? 'remove' : 'apply';
+    btn.title = bothRunning 
       ? 'Stop Sing‑Box and Health Updater services' 
       : 'Start Sing‑Box and Health Updater services';
-    btn.inputtitle = running ? 'Stop All' : 'Start All';
+    btn.inputtitle = bothRunning ? 'Stop All' : 'Start All';
   
     btn.onclick = async () => {
       try {
-        if (running) {
+        if (bothRunning) {
           await execService('sing-box', 'stop');
           await execService('singbox-ui-autoupdater', 'stop');
           await execService('singbox-ui-autoupdater', 'disable');
@@ -114,7 +120,7 @@ function createServiceWithHealthUpdaterButton(section, sbStatus) {
         setTimeout(() => location.reload(), 700);
       }
     };
-}
+  }
 
 function createToggleHealthUpdaterButton(section, tab, huStatus, config) {
   if (config.name !== 'config.json') return;
@@ -328,8 +334,8 @@ return view.extend({
     
     createDashboardButton(s, sbStatus);
     
-    const healthUpdaterStatus = await getServiceStatus('singbox-ui-autoupdater');
-    createServiceWithHealthUpdaterButton(s, sbStatus);
+    const huStatus = await getServiceStatus('singbox-ui-autoupdater');
+    createServiceWithHealthUpdaterButton(s, sbStatus, huStatus);
 
     ['start','stop','restart'].forEach(a => createServiceButton(s, a, sbStatus));
 
@@ -345,7 +351,7 @@ return view.extend({
       createSubscribeEditor(s, tab, cfg);
       createSaveUrlButton(s, tab, cfg);
       createUpdateConfigButton(s, tab, cfg);
-      createToggleHealthUpdaterButton(s, tab, healthUpdaterStatus, cfg);
+      createToggleHealthUpdaterButton(s, tab, huStatus, cfg);
       createConfigEditor(s, tab, cfg);
       createSaveConfigButton(s, tab, cfg);
       createSetAsMainConfigButton(s, tab, cfg);
