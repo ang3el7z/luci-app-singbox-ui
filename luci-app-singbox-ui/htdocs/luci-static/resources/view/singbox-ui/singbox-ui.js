@@ -53,74 +53,101 @@ async function getServiceStatus(name) {
   }
 }
 
-function createServiceButton(section, action, status) {
-  const shouldShow = (action === 'start' && status !== 'running') ||
-    (['stop', 'restart'].includes(action) && status === 'running');
-  if (!shouldShow) return;
-
-  const btn = section.taboption(
-    'service', form.Button,
-    `svc_${action}`, action.charAt(0).toUpperCase() + action.slice(1)
-  );
-  btn.inputstyle = action === 'stop' ? 'remove'
-                   : action === 'start' ? 'positive'
-                   : 'apply';
-  btn.title = `${action.charAt(0).toUpperCase() + action.slice(1)} Sing‑Box Service`;
-  btn.inputtitle = action.charAt(0).toUpperCase() + action.slice(1);
-
-  btn.onclick = async () => {
+async function getHuEnabled() {
     try {
-      await execService('sing-box', action);
-      notify('info', `${action} successful`);
-    } catch (e) {
-      notify('error', `${action} failed: ${e.message}`);
-    } finally {
-      setTimeout(() => location.reload(), 500);
+      await fs.stat('/tmp/singbox-ui-hu-enabled');
+      return true;
+    } catch {
+      return false;
     }
-  };
+}
+  
+async function setHuEnabled(enabled) {
+    try {
+      if (enabled) {
+        await fs.write('/tmp/singbox-ui-hu-enabled', '1');
+      } else {
+        await fs.remove('/tmp/singbox-ui-hu-enabled');
+      }
+    } catch (e) {
+      notify('error', 'Failed to update huEnabled state: ' + e.message);
+    }
 }
 
-function createServiceWithHealthUpdaterButton(section, sbStatus, huStatus) {
+async function createServiceButton(section, sbStatus) {
+    const huEnabled = await getHuEnabled();
     const sbRunning = (sbStatus === 'running');
-    const huRunning = (huStatus === 'running');
-  
-    const bothRunning = sbRunning && huRunning;
-    const bothStopped = !sbRunning && !huRunning;
-  
-    if (!(bothRunning || bothStopped)) return;
+ 
+    const label = sbRunning 
+      ? `Stop${huEnabled ? ' All' : ''}` 
+      : `Start${huEnabled ? ' All' : ''}`;
   
     const btn = section.taboption(
       'service', form.Button,
       'svc_toggle_all',
-      bothRunning ? 'Stop All' : 'Start All'
+      label
     );
   
-    btn.inputstyle = bothRunning ? 'remove' : 'apply';
-    btn.title = bothRunning 
-      ? 'Stop Sing‑Box and Health Updater services' 
-      : 'Start Sing‑Box and Health Updater services';
-    btn.inputtitle = bothRunning ? 'Stop All' : 'Start All';
-  
+    btn.inputstyle = sbRunning ? 'remove' : 'apply';
+    btn.title = sbRunning 
+      ? `Stop Sing‑Box${huEnabled ? ' and Health Updater' : ''}` 
+      : `Start Sing‑Box${huEnabled ? ' and Health Updater' : ''}`;
+    btn.inputtitle = label;
+
+    const action = sbRunning ? 'stop' : 'start';
+    
     btn.onclick = async () => {
       try {
-        if (bothRunning) {
-          await execService('sing-box', 'stop');
-          await execService('singbox-ui-autoupdater', 'stop');
-          await execService('singbox-ui-autoupdater', 'disable');
-          notify('info', 'Both services stopped');
-        } else {
-          await execService('sing-box', 'start');
-          await execService('singbox-ui-autoupdater', 'enable');
-          await execService('singbox-ui-autoupdater', 'start');
-          notify('info', 'Both services started');
-        }
+          if (action === 'stop') {
+            await execService('sing-box', 'stop');
+            if (huEnabled) {
+              await execService('singbox-ui-autoupdater', 'stop');
+              await execService('singbox-ui-autoupdater', 'disable');
+            }
+            notify('info', huEnabled ? 'Sing‑Box and Health Updater services stopped' : 'Sing‑Box stopped');
+          } else {
+            await execService('sing-box', 'start');
+            if (huEnabled) {
+              await execService('singbox-ui-autoupdater', 'enable');
+              await execService('singbox-ui-autoupdater', 'start');
+            }
+            notify('info', huEnabled ? 'Sing‑Box and Health Updater services started' : 'Sing‑Box started');
+          }
       } catch (e) {
-        notify('error', 'Operation failed: ' + e.message);
+          notify('error', 'Operation failed: ' + e.message);
       } finally {
-        setTimeout(() => location.reload(), 700);
+          setTimeout(() => location.reload(), 700);
       }
     };
-  }
+
+    if (sbRunning) {
+      const restartBtn = section.taboption(
+        'service', form.Button,
+        'svc_restart',
+        huEnabled ? 'Restart All' : 'Restart'
+      );
+      restartBtn.inputstyle = 'reload';
+      restartBtn.title = huEnabled 
+        ? 'Restart Sing‑Box and Health Updater services'
+        : 'Restart Sing‑Box Service';
+      restartBtn.inputtitle = huEnabled ? 'Restart All' : 'Restart';
+  
+      restartBtn.onclick = async () => {
+        try {
+          await execService('sing-box', 'restart');
+          if (huEnabled) {
+            await execService('singbox-ui-autoupdater', 'stop');
+            await execService('singbox-ui-autoupdater', 'start');
+          }
+          notify('info', huEnabled ? 'Sing‑Box and Health Updater services restarted' : 'Sing‑Box restarted');
+        } catch (e) {
+          notify('error', 'Restart failed: ' + e.message);
+        } finally {
+          setTimeout(() => location.reload(), 500);
+        }
+      };
+    }
+}
 
 function createToggleHealthUpdaterButton(section, tab, huStatus, config) {
   if (config.name !== 'config.json') return;
@@ -140,10 +167,12 @@ function createToggleHealthUpdaterButton(section, tab, huStatus, config) {
       if (huStatus === 'running') {
         await execService('singbox-ui-autoupdater', 'disable');
         await execService('singbox-ui-autoupdater', 'stop');
+        await setHuEnabled(false);
         notify('info', 'Health Updater stopped');
       } else {
         await execService('singbox-ui-autoupdater', 'enable');
         await execService('singbox-ui-autoupdater', 'start');
+        await setHuEnabled(true);
         notify('info', 'Health Updater started');
       }
     } catch (e) {
@@ -334,11 +363,10 @@ return view.extend({
     
     createDashboardButton(s, sbStatus);
     
+    await createServiceButton(s, sbStatus);
+
     const huStatus = await getServiceStatus('singbox-ui-autoupdater');
-    createServiceWithHealthUpdaterButton(s, sbStatus, huStatus);
-
-    ['start','stop','restart'].forEach(a => createServiceButton(s, a, sbStatus));
-
+ 
     const configs = [
       { name: 'config.json', label: 'Main Config' },
       { name: 'config2.json', label: 'Backup Config #1' },
