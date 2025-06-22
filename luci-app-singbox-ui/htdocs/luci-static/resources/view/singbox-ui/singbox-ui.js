@@ -67,14 +67,23 @@ async function setHuEnabled(enabled) {
       if (enabled) {
         await fs.write('/tmp/singbox-ui-hu-enabled', '1');
       } else {
-        await fs.remove('/tmp/singbox-ui-hu-enabled');
+        try {
+          await fs.remove('/tmp/singbox-ui-hu-enabled');
+        } catch (e) {
+          if (e.name !== 'NotFoundError') {
+            throw e;
+          }
+        }
       }
     } catch (e) {
-      notify('error', 'Failed to update huEnabled state: ' + e.message);
+      notify('error', 'Failed to update huEnabled state: ' + (e.message || e.toString()));
     }
 }
 
 async function createServiceButton(section, sbStatus) {
+    const configPath = `/etc/sing-box/config.json`;
+    const configContent = (await loadFile(configPath)).trim();
+    
     const huEnabled = await getHuEnabled();
     const sbRunning = (sbStatus === 'running');
  
@@ -89,6 +98,7 @@ async function createServiceButton(section, sbStatus) {
     );
   
     btn.inputstyle = sbRunning ? 'remove' : 'apply';
+    btn.readonly = !isValidJson(configContent);
     btn.title = sbRunning 
       ? `Stop Sing‑Box${huEnabled ? ' and Health Updater' : ''}` 
       : `Start Sing‑Box${huEnabled ? ' and Health Updater' : ''}`;
@@ -127,6 +137,7 @@ async function createServiceButton(section, sbStatus) {
         huEnabled ? 'Restart All' : 'Restart'
       );
       restartBtn.inputstyle = 'reload';
+      restartBtn.readonly = !isValidJson(configContent);
       restartBtn.title = huEnabled 
         ? 'Restart Sing‑Box and Health Updater services'
         : 'Restart Sing‑Box Service';
@@ -344,6 +355,10 @@ function createClearConfigButton(section, tab, config) {
       if (config.name === 'config.json') {
         await execService('sing-box', 'stop');
         notify('info', 'Sing‑Box stopped');
+        await execService('singbox-ui-autoupdater', 'disable');
+        await execService('singbox-ui-autoupdater', 'stop');
+        await setHuEnabled(false);
+        notify('info', 'Health Updater stopped');
       }
     } catch (e) {
       notify('error', `Clear failed: ${e.message}`);
