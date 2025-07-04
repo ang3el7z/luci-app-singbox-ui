@@ -1,4 +1,4 @@
-name: Build packages
+name: Build luci-app-singbox-ui
 
 on:
   push:
@@ -7,54 +7,68 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
     strategy:
       matrix:
-        build:
-          - name: x86_64-snapshot
+        include:
+          - sdk_version: snapshot
             target: x86
             subtarget: 64
-            sdk_version: snapshot
-          - name: x86_64-v23.05.5
+            arch: x86_64
+
+          - sdk_version: v23.05.5
             target: x86
             subtarget: 64
-            sdk_version: v23.05.5
-          - name: arm_cortex-a7-v23.05.5
+            arch: x86_64
+
+          - sdk_version: v24.10.1
+            target: x86
+            subtarget: 64
+            arch: x86_64
+
+          - sdk_version: snapshot
             target: armvirt
             subtarget: 32
-            sdk_version: v23.05.5
-          - name: x86_64-v24.10.1
-            target: x86
-            subtarget: 64
-            sdk_version: v24.10.1
+            arch: arm_cortex-a7
 
-    name: Build luci-app-singbox-ui ${{ matrix.build.name }}
+          - sdk_version: v23.05.5
+            target: armvirt
+            subtarget: 32
+            arch: arm_cortex-a7
+
+          - sdk_version: snapshot
+            target: ramips
+            subtarget: mt76x8
+            arch: mipsel_24kc
+
+          - sdk_version: v23.05.5
+            target: ramips
+            subtarget: mt76x8
+            arch: mipsel_24kc
+
+    runs-on: ubuntu-latest
+    name: Build ${{ matrix.arch }} (${{ matrix.sdk_version }})
+
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Build Docker image
+      - name: Build using Docker
         run: |
-          docker build \
-            --build-arg TARGET=${{ matrix.build.target }} \
-            --build-arg SUBTARGET=${{ matrix.build.subtarget }} \
-            --build-arg SDK_VERSION=${{ matrix.build.sdk_version }} \
-            -t luci-app-singbox-ui:${{ matrix.build.name }} .
+          docker build . \
+            -f Dockerfile.builder \
+            --build-arg SDK_VERSION=${{ matrix.sdk_version }} \
+            --build-arg TARGET=${{ matrix.target }} \
+            --build-arg SUBTARGET=${{ matrix.subtarget }} \
+            -t luci-app-singbox-ui:${{ matrix.arch }}
 
-      - name: Create container
-        run: docker create --name build-${{ matrix.build.name }} luci-app-singbox-ui:${{ matrix.build.name }}
-
-      - name: Copy IPK files
+      - name: Create container and extract result
         run: |
-          mkdir -p ./output/${{ matrix.build.name }}
-          docker cp build-${{ matrix.build.name }}:/sdk/bin/packages ./output/${{ matrix.build.name }}
+          docker create --name builder luci-app-singbox-ui:${{ matrix.arch }}
+          docker cp builder:/builder/sdk/bin/packages/${{ matrix.target }}_${{ matrix.subtarget }}/luci/luci-app-singbox-ui*.ipk ./luci-app-singbox-ui_${{ matrix.arch }}_${{ matrix.sdk_version }}.ipk
+          docker rm builder
 
-      - name: Remove container
-        run: docker rm build-${{ matrix.build.name }}
-
-      - name: Upload IPKs to GitHub Release
+      - name: Upload to release
         uses: softprops/action-gh-release@v2
         with:
-          files: ./output/${{ matrix.build.name }}/**/*.ipk
+          files: ./luci-app-singbox-ui_*.ipk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
