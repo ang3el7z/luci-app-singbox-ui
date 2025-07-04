@@ -13,17 +13,19 @@ RUN apt update && \
 
 # Скачиваем и распаковываем SDK
 RUN set -ex && \
+    apt update && apt install -y wget zstd tar curl && \
     if [ "$SDK_VERSION" = "snapshot" ]; then \
       SDK_BASE="https://downloads.openwrt.org/snapshots/targets/${TARGET}/${SUBTARGET}"; \
-      SDK_FILE=$(wget -qO- $SDK_BASE | grep -o "openwrt-sdk-${TARGET}-${SUBTARGET}_gcc-.*\.tar\.xz" | head -n1); \
+      SDK_FILE=$(curl -s "$SDK_BASE/" | grep -o "openwrt-sdk-${TARGET}-${SUBTARGET}_gcc-.*\.tar\.zst" | head -n1); \
     else \
       SDK_BASE="https://downloads.openwrt.org/releases/${SDK_VERSION}/targets/${TARGET}/${SUBTARGET}"; \
-      SDK_FILE="openwrt-sdk-${SDK_VERSION}-${TARGET}-${SUBTARGET}_gcc-13.2.0_musl.Linux-x86_64.tar.xz"; \
+      SDK_FILE=$(curl -s "$SDK_BASE/" | grep -o "openwrt-sdk-${SDK_VERSION}-${TARGET}-${SUBTARGET}_gcc-.*\.tar\.xz" | head -n1); \
     fi && \
     echo "Downloading $SDK_FILE from $SDK_BASE" && \
-    wget "$SDK_BASE/$SDK_FILE" -O sdk.tar.xz && \
-    tar -xf sdk.tar.xz && \
+    wget "$SDK_BASE/$SDK_FILE" -O sdk.tar.zst && \
+    tar --zstd -xf sdk.tar.zst && \
     mv openwrt-sdk-* /sdk
+
 
 WORKDIR /sdk
 
