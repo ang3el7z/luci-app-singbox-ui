@@ -1,16 +1,7 @@
-ARG ARCH=x86_64
-ARG VERSION=23.05.5
-FROM openwrt/sdk:${ARCH}-v${VERSION}
+FROM openwrt/sdk:x86_64-v23.05.5
 
-WORKDIR /builder
+RUN ./scripts/feeds update -a && ./scripts/feeds install luci-base && mkdir -p /builder/package/feeds/utilites/ && mkdir -p /builder/package/feeds/luci/
 
-# Обновляем feeds и устанавливаем luci-base
-RUN ./scripts/feeds update -a && \
-    ./scripts/feeds install luci-base
+COPY ./luci-app-singbox-ui /builder/package/feeds/luci/luci-app-singbox-ui
 
-# Копируем ваш пакет
-COPY ./luci-app-singbox-ui ./package/feeds/luci/luci-app-singbox-ui
-
-# Собираем пакет
-RUN make defconfig && \
-    make package/luci-app-singbox-ui/compile V=s -j$(nproc)
+RUN make defconfig && make package/luci-app-singbox-ui/compile V=s -j4
