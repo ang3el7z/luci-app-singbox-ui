@@ -8,42 +8,53 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-
     strategy:
       matrix:
-        arch: [x86_64, arm_cortex-a7, mipsel_24kc]
-        sdk_version: [snapshot, v23.05.5, v24.10.1]
+        build:
+          - name: x86_64-snapshot
+            target: x86
+            subtarget: 64
+            sdk_version: snapshot
+          - name: x86_64-v23.05.5
+            target: x86
+            subtarget: 64
+            sdk_version: v23.05.5
+          - name: arm_cortex-a7-v23.05.5
+            target: armvirt
+            subtarget: 32
+            sdk_version: v23.05.5
+          - name: x86_64-v24.10.1
+            target: x86
+            subtarget: 64
+            sdk_version: v24.10.1
 
+    name: Build luci-app-singbox-ui ${{ matrix.build.name }}
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - name: Build and push Docker image
+      - name: Build Docker image
         run: |
           docker build \
-            --build-arg ARCH=${{ matrix.arch }} \
-            --build-arg SDK_VERSION=${{ matrix.sdk_version }} \
-            -t singbox-ui:${{ matrix.arch }}-${{ matrix.sdk_version }} .
+            --build-arg TARGET=${{ matrix.build.target }} \
+            --build-arg SUBTARGET=${{ matrix.build.subtarget }} \
+            --build-arg SDK_VERSION=${{ matrix.build.sdk_version }} \
+            -t luci-app-singbox-ui:${{ matrix.build.name }} .
 
       - name: Create container
-        run: docker create --name singbox-ui singbox-ui:${{ matrix.arch }}-${{ matrix.sdk_version }}
+        run: docker create --name build-${{ matrix.build.name }} luci-app-singbox-ui:${{ matrix.build.name }}
 
-      - name: Copy IPK from container
+      - name: Copy IPK files
         run: |
-          mkdir -p ./bin
-          docker cp singbox-ui:/builder/bin/packages/${{ matrix.arch }}/luci/ ./bin/
-
-      - name: Filter IPK files
-        run: |
-          VERSION=${GITHUB_REF#refs/tags/v}
-          mkdir -p ./filtered-bin
-          cp ./bin/luci-app-singbox-ui*.ipk ./filtered-bin/luci-app-singbox-ui_${{ matrix.arch }}_${{ matrix.sdk_version }}.ipk
+          mkdir -p ./output/${{ matrix.build.name }}
+          docker cp build-${{ matrix.build.name }}:/sdk/bin/packages ./output/${{ matrix.build.name }}
 
       - name: Remove container
-        run: docker rm singbox-ui
+        run: docker rm build-${{ matrix.build.name }}
 
-      - name: Release
+      - name: Upload IPKs to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: ./filtered-bin/*.ipk
+          files: ./output/${{ matrix.build.name }}/**/*.ipk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
