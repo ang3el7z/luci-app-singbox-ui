@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        arch: [x86_64, armvirt-64, mipsel_24kc]
+        arch: [x86_64, mipsel_24kc]
         version: [23.05.5, snapshot]
     steps:
       - uses: actions/checkout@v4
