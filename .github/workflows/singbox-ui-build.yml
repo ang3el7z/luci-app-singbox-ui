@@ -1,5 +1,4 @@
 name: Build packages
-
 on:
   push:
     tags:
@@ -9,38 +8,34 @@ jobs:
   build:
     name: Build luci-app-singbox-ui
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        arch: [x86_64, mipsel_24kc]
-        version: [23.05.5, snapshot]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4.2.1
 
-      - name: Build Docker image
-        uses: docker/build-push-action@v6
+      - name: Build and push
+        uses: docker/build-push-action@v6.9.0
         with:
           context: .
-          build-args: |
-            ARCH=${{ matrix.arch }}
-            VERSION=${{ matrix.version }}
-          tags: singbox-ui:${{ matrix.arch }}-${{ matrix.version }}
+          tags: singbox-ui:ci
 
       - name: Create Docker container
-        run: docker create --name singbox-ui-${{ matrix.arch }}-${{ matrix.version }} singbox-ui:${{ matrix.arch }}-${{ matrix.version }}
+        run: docker create --name singbox-ui singbox-ui:ci
 
       - name: Copy file from Docker container
         run: |
-          docker cp singbox-ui-${{ matrix.arch }}-${{ matrix.version }}:/builder/bin/packages/${{ matrix.arch }}/luci/. ./bin/${{ matrix.arch }}-${{ matrix.version }}/
+          docker cp singbox-ui:/builder/bin/packages/x86_64/luci/. ./bin/
 
       - name: Filter IPK files
         run: |
+          # Извлекаем версию из тега, убирая префикс 'v'
+          VERSION=${GITHUB_REF#refs/tags/v}
+
           mkdir -p ./filtered-bin
-          cp ./bin/${{ matrix.arch }}-${{ matrix.version }}/luci-app-singbox-ui*.ipk ./filtered-bin/luci-app-singbox-ui_${{ matrix.arch }}_${{ matrix.version }}.ipk
+          cp ./bin/luci-app-singbox-ui*.ipk ./filtered-bin/luci-app-singbox-ui.ipk
 
       - name: Remove Docker container
-        run: docker rm singbox-ui-${{ matrix.arch }}-${{ matrix.version }}
+        run: docker rm singbox-ui
 
       - name: Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v2.0.8
         with:
           files: ./filtered-bin/*.ipk
