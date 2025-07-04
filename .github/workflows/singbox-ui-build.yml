@@ -1,4 +1,5 @@
 name: Build packages
+
 on:
   push:
     tags:
@@ -6,36 +7,45 @@ on:
 
 jobs:
   build:
-    name: Build luci-app-singbox-ui
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        build:
+          - name: openwrt-24.10.1
+            sdk_url: https://downloads.openwrt.org/releases/24.10.1/targets/x86/64/openwrt-sdk-24.10.1-x86-64_gcc-13.2.0_musl.Linux-x86_64.tar.xz
+            arch: x86_64
+            sdk_dir: openwrt-sdk-24.10.1-x86-64_gcc-13.2.0_musl.Linux-x86_64
+
     steps:
-      - uses: actions/checkout@v4.2.1
+      - uses: actions/checkout@v4
 
-      - name: Build and push
-        uses: docker/build-push-action@v6.9.0
-        with:
-          context: .
-          tags: singbox-ui:ci
-
-      - name: Create Docker container
-        run: docker create --name singbox-ui singbox-ui:ci
-
-      - name: Copy file from Docker container
+      - name: Download OpenWrt SDK
         run: |
-          docker cp singbox-ui:/builder/bin/packages/x86_64/luci/. ./bin/
+          wget "${{ matrix.build.sdk_url }}" -O sdk.tar.xz
+          tar -xf sdk.tar.xz
 
-      - name: Filter IPK files
+      - name: Prepare SDK
         run: |
-          # Извлекаем версию из тега, убирая префикс 'v'
-          VERSION=${GITHUB_REF#refs/tags/v}
+          cd ${{ matrix.build.sdk_dir }}
+          ./scripts/feeds update -a
+          ./scripts/feeds install luci-base
+          mkdir -p package/feeds/luci/
+          cp -r $GITHUB_WORKSPACE/luci-app-singbox-ui package/feeds/luci/
 
-          mkdir -p ./filtered-bin
-          cp ./bin/luci-app-singbox-ui*.ipk ./filtered-bin/luci-app-singbox-ui.ipk
+      - name: Build package
+        run: |
+          cd ${{ matrix.build.sdk_dir }}
+          make defconfig
+          make package/luci-app-singbox-ui/compile V=s -j$(nproc)
 
-      - name: Remove Docker container
-        run: docker rm singbox-ui
+      - name: Collect IPK
+        run: |
+          mkdir -p $GITHUB_WORKSPACE/output
+          find ${{ matrix.build.sdk_dir }}/bin/packages/ -name 'luci-app-singbox-ui*.ipk' -exec cp {} $GITHUB_WORKSPACE/output/luci-app-singbox-ui_${{ matrix.build.name }}.ipk \;
 
       - name: Release
-        uses: softprops/action-gh-release@v2.0.8
+        uses: softprops/action-gh-release@v2
         with:
-          files: ./filtered-bin/*.ipk
+          files: output/*.ipk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
