@@ -80,7 +80,7 @@ network_check() {
 # Установка singbox
 separator
 show_warning "Переход к установке singbox..."
-wget -O /root/install-singbox.sh https://raw.githubusercontent.com/Vancltkin/luci-app-singbox-ui/main/other/install-singbox.sh && chmod 0755 /root/install-singbox.sh && sh /root/install-singbox.sh
+wget -O /root/install-singbox.sh https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/install-singbox.sh && chmod 0755 /root/install-singbox.sh && sh /root/install-singbox.sh
 show_warning "Вернулись к основному скрипту"
 
 network_check
@@ -159,7 +159,7 @@ fi
 # Установка веб-интерфейса
 separator
 show_warning "Переход к установке singbox-ui..."
-wget -O /root/install-singbox-ui.sh https://raw.githubusercontent.com/Vancltkin/luci-app-singbox-ui/main/other/install-singbox-ui.sh && chmod 0755 /root/install-singbox-ui.sh && sh /root/install-singbox-ui.sh
+wget -O /root/install-singbox-ui.sh https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/install-singbox-ui.sh && chmod 0755 /root/install-singbox-ui.sh && sh /root/install-singbox-ui.sh
 echo "$CONFIG_URL" > "/etc/sing-box/url_config.json"
 show_warning "Вернулись к основному скрипту"
 
