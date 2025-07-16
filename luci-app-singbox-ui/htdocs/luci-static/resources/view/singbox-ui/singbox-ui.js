@@ -10,13 +10,6 @@ const isValidUrl = url => {
   try { new URL(url); return true; } catch { return false; }
 };
 
-const isValidJson = str => {
-  try {
-    JSON.parse(str);
-    return !str.trim().startsWith('{}');
-  } catch { return false; }
-};
-
 const notify = (type, msg) => ui.addNotification(null, msg, type);
 
 const getInputValueByKey = (key) => {
@@ -40,6 +33,37 @@ async function saveFile(path, val, msg) {
 
 async function execService(name, action) {
   return fs.exec(`/etc/init.d/${name}`, [action]);
+}
+
+async function isValidConfigFile(content) {
+  const tmpPath = '/tmp/singbox-config.json';
+  try {
+    await fs.write(tmpPath, content);
+  } catch (e) {
+    notify('error', 'Failed to write temp config: ' + e.message);
+    return false;
+  }
+  var result = false;
+  try {
+    const r = await fs.exec("/usr/bin/sing-box", ["check", "-c", tmpPath]);
+    if (r.code === 0) {
+      result = true;
+    } else {
+      var errorMsg = r.stderr.trim();
+      if (errorMsg.includes(tmpPath)) {
+        errorMsg = errorMsg.substring(errorMsg.indexOf(tmpPath) + tmpPath.length + 1).trim();
+      }
+      notify('error', 'Config error: ' + errorMsg);
+    }
+  } catch (e) {
+    notify('error', 'Error: ' + e.message);
+  }
+  try {
+    await fs.remove(tmpPath);
+  } catch (e) {
+    notify('error', 'Failed to remove temp config: ' + e.message);
+  }
+  return result;
 }
 
 // === Service Status & Controls ============================================
@@ -83,7 +107,7 @@ async function setHuEnabled(enabled) {
 async function createServiceButton(section, sbStatus) {
     const configPath = `/etc/sing-box/config.json`;
     const configContent = (await loadFile(configPath)).trim();
-    
+    const isInitialConfigValid = await isValidConfigFile(configContent);
     const huEnabled = await getHuEnabled();
     const sbRunning = (sbStatus === 'running');
  
@@ -98,7 +122,7 @@ async function createServiceButton(section, sbStatus) {
     );
   
     btn.inputstyle = sbRunning ? 'remove' : 'apply';
-    btn.readonly = !isValidJson(configContent);
+    btn.readonly = !isInitialConfigValid;
     btn.title = sbRunning 
       ? `Stop Sing‑Box${huEnabled ? ' and Health Updater' : ''}` 
       : `Start Sing‑Box${huEnabled ? ' and Health Updater' : ''}`;
@@ -137,7 +161,7 @@ async function createServiceButton(section, sbStatus) {
         huEnabled ? 'Restart All' : 'Restart'
       );
       restartBtn.inputstyle = 'reload';
-      restartBtn.readonly = !isValidJson(configContent);
+      restartBtn.readonly = !isInitialConfigValid;
       restartBtn.title = huEnabled 
         ? 'Restart Sing‑Box and Health Updater services'
         : 'Restart Sing‑Box Service';
@@ -244,7 +268,7 @@ function createSaveConfigButton(section, tab, config) {
   btn.onclick = async () => {
     const val = getInputValueByKey(key);
     if (!val) return notify('error', 'Config is empty');
-    if (!isValidJson(val)) return notify('error', 'Invalid JSON');
+    if (!(await isValidConfigFile(val))) return;
     await saveFile(`/etc/sing-box/${config.name}`, val, 'Config saved');
     if (config.name === 'config.json') {
       await execService('sing-box', 'reload');
