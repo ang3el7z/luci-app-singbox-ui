@@ -2,40 +2,39 @@ name: Build packages
 on:
   push:
     tags:
-      - v*
+      - 'v*'
 
 jobs:
   build:
     name: Build luci-app-singbox-ui
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4.2.1
+      - uses: actions/checkout@v4
 
-      - name: Build and push
-        uses: docker/build-push-action@v6.9.0
+      - name: Build Docker image
+        uses: docker/build-push-action@v6
         with:
           context: .
+          push: false
           tags: singbox-ui:ci
 
-      - name: Create Docker container
+      - name: Create container
         run: docker create --name singbox-ui singbox-ui:ci
 
-      - name: Copy file from Docker container
+      - name: Copy built packages
         run: |
           docker cp singbox-ui:/builder/bin/packages/x86_64/luci/. ./bin/
 
       - name: Filter IPK files
         run: |
-          # Извлекаем версию из тега, убирая префикс 'v'
           VERSION=${GITHUB_REF#refs/tags/v}
-
           mkdir -p ./filtered-bin
-          cp ./bin/luci-app-singbox-ui*.ipk ./filtered-bin/luci-app-singbox-ui.ipk
+          cp ./bin/luci-app-singbox-ui*.ipk ./filtered-bin/luci-app-singbox-ui_$VERSION.ipk
 
-      - name: Remove Docker container
+      - name: Remove container
         run: docker rm singbox-ui
 
-      - name: Release
-        uses: softprops/action-gh-release@v2.0.8
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
         with:
           files: ./filtered-bin/*.ipk
