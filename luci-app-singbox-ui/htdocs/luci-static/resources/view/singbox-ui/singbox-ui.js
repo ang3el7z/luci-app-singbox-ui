@@ -4,6 +4,9 @@
 'require ui';
 'require fs';
 
+// === Global variables =====================================================
+let editor = null;
+
 // === Helpers ==============================================================
 
 const isValidUrl = url => {
@@ -64,6 +67,16 @@ async function isValidConfigFile(content) {
     notify('error', 'Failed to remove temp config: ' + e.message);
   }
   return result;
+}
+
+function loadScript(src) {
+  return new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = src;
+      script.onload = resolve;
+      script.onerror = reject;
+      document.head.appendChild(script);
+  });
 }
 
 // === Service Status & Controls ============================================
@@ -249,26 +262,74 @@ function createServiceStatusDisplay(section, status) {
 
 // === Config Editors & Buttons ============================================
 
-function createConfigEditor(section, tab, config) {
-  const key = `content_${config.name}`;
-  const tv = section.taboption(tab, form.TextValue, key, config.label);
-  tv.rows = 25;
-  tv.wrap = 'off';
-  tv.description = 'Paste JSON configuration here';
-  tv.cfgvalue = () => loadFile(`/etc/sing-box/${config.name}`);
+async function initializeAceEditor(content, key) {
+  await loadScript('/luci-static/resources/view/singbox-ui/ace/ace.js');
+
+  await loadScript('/luci-static/resources/view/singbox-ui/ace/ext-language_tools.js');
+
+ace.config.set('basePath', '/luci-static/resources/view/singbox-ui/ace/');
+ace.config.set('workerPath', '/luci-static/resources/view/singbox-ui/ace/');
+
+editor = ace.edit(key);
+
+editor.setTheme("ace/theme/tomorrow_night_bright");
+editor.session.setMode("ace/mode/json");
+editor.setValue(content, -1);
+editor.clearSelection();
+editor.session.setUseWorker(true);
+
+editor.setOptions({
+    fontSize: "12px",
+    showPrintMargin: false,
+    wrap: true,
+    highlightActiveLine: true,
+    behavioursEnabled: true,
+    showFoldWidgets: true,
+    foldStyle: 'markbegin',
+    enableBasicAutocompletion: true,
+    enableLiveAutocompletion: true,
+    enableSnippets: false
+  });
 }
 
-function createSaveConfigButton(section, tab, config) {
-  const key = `content_${config.name}`;
+async function createConfigEditor(section, tab, config, key) {
+  const option = section.taboption(tab, form.DummyValue, key, config.label);
+  option.description = 'Edit JSON configuration below';
+
+  option.render = async function () {
+    const container = E('div', { style: 'width: 100%; margin-bottom: 1em;' }, [
+      E('div', {
+        id: key,
+        style: 'height: 600px; width: 100%; border: 1px solid #ccc;',
+      }),
+    ]);    
+
+    initializeAceEditor(await loadFile(`/etc/sing-box/${config.name}`), key);
+    
+    return container;
+  };
+}
+
+function createSaveConfigButton(section, tab, config, key) {
   const btn = section.taboption(tab, form.Button, `save_config_${config.name}`, 'Save Config');
+
   btn.inputstyle = 'positive';
   btn.title = `Save config`;
   btn.inputtitle = 'Save';
 
   btn.onclick = async () => {
-    const val = getInputValueByKey(key);
+    let editor = null;
+    try {
+      editor = ace.edit(key);
+    } catch {
+      notify('error', 'Editor is not initialized');
+      return;
+    }
+    const val = editor.getValue();
+
     if (!val) return notify('error', 'Config is empty');
     if (!(await isValidConfigFile(val))) return;
+
     await saveFile(`/etc/sing-box/${config.name}`, val, 'Config saved');
     if (config.name === 'config.json') {
       await execService('sing-box', 'reload');
@@ -392,6 +453,11 @@ function createClearConfigButton(section, tab, config) {
   };
 }
 
+async function createHolderConfigEditor(section, tab, config) {
+  const editorKey = `editor_${config.name}`;
+  await createConfigEditor(section, tab, config, editorKey);
+  createSaveConfigButton(section, tab, config, editorKey);
+}
 // === Main View ============================================================
 
 return view.extend({
@@ -427,8 +493,7 @@ return view.extend({
         createSaveUrlButton(s, tab, cfg);
         await createUpdateConfigButton(s, tab, cfg);
         await createToggleHealthUpdaterButton(s, tab, huStatus, cfg);
-        createConfigEditor(s, tab, cfg);
-        createSaveConfigButton(s, tab, cfg);
+        await createHolderConfigEditor(s, tab, cfg);
         createSetAsMainConfigButton(s, tab, cfg);
         createClearConfigButton(s, tab, cfg);
     }
