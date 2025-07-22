@@ -1,0 +1,52 @@
+# Node modules (если есть)
+node_modules/
+
+# Сборки и артефакты
+bin/
+build/
+dist/
+
+# Docker
+docker-compose.override.yml
+*.log
+*.pid
+
+# OpenWrt
+*.ipk
+*.bin
+*.elf
+*.o
+*.gz
+*.patch
+tmp/
+logs/
+
+# Luci/OpenWrt SDK
+sdk/
+staging_dir/
+build_dir/
+
+# Временные файлы и кэш
+*.swp
+*.swo
+*.bak
+*.backup
+*.tmp
+*.temp
+
+# IDE и редакторы
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Thumbs.db для Windows
+Thumbs.db
+
+# Git stuff
+*.lock
