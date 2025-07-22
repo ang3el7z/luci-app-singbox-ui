@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 # Цветовая палитра
 BG_DARK='\033[48;5;236m'
@@ -50,26 +50,23 @@ header
 network_check() {
     timeout=200
     interval=5
-    targets=(
-    "223.5.5.5"     # Alibaba Public DNS (Китай)
-    "180.76.76.76"  # Baidu Public DNS (Китай)
-    "77.88.8.8"     # Яндекс DNS (Россия)
-    "1.1.1.1"       # Cloudflare (глобальный, устойчив к блокировкам)
-    "8.8.8.8"       # Google DNS (может блокироваться в Китае)
-    "9.9.9.9"       # Quad9 (безопасный DNS, устойчивый)
-    "94.140.14.14"  # AdGuard DNS (Европа, Россия)
-    )
+    targets="223.5.5.5 180.76.76.76 77.88.8.8 1.1.1.1 8.8.8.8 9.9.9.9 94.140.14.14"
 
     attempts=$((timeout / interval))
-    num_targets=${#targets[@]}
     success=0
     i=0
 
     show_progress "Проверка доступности сети..."
 
     while [ $i -lt $attempts ]; do
+        # Получаем текущий индекс для выбора адреса (от 0 до кол-ва целей - 1)
+        # Для выбора цели берем i mod количество целей
+        # Для этого посчитаем количество целей:
+        num_targets=$(echo "$targets" | wc -w)
         index=$((i % num_targets))
-        target=${targets[$index]}
+
+        # Получаем IP по индексу (индексы с 0, cut с 1, поэтому +1)
+        target=$(echo "$targets" | cut -d' ' -f$((index + 1)))
 
         if ping -c 1 -W 2 "$target" >/dev/null 2>&1; then
             success=1
