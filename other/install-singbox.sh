@@ -49,10 +49,10 @@ init_language() {
     # Если язык уже выбран (через переменную окружения), пропускаем запрос
     # If language already selected (via env var), skip prompt
     if [ -z "$LANG_CHOICE" ]; then
-        echo -e "\n  ${FG_ACCENT}▷ Выберите язык / Select language [1/2]:"
-        echo -e "  ${INDENT}1. Русский (Russian)"
-        echo -e "  ${INDENT}2. English (Английский)"
-        read -p "  ${FG_ACCENT}▷ Ваш выбор / Your choice [1/2]: " LANG_CHOICE
+        echo -e "\n  ▷ Выберите язык / Select language [1/2]:"
+        echo -e "  1. Русский (Russian)"
+        echo -e "  2. English (Английский)"
+        read -p "  ▷ Ваш выбор / Your choice [1/2]: " LANG_CHOICE
     fi
 
     # Установка языка по умолчанию (английский) / Default to English
