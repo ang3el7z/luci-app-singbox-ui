@@ -48,33 +48,45 @@ show_warning() {
 header
 
 network_check() {
-# Параметры проверки
-    timeout=200      # Общее время ожидания (сек)
-    interval=5       # Интервал между попытками (сек)
-    target="8.8.8.8" # Цель для проверки
+    timeout=200
+    interval=5
+    targets=(
+    "223.5.5.5"     # Alibaba Public DNS (Китай)
+    "180.76.76.76"  # Baidu Public DNS (Китай)
+    "77.88.8.8"     # Яндекс DNS (Россия)
+    "1.1.1.1"       # Cloudflare (глобальный, устойчив к блокировкам)
+    "8.8.8.8"       # Google DNS (может блокироваться в Китае)
+    "9.9.9.9"       # Quad9 (безопасный DNS, устойчивый)
+    "94.140.14.14"  # AdGuard DNS (Европа, Россия)
+    )
 
+    attempts=$((timeout / interval))
+    num_targets=${#targets[@]}
     success=0
-    attempts=$(($timeout / $interval))
+    i=0
 
     show_progress "Проверка доступности сети..."
-    i=1
-    while [ $i -le $attempts ]; do
+
+    while [ $i -lt $attempts ]; do
+        index=$((i % num_targets))
+        target=${targets[$index]}
+
         if ping -c 1 -W 2 "$target" >/dev/null 2>&1; then
             success=1
             break
         fi
+
         sleep $interval
         i=$((i + 1))
     done
-    
+
     if [ $success -eq 1 ]; then
-        show_success "Сеть доступна (проверка заняла $((i * interval)) сек)"
-        show_success "network работает"
+        total_time=$((i * interval))
+        show_success "Сеть доступна (через $target, за $total_time сек)"
     else
         show_error "Сеть не доступна после $timeout сек!" >&2
         exit 1
     fi
-  
 }
 
 # Установка singbox
