@@ -30,4 +30,6 @@ wget -O /root/install-singbox.sh https://raw.githubusercontent.com/ang3el7z/luci
  - REFRESH OPENWRT (Fix visibility plugin) -> CNTRL + SHIFT + I
  - [openwrt-template-openwrt_2.11.json](https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/file/openwrt-template-openwrt_2.11.json)
  - ["tun" interface with "auto_route" option limited performance on routers](https://github.com/ang3el7z/luci-app-singbox-ui/issues/1)
- - Thanks [@strayge](https://github.com/strayge)
+
+# Thanks
+[@strayge](https://github.com/strayge)
