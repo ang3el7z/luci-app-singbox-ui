@@ -22,11 +22,7 @@ wget -O /root/install-singbox-ui.sh https://raw.githubusercontent.com/ang3el7z/l
 ## Install singbox (tun mode)
 wget -O /root/install-singbox.sh https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/install-singbox.sh && chmod 0755 /root/install-singbox.sh && sh /root/install-singbox.sh
 
-# Screenshot
-
-![image](https://github.com/user-attachments/assets/aae527ac-74c7-4359-8807-62fbe6826df0)
-![image](https://github.com/user-attachments/assets/64757656-c961-4daa-9fab-0fed6fb32cc3)
-![image](https://github.com/user-attachments/assets/74739f36-c734-4787-afb0-1cc70b07bf7d)
+# [Screenshot](./preview.md)
 
 # other helps
  - Ssh-keygen -R 192.168.1.1
