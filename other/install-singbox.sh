@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Цветовая палитра (приглушенные тона)
+# Цветовая палитра / Color palette
 BG_DARK='\033[48;5;236m'
 BG_ACCENT='\033[48;5;24m'
 FG_MAIN='\033[38;5;252m'
@@ -10,21 +10,21 @@ FG_SUCCESS='\033[38;5;41m'
 FG_ERROR='\033[38;5;203m'
 RESET='\033[0m'
 
-# Символы оформления
+# Символы оформления / UI symbols
 SEP_CHAR="◈"
 ARROW="▸"
 CHECK="✓"
 CROSS="✗"
 INDENT="  "
 
-# Функция разделителя
+# Функция разделителя / Separator function
 separator() {
     echo -e "${WHITE}                -------------------------------------                ${RESET}"
 }
 
 header() {
     separator
-    echo -e "${BG_ACCENT}${FG_MAIN}                Установка и настройка sing-box                ${RESET}"
+    echo -e "${BG_ACCENT}${FG_MAIN}                $MSG_INSTALL_TITLE                ${RESET}"
     separator
 }
 
@@ -44,47 +44,110 @@ show_warning() {
     echo -e "${INDENT}! ${FG_WARNING}$1${RESET}\n"
 }
 
+# Инициализация языка / Language initialization
+init_language() {
+    # Если язык уже выбран (через переменную окружения), пропускаем запрос
+    # If language already selected (via env var), skip prompt
+    if [ -z "$LANG_CHOICE" ]; then
+        echo -e "\n  ${FG_ACCENT}▷ Выберите язык / Select language [1/2]:"
+        echo -e "  ${INDENT}1. Русский (Russian)"
+        echo -e "  ${INDENT}2. English (Английский)"
+        read -p "  ${FG_ACCENT}▷ Ваш выбор / Your choice [1/2]: " LANG_CHOICE
+    fi
+
+    # Установка языка по умолчанию (английский) / Default to English
+    case ${LANG_CHOICE:-2} in
+        1)
+            # Русские тексты / Russian texts
+            MSG_INSTALL_TITLE="Установка и настройка sing-box"
+            MSG_UPDATE_PKGS="Обновление пакетов и установка зависимостей..."
+            MSG_DEPS_SUCCESS="Зависимости успешно установлены"
+            MSG_DEPS_ERROR="Ошибка установки зависимостей"
+            MSG_INSTALL_SINGBOX="Установка последней версии sing-box..."
+            MSG_INSTALL_SUCCESS="Sing-box успешно установлен"
+            MSG_INSTALL_ERROR="Ошибка установки sing-box"
+            MSG_SERVICE_CONFIG="Настройка системного сервиса..."
+            MSG_SERVICE_APPLIED="Конфигурация сервиса применена"
+            MSG_SERVICE_DISABLED="Сервис временно отключен"
+            MSG_CONFIG_RESET="Конфигурационный файл сброшен"
+            MSG_CONFIG_IMPORT="Импорт конфигурации sing-box"
+            MSG_NETWORK_CONFIG="Создание сетевого интерфейса proxy..."
+            MSG_FIREWALL_CONFIG="Конфигурация правил фаервола..."
+            MSG_FIREWALL_APPLIED="Правила фаервола применены"
+            MSG_RESTART_FIREWALL="Перезапуск firewall..."
+            MSG_RESTART_NETWORK="Перезапуск network..."
+            MSG_CLEANUP="Очистка файлов..."
+            MSG_CLEANUP_DONE="Файлы удалены!"
+            ;;
+        *)
+            # Английские тексты / English texts
+            MSG_INSTALL_TITLE="Sing-box installation and configuration"
+            MSG_UPDATE_PKGS="Updating packages and installing dependencies..."
+            MSG_DEPS_SUCCESS="Dependencies installed successfully"
+            MSG_DEPS_ERROR="Error installing dependencies"
+            MSG_INSTALL_SINGBOX="Installing latest sing-box version..."
+            MSG_INSTALL_SUCCESS="Sing-box installed successfully"
+            MSG_INSTALL_ERROR="Error installing sing-box"
+            MSG_SERVICE_CONFIG="Configuring system service..."
+            MSG_SERVICE_APPLIED="Service configuration applied"
+            MSG_SERVICE_DISABLED="Service temporarily disabled"
+            MSG_CONFIG_RESET="Configuration file reset"
+            MSG_CONFIG_IMPORT="Importing sing-box configuration"
+            MSG_NETWORK_CONFIG="Creating proxy network interface..."
+            MSG_FIREWALL_CONFIG="Configuring firewall rules..."
+            MSG_FIREWALL_APPLIED="Firewall rules applied"
+            MSG_RESTART_FIREWALL="Restarting firewall..."
+            MSG_RESTART_NETWORK="Restarting network..."
+            MSG_CLEANUP="Cleaning up files..."
+            MSG_CLEANUP_DONE="Files removed!"
+            ;;
+    esac
+}
+
+# Инициализация языка / Initialize language
+init_language
 header
 
 # Обновление репозиториев и установка зависимостей
-show_progress "Обновление пакетов и установка зависимостей..."
+# Update repositories and install dependencies
+show_progress "$MSG_UPDATE_PKGS"
 opkg update && opkg install openssh-sftp-server nano curl jq
-[ $? -eq 0 ] && show_success "Зависимости успешно установлены" || show_error "Ошибка установки зависимостей"
+[ $? -eq 0 ] && show_success "$MSG_DEPS_SUCCESS" || show_error "$MSG_DEPS_ERROR"
 separator
 
-# Установка sing-box
-show_progress "Установка последней версии sing-box..."
+# Установка sing-box / Install sing-box
+show_progress "$MSG_INSTALL_SINGBOX"
 opkg install sing-box
 if [ $? -eq 0 ]; then
-    show_success "Sing-box успешно установлен"
+    show_success "$MSG_INSTALL_SUCCESS"
 else
-    show_error "Ошибка установки sing-box"
+    show_error "$MSG_INSTALL_ERROR"
     exit 1
 fi
 
-# Конфигурация сервиса
-show_progress "Настройка системного сервиса..."
+# Конфигурация сервиса / Service configuration
+show_progress "$MSG_SERVICE_CONFIG"
 uci set sing-box.main.enabled="1"
 uci set sing-box.main.user="root"
 uci commit sing-box
-show_success "Конфигурация сервиса применена"
+show_success "$MSG_SERVICE_APPLIED"
 
-# Отключение сервиса
+# Отключение сервиса / Disable service
 service sing-box disable
-show_warning "Сервис временно отключен"
+show_warning "$MSG_SERVICE_DISABLED"
 
-# Очистка конфигурации
+# Очистка конфигурации / Reset configuration
 echo '{}' > /etc/sing-box/config.json
-show_warning "Конфигурационный файл сброшен"
+show_warning "$MSG_CONFIG_RESET"
 
-# Автоматическая настройка конфигурации
+# Автоматическая настройка конфигурации / Auto configuration
 separator
 AUTO_CONFIG_SUCCESS=0
-show_progress "Импорт конфигурации sing-box"
+show_progress "$MSG_CONFIG_IMPORT"
 
-# Создание сетевого интерфейса
+# Создание сетевого интерфейса / Create network interface
 configure_proxy() {
-    show_progress "Создание сетевого интерфейса proxy..."
+    show_progress "$MSG_NETWORK_CONFIG"
     uci set network.proxy=interface
     uci set network.proxy.proto="none"
     uci set network.proxy.device="singtun0"
@@ -96,11 +159,12 @@ configure_proxy() {
 }
 configure_proxy
 
-# Настройка фаервола
+# Настройка фаервола / Configure firewall
 configure_firewall() {
-    show_progress "Конфигурация правил фаервола..."
+    show_progress "$MSG_FIREWALL_CONFIG"
     
     # Добавляем зону только если её не существует
+    # Add zone only if it doesn't exist
     if ! uci -q get firewall.proxy >/dev/null; then
         uci add firewall zone >/dev/null
         uci set firewall.@zone[-1].name="proxy"
@@ -115,6 +179,7 @@ configure_firewall() {
     fi
 
     # Добавляем forwarding только если не существует
+    # Add forwarding only if it doesn't exist
     if ! uci -q get firewall.@forwarding[-1].dest="proxy" >/dev/null; then
         uci add firewall forwarding >/dev/null
         uci set firewall.@forwarding[-1].dest="proxy"
@@ -122,17 +187,16 @@ configure_firewall() {
         uci set firewall.@forwarding[-1].family="ipv4"
     fi
     uci commit firewall >/dev/null 2>&1
-    show_success "Правила фаервола применены"
+    show_success "$MSG_FIREWALL_APPLIED"
 }
 configure_firewall
 
-show_progress "Перезапуск firewall..."
+show_progress "$MSG_RESTART_FIREWALL"
 service firewall reload >/dev/null 2>&1
 
-show_progress "Перезапуск network..."
+show_progress "$MSG_RESTART_NETWORK"
 service network restart
 
-show_progress "Очистка файлов..."
+show_progress "$MSG_CLEANUP"
 rm -- "$0"
-show_success "Файлы удалены!"
-
+show_success "$MSG_CLEANUP_DONE"
