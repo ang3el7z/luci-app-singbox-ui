@@ -31,6 +31,7 @@ wget -O /root/install-singbox.sh https://raw.githubusercontent.com/ang3el7z/luci
  - [openwrt-template-original-openwrt_2.11.json](https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/file/openwrt-template-original-openwrt_2.11.json)
  - [openwrt-template-bot-openwrt_2.11.json](https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/file/openwrt-template-bot-openwrt_2.11.json)
  - ["tun" interface выдает низкую скорость](https://github.com/ang3el7z/luci-app-singbox-ui/issues/1)
+ - лайт версия Singbox-ui v1.2.1
 
 # Спасибо
 [@strayge](https://github.com/strayge)
