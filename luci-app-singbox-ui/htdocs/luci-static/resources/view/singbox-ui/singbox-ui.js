@@ -42,7 +42,7 @@ async function execService(name, action) {
     return stdout.trim();
   } catch (err) {
     console.error(`[${name}] Error executing "${action}":`, err);
-    return null;
+    return 'error';
   }
 }
 
