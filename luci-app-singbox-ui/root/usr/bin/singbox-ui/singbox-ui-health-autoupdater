@@ -1,5 +1,30 @@
 #!/bin/sh
 
+TEMP_STATE="/tmp/health-autoupdater-service-state"
+HEALTH_AUTOUNUPDATER_SERVICE_NAME="singbox-ui-health-autoupdater-service"
+AUTOUNUPDATER_SERVICE_NAME="singbox-ui-autoupdater-service"
+
+# Проверяем, работает ли singbox
+if ! pgrep singbox >/dev/null 2>&1; then
+  logger -t $HEALTH_AUTOUNUPDATER_SERVICE_NAME "Singbox not running, stopping service"
+  /etc/init.d/$HEALTH_AUTOUNUPDATER_SERVICE_NAME stop
+  exit 0
+fi
+
+# Проверяем наличие флага
+if [ ! -f "$TEMP_STATE" ]; then
+  logger -t $HEALTH_AUTOUNUPDATER_SERVICE_NAME "Flag file missing, stopping service"
+  /etc/init.d/$HEALTH_AUTOUNUPDATER_SERVICE_NAME stop
+  exit 0
+fi
+
+# Проверяем, работает ли singbox-ui-autoupdater-service и если да, то останавливаем $HEALTH_AUTOUNUPDATER_SERVICE_NAME
+if pgrep singbox-ui-autoupdater-service >/dev/null 2>&1; then
+  logger -t $HEALTH_AUTOUNUPDATER_SERVICE_NAME "singbox-ui-autoupdater-service running, stopping $HEALTH_AUTOUNUPDATER_SERVICE_NAME service"
+  /etc/init.d/$HEALTH_AUTOUNUPDATER_SERVICE_NAME stop
+  exit 0
+fi
+
 ERROR_FLAG="/tmp/singbox-ui-health-autoupdater-error.flag"
 INTERVAL_HEALTH=90     # 1.5 минута
 CHECKS_TO_UPDATE=60    # Кол-во успешных health check перед обновлением
@@ -24,7 +49,7 @@ while true; do
   if check_server; then
     success_counter=$((success_counter + 1))
     fail_counter=0
-    logger -t singbox-ui-health-autoupdater "Health Check success: (success count: #$success_counter / Checks to update: $CHECKS_TO_UPDATE)"
+    logger -t $HEALTH_AUTOUNUPDATER_SERVICE_NAME "Health Check success: (success count: #$success_counter / Checks to update: $CHECKS_TO_UPDATE)"
 
     if [ -f "$ERROR_FLAG" ]; then
       # Был сбой, но сеть восстановилась — обновляем конфиг и запускаем singbox
@@ -32,30 +57,30 @@ while true; do
       CODE=$?
 
       if [ "$CODE" = 0 ] || [ "$CODE" = 2 ]; then
-        logger -t singbox-ui-health-autoupdater "Network/config restored, starting singbox"
+        logger -t $HEALTH_AUTOUNUPDATER_SERVICE_NAME "Network/config restored, starting singbox"
         /etc/init.d/sing-box start
         rm -f "$ERROR_FLAG"
         success_counter=0
       else
-        logger -t singbox-ui-health-autoupdater "Updater failed during recovery"
+        logger -t $HEALTH_AUTOUNUPDATER_SERVICE_NAME "Updater failed during recovery"
       fi
 
     else
       if [ "$success_counter" -ge "$CHECKS_TO_UPDATE" ]; then
-        logger -t singbox-ui-health-autoupdater "StartUpdate: Running config update"
+        logger -t $HEALTH_AUTOUNUPDATER_SERVICE_NAME "StartUpdate: Running config update"
 
         RESULT=$(update_config)
         CODE=$?
 
         if [ "$CODE" = 0 ]; then
-          logger -t singbox-ui-health-autoupdater "Config updated, reloading singbox"
+          logger -t $HEALTH_AUTOUNUPDATER_SERVICE_NAME "Config updated, reloading singbox"
           /etc/init.d/sing-box reload
           success_counter=0
         elif [ "$CODE" = 2 ]; then
-          logger -t singbox-ui-health-autoupdater "No changes in config"
+          logger -t $HEALTH_AUTOUNUPDATER_SERVICE_NAME "No changes in config"
           success_counter=0
         else
-          logger -t singbox-ui-health-autoupdater "Updater failed"
+          logger -t $HEALTH_AUTOUNUPDATER_SERVICE_NAME "Updater failed"
           /etc/init.d/sing-box stop
           touch "$ERROR_FLAG"
           success_counter=0
@@ -66,10 +91,10 @@ while true; do
   else
     fail_counter=$((fail_counter + 1))
     success_counter=0
-    logger -t singbox-ui-health-autoupdater "Health Check failed: (fail count: #$fail_counter / Checks to stop: $MAX_FAILS)"
+    logger -t $HEALTH_AUTOUNUPDATER_SERVICE_NAME "Health Check failed: (fail count: #$fail_counter / Checks to stop: $MAX_FAILS)"
 
     if [ "$fail_counter" -ge "$MAX_FAILS" ] && [ ! -f "$ERROR_FLAG" ]; then
-      logger -t singbox-ui-health-autoupdater "Stopping singbox due to $fail_counter consecutive failed health checks"
+      logger -t $HEALTH_AUTOUNUPDATER_SERVICE_NAME "Stopping singbox due to $fail_counter consecutive failed health checks"
       /etc/init.d/sing-box stop
       touch "$ERROR_FLAG"
     fi
