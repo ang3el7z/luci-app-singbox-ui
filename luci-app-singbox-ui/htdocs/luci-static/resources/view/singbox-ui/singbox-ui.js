@@ -606,8 +606,8 @@ function createClearConfigButton(section, configTab, config) {
       await saveFile(`/etc/sing-box/url_${config.name}`, '', 'URL cleared');
       if (config.name === 'config.json') {
         await execService('sing-box', 'stop');
-        await execServiceLifecycle('singbox-ui-autoupdater', 'stop');
-        await execServiceLifecycle('singbox-ui-health-autoupdater', 'stop');
+        await execServiceLifecycle('singbox-ui-autoupdater-service', 'stop');
+        await execServiceLifecycle('singbox-ui-health-autoupdater-service', 'stop');
         notify('info', 'Services stopped');
       }
     } catch (e) {
