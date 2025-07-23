@@ -4,7 +4,9 @@
         "read": {
             "file": {
                 "/etc/init.d/sing-box": [ "exec" ],
-                "/etc/init.d/singbox-ui-autoupdater": [ "exec" ],
+                "/etc/init.d/singbox-ui-autoupdater-service": [ "exec" ],
+                "/etc/init.d/singbox-ui-memdoc-service": [ "exec" ],
+                "/etc/init.d/singbox-ui-health-autoupdater-service": [ "exec" ],
                 "/etc/sing-box/*": ["read"],
                 "/usr/bin/singbox-ui/*": ["exec"],
                 "/tmp/*": ["read"],

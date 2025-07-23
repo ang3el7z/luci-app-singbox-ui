@@ -1,0 +1,15 @@
+#!/bin/sh
+
+INTERVAL=3600     # 1 час
+
+while true; do
+  logger -t singb-autoupdater "Running updater"
+  if /usr/bin/singb/singb-updater /etc/sing-box/url_config.json /etc/sing-box/config.json; then
+    logger -t singb-autoupdater "Update OK, reloading sing-box"
+    /etc/init.d/sing-box reload
+  else
+    logger -t singb-autoupdater "Update failed"
+  fi
+
+  sleep "$INTERVAL"
+done
