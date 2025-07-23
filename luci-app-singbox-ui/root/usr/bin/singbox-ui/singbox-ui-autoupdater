@@ -21,7 +21,7 @@ INTERVAL=3600     # 1 час
 
 while true; do
   logger -t $AUTOUNUPDATER_SERVICE_NAME "Running updater"
-  if /usr/bin/singb/singb-updater /etc/sing-box/url_config.json /etc/sing-box/config.json; then
+  if /usr/bin/singbox-ui/singbox-ui-updater /etc/sing-box/url_config.json /etc/sing-box/config.json; then
     logger -t $AUTOUNUPDATER_SERVICE_NAME "Update OK, reloading sing-box"
     /etc/init.d/sing-box reload
   else
