@@ -313,9 +313,7 @@ async function createToggleHealthAutoupdaterServiceButton(section, tab, config, 
   };
 }
 
-async function createToggleMemdocServiceButton(section, tab) {
-  const memdocEnabled = await getServiceIsEnabled('singbox-ui-memdoc-service'); 
-
+async function createToggleMemdocServiceButton(section, tab, memdocEnabled) {
   const btn = section.taboption(
     tab, form.Button,
     'toggle_memdoc_service',
@@ -602,8 +600,8 @@ return view.extend({
         createSubscribeEditor(s, tab, cfg);
         createSaveUrlButton(s, tab, cfg);
         await createUpdateConfigButton(s, tab, cfg);
-        await createToggleAutoupdaterServiceButton(s, tab, autoupdaterEnabled, healthAutoupdaterEnabled, cfg);
-        await createToggleHealthAutoupdaterServiceButton(s, tab, healthAutoupdaterEnabled, autoupdaterEnabled, cfg);
+        await createToggleAutoupdaterServiceButton(s, tab, cfg, autoupdaterEnabled, healthAutoupdaterEnabled);
+        await createToggleHealthAutoupdaterServiceButton(s, tab, cfg, healthAutoupdaterEnabled, autoupdaterEnabled);
         await createToggleMemdocServiceButton(s, tab, memdocEnabled);
         await createHolderConfigEditor(s, tab, cfg);
         createSetAsMainConfigButton(s, tab, cfg);
