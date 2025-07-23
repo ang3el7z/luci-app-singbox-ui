@@ -4,13 +4,6 @@ TEMP_STATE="/tmp/singbox-ui-health-autoupdater-service-state"
 HEALTH_AUTOUNUPDATER_SERVICE_NAME="singbox-ui-health-autoupdater-service"
 AUTOUNUPDATER_SERVICE_NAME="singbox-ui-autoupdater-service"
 
-# Проверяем, работает ли singbox
-if ! pgrep singbox >/dev/null 2>&1; then
-  logger -t $HEALTH_AUTOUNUPDATER_SERVICE_NAME "Singbox not running, stopping service"
-  /etc/init.d/$HEALTH_AUTOUNUPDATER_SERVICE_NAME stop
-  exit 0
-fi
-
 # Проверяем наличие флага
 if [ ! -f "$TEMP_STATE" ]; then
   logger -t $HEALTH_AUTOUNUPDATER_SERVICE_NAME "Flag file missing, stopping service"
@@ -24,6 +17,12 @@ if pgrep singbox-ui-autoupdater-service >/dev/null 2>&1; then
   /etc/init.d/$HEALTH_AUTOUNUPDATER_SERVICE_NAME stop
   exit 0
 fi
+
+# Проверяем, работает ли singbox
+while ! pgrep singbox >/dev/null 2>&1; do
+  logger -t $HEALTH_AUTOUNUPDATER_SERVICE_NAME "Singbox not running, waiting..."
+  sleep 30  # подождать 30 секунд
+done
 
 ERROR_FLAG="/tmp/singbox-ui-health-autoupdater-error.flag"
 INTERVAL_HEALTH=90     # 1.5 минута
