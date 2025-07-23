@@ -1,14 +1,31 @@
 #!/bin/sh
 
+TEMP_STATE="/tmp/autoupdater-service-state"
+AUTOUNUPDATER_SERVICE_NAME="singbox-ui-autoupdater-service"
+
+# Проверяем, работает ли singbox
+if ! pgrep singbox >/dev/null 2>&1; then
+  logger -t $AUTOUNUPDATER_SERVICE_NAME "Singbox not running, stopping service"
+  /etc/init.d/$AUTOUNUPDATER_SERVICE_NAME stop
+  exit 0
+fi
+
+# Проверяем наличие флага
+if [ ! -f "$TEMP_STATE" ]; then
+  logger -t $AUTOUNUPDATER_SERVICE_NAME "Flag file missing, stopping service"
+  /etc/init.d/$AUTOUNUPDATER_SERVICE_NAME stop
+  exit 0
+fi
+
 INTERVAL=3600     # 1 час
 
 while true; do
-  logger -t singb-autoupdater "Running updater"
+  logger -t $AUTOUNUPDATER_SERVICE_NAME "Running updater"
   if /usr/bin/singb/singb-updater /etc/sing-box/url_config.json /etc/sing-box/config.json; then
-    logger -t singb-autoupdater "Update OK, reloading sing-box"
+    logger -t $AUTOUNUPDATER_SERVICE_NAME "Update OK, reloading sing-box"
     /etc/init.d/sing-box reload
   else
-    logger -t singb-autoupdater "Update failed"
+    logger -t $AUTOUNUPDATER_SERVICE_NAME "Update failed"
   fi
 
   sleep "$INTERVAL"
