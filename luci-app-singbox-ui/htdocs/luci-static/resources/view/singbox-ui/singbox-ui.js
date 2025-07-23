@@ -5,6 +5,7 @@
 'require fs';
 
 // === Global variables =====================================================
+
 let editor = null;
 
 // === Helpers ==============================================================
@@ -35,19 +36,51 @@ async function saveFile(path, val, msg) {
 }
 
 async function execService(name, action) {
-  return fs.exec(`/etc/init.d/${name}`, [action]);
+  try {
+    const { stdout } = await fs.exec(`/etc/init.d/${name}`, [action]);
+    console.log(`[${name}] ${action} output: ${stdout.trim()}`);
+    return stdout.trim();
+  } catch (err) {
+    console.error(`[${name}] Error executing "${action}":`, err);
+    return null;
+  }
 }
 
 async function execServiceLifecycle(name, action) {
-  if (action === 'stop') {
-    fs.exec(`/etc/init.d/${name}`, 'disable');
-    fs.exec(`/etc/init.d/${name}`, 'stop');
-  } else if (action === 'start') {
-    fs.exec(`/etc/init.d/${name}`, 'enable');
-    fs.exec(`/etc/init.d/${name}`, 'start');
-  } else if (action === 'restart') {
-    fs.exec(`/etc/init.d/${name}`, 'restart');
-    fs.exec(`/etc/init.d/${name}`, 'enable');
+  const path = `/etc/init.d/${name}`;
+
+  const run = async (cmd) => {
+    try {
+      console.log(`[${name}] Running: ${cmd}`);
+      const { stdout } = await fs.exec(path, [cmd]);
+      if (stdout?.trim()) {
+        console.log(`[${name}] ${cmd} output: ${stdout.trim()}`);
+      }
+    } catch (err) {
+      console.error(`[${name}] Error running "${cmd}":`, err);
+    }
+  };
+
+  switch (action) {
+    case 'stop':
+      await run('stop');
+      await run('disable');
+      break;
+    case 'start':
+      await run('enable');
+      await run('start');
+      break;
+    default:
+      await execService(name, action);
+      break;
+  }
+
+  // Статус после выполнения
+  try {
+    const { stdout } = await fs.exec(path, ['status']);
+    console.log(`[${name}] Final status: ${stdout.trim()}`);
+  } catch (err) {
+    console.error(`[${name}] Failed to get final status:`, err);
   }
 }
 
@@ -103,24 +136,30 @@ async function getServiceStatus(name) {
   }
 }
 
-async function getServiceIsEnabled(name) {
-  try {
-    await fs.stat(`/etc/init.d/${name}`);
-  } catch {
-    // службы нет — считаем выключенной
-    return false;
-  }
-
-  // Проверка включена ли служба
-  try {
-    const { stdout } = await fs.exec(`/etc/init.d/${name}`, ['enabled']);
-    return stdout.trim() === 'enabled';
-  } catch {
-    return false;
-  }
+async function isServiceActive(name) {
+    console.log(`Checking if service "${name}" exists...`);
+    try {
+      await fs.stat(`/etc/init.d/${name}`);
+      console.log(`Service "${name}" found.`);
+    } catch {
+      console.log(`Service "${name}" not found.`);
+      return false;
+    }
+  
+    try {
+      console.log(`Checking status of service "${name}"...`);
+      const { stdout } = await fs.exec(`/etc/init.d/${name}`, ['status']);
+      const running = stdout.trim().includes('running');
+      console.log(`Service "${name}" status output: "${stdout.trim()}"`);
+      console.log(`Service "${name}" is ${running ? 'running' : 'not running'}.`);
+      return running;
+    } catch (e) {
+      console.log(`Error while checking status of service "${name}":`, e);
+      return false;
+    }
 }
-
-async function createServiceButton(section, sbStatus, healthAutoupdaterServiceEnabled, autoupdaterServiceEnabled) {
+  
+async function createServiceButton(section, singboxManagmentTab, sbStatus, healthAutoupdaterServiceEnabled, autoupdaterServiceEnabled) {
   const configPath = `/etc/sing-box/config.json`;
   const configContent = (await loadFile(configPath)).trim();
   const isInitialConfigValid = await isValidConfigFile(configContent);
@@ -143,7 +182,7 @@ async function createServiceButton(section, sbStatus, healthAutoupdaterServiceEn
     : `Start ${runningServicesNames || 'Sing‑Box and Autoupdater'}`.trim();
 
   const btn = section.taboption(
-    'service', form.Button,
+    singboxManagmentTab, form.Button,
     'svc_toggle_all',
     label
   );
@@ -200,7 +239,7 @@ async function createServiceButton(section, sbStatus, healthAutoupdaterServiceEn
 
   if (sbRunning) {
     const restartBtn = section.taboption(
-      'service', form.Button,
+      singboxManagmentTab, form.Button,
       'svc_restart',
       'Restart'
     );
@@ -243,8 +282,7 @@ async function createServiceButton(section, sbStatus, healthAutoupdaterServiceEn
   }
 }
 
-async function createToggleAutoupdaterServiceButton(section, tab, config, autoupdaterEnabled, healthAutoupdaterEnabled) {
-  if (config.name !== 'config.json') return;
+async function createToggleAutoupdaterServiceButton(section, serviceManagementTab, config, autoupdaterEnabled, healthAutoupdaterEnabled) {
   if (healthAutoupdaterEnabled) return;
 
   const urlPath = `/etc/sing-box/url_${config.name}`;
@@ -252,12 +290,13 @@ async function createToggleAutoupdaterServiceButton(section, tab, config, autoup
   if (!isValidUrl(urlContent)) return;
 
   const btn = section.taboption(
-    tab, form.Button,
+    serviceManagementTab, form.Button,
     'toggle_autoupdater_service',
     'Autoupdater Service'
   );
   btn.inputstyle = autoupdaterEnabled ? 'negative' : 'positive';
   btn.title = 'Autoupdater Service';
+  btn.description = 'Automatically updates the main config every 60 minutes and reloads Sing‑Box if changes are detected.';
   btn.inputtitle = autoupdaterEnabled ? 'Stop Service' : 'Start Service';
 
   btn.onclick = async () => {
@@ -278,8 +317,7 @@ async function createToggleAutoupdaterServiceButton(section, tab, config, autoup
   };
 }
 
-async function createToggleHealthAutoupdaterServiceButton(section, tab, config, healthAutoupdaterEnabled, autoupdaterEnabled) {
-  if (config.name !== 'config.json') return;
+async function createToggleHealthAutoupdaterServiceButton(section, serviceManagementTab, config, healthAutoupdaterEnabled, autoupdaterEnabled) {
   if (autoupdaterEnabled) return;
 
   const urlPath = `/etc/sing-box/url_${config.name}`;
@@ -287,12 +325,13 @@ async function createToggleHealthAutoupdaterServiceButton(section, tab, config, 
   if (!isValidUrl(urlContent)) return;
 
   const btn = section.taboption(
-    tab, form.Button,
+    serviceManagementTab, form.Button,
     'toggle_health_autoupdater_service',
     'Health Autoupdater Service'
   );
   btn.inputstyle = healthAutoupdaterEnabled ? 'negative' : 'positive';
   btn.title = 'Health Autoupdater Service';
+  btn.description = 'Checks server health every 90 seconds. After 60 successful checks, updates config and reloads Sing‑Box. If the server goes down, stops Sing‑Box; when back online, restores config and restarts the service.';
   btn.inputtitle = healthAutoupdaterEnabled ? 'Stop Service' : 'Start Service';
 
   btn.onclick = async () => {
@@ -313,14 +352,15 @@ async function createToggleHealthAutoupdaterServiceButton(section, tab, config, 
   };
 }
 
-async function createToggleMemdocServiceButton(section, tab, memdocEnabled) {
+async function createToggleMemdocServiceButton(section, serviceManagementTab, memdocEnabled) {
   const btn = section.taboption(
-    tab, form.Button,
+    serviceManagementTab, form.Button,
     'toggle_memdoc_service',
     'Memdoc Service'
   );
   btn.inputstyle = memdocEnabled ? 'negative' : 'positive';
   btn.title = 'Memory leak Service';
+  btn.description = 'Checks memory usage every 10 seconds. If memory usage exceeds 15 MB, restarts Sing‑Box.';
   btn.inputtitle = memdocEnabled ? 'Stop Service' : 'Start Service';
 
   btn.onclick = async () => {
@@ -341,10 +381,10 @@ async function createToggleMemdocServiceButton(section, tab, memdocEnabled) {
   };  
 }
 
-function createDashboardButton(section, status) {
+function createDashboardButton(section, singboxManagmentTab, status) {
   if (status !== 'running') return;
 
-  const btn = section.taboption('service', form.Button, 'dashboard', 'Dashboard');
+  const btn = section.taboption(singboxManagmentTab, form.Button, 'dashboard', 'Dashboard');
   btn.inputstyle = 'apply';
   btn.title = 'Open Sing‑Box Web UI';
   btn.inputtitle = 'Dashboard';
@@ -352,8 +392,8 @@ function createDashboardButton(section, status) {
   btn.onclick = () => window.open('http://192.168.1.1:9090/ui/', '_blank');
 }
 
-function createServiceStatusDisplay(section, status) {
-  const dv = section.taboption('service', form.DummyValue, 'service_status', 'Service Status');
+function createServiceStatusDisplay(section,singboxManagmentTab, status) {
+  const dv = section.taboption(singboxManagmentTab, form.DummyValue, 'service_status', 'Service Status');
   dv.rawhtml = true;
   dv.cfgvalue = () => {
     const col = { running: 'green', inactive: 'orange', error: 'red' };
@@ -365,7 +405,7 @@ function createServiceStatusDisplay(section, status) {
   };
 }
 
-// === Config Editors & Buttons ============================================
+// === Components ============================================
 
 async function initializeAceEditor(content, key) {
   await loadScript('/luci-static/resources/view/singbox-ui/ace/ace.js');
@@ -444,9 +484,9 @@ function createSaveConfigButton(section, tab, config, key) {
   };
 }
 
-function createSubscribeEditor(section, tab, config) {
+function createSubscribeEditor(section, configTab, config) {
   const key = `url_${config.name}`;
-  const fi = section.taboption(tab, form.Value, key, 'Subscription URL');
+  const fi = section.taboption(configTab, form.Value, key, 'Subscription URL');
   fi.datatype = 'url';
   fi.placeholder = 'https://example.com/subscribe';
   fi.description = 'Valid subscription URL for auto-updates';
@@ -454,9 +494,9 @@ function createSubscribeEditor(section, tab, config) {
   fi.cfgvalue = () => loadFile(`/etc/sing-box/url_${config.name}`);
 }
 
-function createSaveUrlButton(section, tab, config) {
+function createSaveUrlButton(section, configTab, config) {
   const key = `url_${config.name}`;
-  const btn = section.taboption(tab, form.Button, `save_url_${config.name}`, 'Save URL');
+  const btn = section.taboption(configTab, form.Button, `save_url_${config.name}`, 'Save URL');
   btn.inputstyle = 'positive';
   btn.title = `Save subscription URL`;
   btn.inputtitle = 'Save URL';
@@ -470,12 +510,12 @@ function createSaveUrlButton(section, tab, config) {
   };
 }
 
-async function createUpdateConfigButton(section, tab, config) {
+async function createUpdateConfigButton(section, configTab, config) {
     const urlPath = `/etc/sing-box/url_${config.name}`;
     const urlContent = (await loadFile(urlPath)).trim();
     if (!isValidUrl(urlContent)) return;
   
-    const btn = section.taboption(tab, form.Button, `update_cfg_${config.name}`, 'Update Config');
+    const btn = section.taboption(configTab, form.Button, `update_cfg_${config.name}`, 'Update Config');
     btn.inputstyle = 'reload';
     btn.title = `Fetch & update from URL`;
     btn.inputtitle = 'Update';
@@ -502,10 +542,10 @@ async function createUpdateConfigButton(section, tab, config) {
     };
 }
 
-function createSetAsMainConfigButton(section, tab, config) {
+function createSetAsMainConfigButton(section, configTab, config) {
   if (config.name === 'config.json') return;
 
-  const btn = section.taboption(tab, form.Button, `set_main_${config.name}`, 'Set as Main');
+  const btn = section.taboption(configTab, form.Button, `set_main_${config.name}`, 'Set as Main');
   btn.inputstyle = 'apply';
   btn.title = `Switch: ${config.label} to main config`;
   btn.inputtitle = 'Set as Main';
@@ -532,8 +572,8 @@ function createSetAsMainConfigButton(section, tab, config) {
   };
 }
 
-function createClearConfigButton(section, tab, config) {
-  const btn = section.taboption(tab, form.Button, `clear_config_${config.name}`, 'Clear All');
+function createClearConfigButton(section, configTab, config) {
+  const btn = section.taboption(configTab, form.Button, `clear_config_${config.name}`, 'Clear All');
   btn.inputstyle = 'negative';
   btn.title = `Clear config and URL`;
   btn.inputtitle = 'Clear All';
@@ -558,11 +598,14 @@ function createClearConfigButton(section, tab, config) {
   };
 }
 
-async function createHolderConfigEditor(section, tab, config) {
-  const editorKey = `editor_${config.name}`;
-  await createConfigEditor(section, tab, config, editorKey);
-  createSaveConfigButton(section, tab, config, editorKey);
+// === Components view ============================================================
+
+async function createHolderConfigEditorViews(section, configTab, config) {
+    const editorKey = `editor_${config.name}`;
+    await createConfigEditor(section, configTab, config, editorKey);
+    createSaveConfigButton(section, configTab, config, editorKey);
 }
+
 // === Main View ============================================================
 
 return view.extend({
@@ -571,43 +614,53 @@ return view.extend({
   handleReset: null,
 
   async render() {
-    const m = new form.Map('singbox-ui', 'Sing‑Box UI Configuration');
-    const s = m.section(form.TypedSection, 'main', 'Control Panel');
-    s.anonymous = true;
-    s.tab('service', 'Service Management');
+    const map = new form.Map('singbox-ui', 'Sing‑Box UI Configuration');
+    const section = map.section(form.TypedSection, 'main', 'ㅤ');
+    section.anonymous = true;
 
+    // getServiceStatus
     const sbStatus = await getServiceStatus('sing-box');
 
-    const healthAutoupdaterEnabled = await getServiceEnabled('singbox-ui-health-autoupdater-service');
-    const autoupdaterEnabled = await getServiceEnabled('singbox-ui-autoupdater-service');
-    const memdocEnabled = await getServiceEnabled('singbox-ui-memdoc-service');
+    // isServiceActive
+    const healthAutoupdaterServiceEnabled = await isServiceActive('singbox-ui-health-autoupdater-service');
+    const autoupdaterServiceEnabled = await isServiceActive('singbox-ui-autoupdater-service');
+    const memdocServiceEnabled = await isServiceActive('singbox-ui-memdoc-service');
+    
+    //Singbox Management Tab
+    const singboxManagmentTab = 'singbox-management'
+    section.tab(singboxManagmentTab, 'Singbox');
 
-    createServiceStatusDisplay(s, sbStatus);
-    
-    createDashboardButton(s, sbStatus);
-    
-    await createServiceButton(s, sbStatus);
+    createServiceStatusDisplay(section, singboxManagmentTab,sbStatus);
+    createDashboardButton(section, singboxManagmentTab, sbStatus);
+    await createServiceButton(section, singboxManagmentTab, sbStatus, healthAutoupdaterServiceEnabled, autoupdaterServiceEnabled);
  
+    //Configs Management Tab
     const configs = [
       { name: 'config.json', label: 'Main Config' },
       { name: 'config2.json', label: 'Backup Config #1' },
       { name: 'config3.json', label: 'Backup Config #2' }
     ];
 
-    for (const cfg of configs) {
-        const tab = cfg.name === 'config.json' ? 'main_config' : `config_${cfg.name}`;
-        s.tab(tab, cfg.label);
-        createSubscribeEditor(s, tab, cfg);
-        createSaveUrlButton(s, tab, cfg);
-        await createUpdateConfigButton(s, tab, cfg);
-        await createToggleAutoupdaterServiceButton(s, tab, cfg, autoupdaterEnabled, healthAutoupdaterEnabled);
-        await createToggleHealthAutoupdaterServiceButton(s, tab, cfg, healthAutoupdaterEnabled, autoupdaterEnabled);
-        await createToggleMemdocServiceButton(s, tab, memdocEnabled);
-        await createHolderConfigEditor(s, tab, cfg);
-        createSetAsMainConfigButton(s, tab, cfg);
-        createClearConfigButton(s, tab, cfg);
+    for (const config of configs) {
+        const configTab = config.name === 'config.json' ? 'main_config' : `config_${config.name}`;
+        section.tab(configTab, config.label);
+
+        createSubscribeEditor(section, configTab, config);
+        createSaveUrlButton(section, configTab, config);
+        await createUpdateConfigButton(section, configTab, config);
+        await createHolderConfigEditorViews(section, configTab, config);
+        createSetAsMainConfigButton(section, configTab, config);
+        createClearConfigButton(section, configTab, config);
     }
 
-    return m.render();
+    //Service Management Tab
+    const serviceManagementTab = 'service-management'
+    section.tab(serviceManagementTab, 'Service');
+
+    await createToggleAutoupdaterServiceButton(section, serviceManagementTab, configs[0], autoupdaterServiceEnabled, healthAutoupdaterServiceEnabled);
+    await createToggleHealthAutoupdaterServiceButton(section, serviceManagementTab, configs[0], healthAutoupdaterServiceEnabled, autoupdaterServiceEnabled);
+    await createToggleMemdocServiceButton(section, serviceManagementTab, memdocServiceEnabled);
+    
+    return map.render();
   }
 });
