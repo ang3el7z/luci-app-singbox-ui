@@ -1,12 +1,21 @@
 config main 'main'
 	option enabled '0'
-	option servicepath '/etc/init.d/sing-box'
-	option configpath '/etc/sing-box/config.json'
-	option config2path '/etc/sing-box/config2.json'
-	option config3path '/etc/sing-box/config3.json'
-	option urlconfigpath '/etc/sing-box/url_config.json'
-	option urlconfig2path '/etc/sing-box/url_config2.json'
-	option urlconfig3path '/etc/sing-box/url_config3.json'
-	option updaterpath '/usr/bin/singbox-ui/singbox-ui-updater'
-	option autoupdaterwrapperpath '/usr/bin/singbox-ui/singbox-ui-autoupdater-wrapper'
-	option autoupdaterpath '/etc/init.d/singbox-ui-autoupdater'
+	option sing-box-service-path '/etc/init.d/sing-box'
+
+	option sing-box-ui-config-path '/etc/sing-box/config.json'
+	option sing-box-ui-config2-path '/etc/sing-box/config2.json'
+	option sing-box-ui-config3-path '/etc/sing-box/config3.json'
+
+	option sing-box-ui-urlconfig-path '/etc/sing-box/url_config.json'
+	option sing-box-ui-urlconfig2-path '/etc/sing-box/url_config2.json'
+	option sing-box-ui-urlconfig3-path '/etc/sing-box/url_config3.json'
+
+	option sing-box-ui-updater-path '/usr/bin/singbox-ui/singbox-ui-updater'
+
+	option sing-box-ui-autoupdater-path '/usr/bin/singbox-ui/singbox-ui-autoupdater'
+	option sing-box-ui-health-autoupdater-path '/usr/bin/singbox-ui/singbox-ui-health-autoupdater'
+	option sing-box-ui-memdoc-path '/usr/bin/singbox-ui/singbox-ui-memdoc'
+
+	option sing-box-ui-autoupdater-service-path '/etc/init.d/singbox-ui-autoupdater-service'
+	option sing-box-ui-health-autoupdater-service-path '/etc/init.d/singbox-ui-health-autoupdater-service'
+	option sing-box-ui-memdoc-service-path '/etc/init.d/singbox-ui-memdoc-service'
