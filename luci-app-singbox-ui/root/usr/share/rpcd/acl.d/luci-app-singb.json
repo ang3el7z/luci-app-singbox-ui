@@ -10,14 +10,20 @@
                 "/etc/sing-box/*": ["read"],
                 "/usr/bin/singbox-ui/*": ["exec"],
                 "/tmp/*": ["read"],
-                "/usr/bin/sing-box check -c /tmp/singbox-config.json": ["exec"]
+                "/usr/bin/sing-box check -c /tmp/singbox-config.json": ["exec"],
+                "/sbin/uci set singbox-ui.*": ["exec"],
+                "/sbin/uci commit singbox-ui": ["exec"],
+                "/sbin/uci get singbox-ui.*": ["exec"]
             },
             "uci": ["singbox-ui"]
         },
         "write": {
             "file": {
                 "/etc/sing-box/*": ["write"],
-                "/tmp/*": ["write"]
+                "/tmp/*": ["write"],
+                "/sbin/uci set singbox-ui.*": ["exec"],
+                "/sbin/uci commit singbox-ui": ["exec"],
+                "/sbin/uci get singbox-ui.*": ["exec"]
             },
             "uci": ["singbox-ui"]
         }
