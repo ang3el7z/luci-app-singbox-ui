@@ -28,7 +28,8 @@ wget -O /root/install-singbox.sh https://raw.githubusercontent.com/ang3el7z/luci
  - ssh-keygen -R 192.168.1.1
  - Подключение к роутеру -> ssh root@192.168.1.1
  - Обновить OPENWRT (Fix visibility plugin) -> CNTRL + SHIFT + I
- - [openwrt-правильный шаблон-openwrt_2.11.json](https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/file/openwrt-template-openwrt_2.11.json)
+ - [openwrt-template-original-openwrt_2.11.json](https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/file/openwrt-template-original-openwrt_2.11.json)
+ - [openwrt-template-bot-openwrt_2.11.json](https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/file/openwrt-template-bot-openwrt_2.11.json)
  - ["tun" interface выдает низкую скорость](https://github.com/ang3el7z/luci-app-singbox-ui/issues/1)
 
 # Спасибо
