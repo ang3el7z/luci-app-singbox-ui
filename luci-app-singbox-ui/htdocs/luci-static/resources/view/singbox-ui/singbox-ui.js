@@ -333,12 +333,12 @@ async function createToggleAutoupdaterServiceButton(section, serviceManagementTa
         await tempFlag('autoupdater-service-state', 'write', 'state', false);
         notify('info', 'Autoupdater service stopped');
       } else {
-        await execServiceLifecycle('singbox-ui-autoupdater-service', 'start');
-        await tempFlag('autoupdater-service-state', 'write', 'state', true);
-
         // При старте — выключаем health-autoupdater
         await execServiceLifecycle('singbox-ui-health-autoupdater-service', 'stop');
         await tempFlag('health-autoupdater-service-state', 'write', 'state', false);
+
+        await tempFlag('autoupdater-service-state', 'write', 'state', true);
+        await execServiceLifecycle('singbox-ui-autoupdater-service', 'start');
 
         notify('info', 'Autoupdater service started');
       }
@@ -375,12 +375,12 @@ async function createToggleHealthAutoupdaterServiceButton(section, serviceManage
         await tempFlag('health-autoupdater-service-state', 'write', 'state', false);
         notify('info', 'Health Autoupdater service stopped');
       } else {
-        await execServiceLifecycle('singbox-ui-health-autoupdater-service', 'start');
-        await tempFlag('health-autoupdater-service-state', 'write', 'state', true);
-
-        // При старте — выключаем autoupdater
+         // При старте — выключаем autoupdater
         await execServiceLifecycle('singbox-ui-autoupdater-service', 'stop');
         await tempFlag('autoupdater-service-state', 'write', 'state', false);
+ 
+        await tempFlag('health-autoupdater-service-state', 'write', 'state', true);
+        await execServiceLifecycle('singbox-ui-health-autoupdater-service', 'start');
 
         notify('info', 'Health Autoupdater service started');
       }
