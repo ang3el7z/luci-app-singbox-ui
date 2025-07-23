@@ -1,0 +1,137 @@
+{
+  "log": {
+    "level": "error",
+    "output": "singbox.log",
+    "timestamp": true
+  },
+  "experimental": {
+    "clash_api": {
+      "external_controller": "0.0.0.0:9090",
+      "external_ui": "dashboard"
+    },
+    "cache_file": {
+      "enabled": true
+    }
+  },
+  "inbounds": [
+    {
+      "type": "tun",
+      "tag": "tun-in",
+      "domain_strategy": "prefer_ipv4",
+      "interface_name": "singtun0",
+      "address": ["172.19.0.1/30"],
+      "mtu": 1400,
+      "auto_route": true,
+      "strict_route": true,
+      "auto_redirect": true,
+      "auto_redirect_input_mark": "0x2023",
+      "auto_redirect_output_mark": "0x2024",
+      "endpoint_independent_nat": false,
+      "stack": "mixed",
+      "platform": {
+        "http_proxy": {
+          "enabled": false,
+          "server": "127.0.0.1",
+          "server_port": 2080
+        }
+      }
+    },
+    {
+      "type": "mixed",
+      "tag": "in"
+    }
+  ],
+  "dns": {
+    "servers": [
+      {
+        "tag": "dns_direct",
+        "address": "https://example.com/dns-query",
+        "address_resolver": "dns-remote",
+        "strategy": "prefer_ipv4",
+        "detour": "direct"
+      },
+      {
+        "tag": "dns-remote",
+        "address": "tcp://8.8.8.8",
+        "address_strategy": "prefer_ipv4",
+        "strategy": "prefer_ipv4",
+        "detour": "direct"
+      }
+    ],
+    "rules": [
+      {
+        "outbound": "any",
+        "server": "dns-direct",
+        "disable_cache": false
+      }
+    ],
+    "strategy": "ipv4_only",
+    "independent_cache": true
+  },
+  "outbounds": [
+    {
+      "type": "direct",
+      "tag": "direct"
+    },
+    {
+      "type": "vless",
+      "tag": "proxy",
+      "server": "example.com",
+      "server_port": 443,
+      "uuid": "00000000-0000-0000-0000-000000000000",
+      "domain_strategy": "ipv4_only",
+      "tls": {
+        "enabled": true,
+        "insecure": false,
+        "server_name": "example.com",
+        "utls": {
+          "enabled": true,
+          "fingerprint": "chrome"
+        }
+      },
+      "transport": {
+        "type": "ws",
+        "path": "/websocket"
+      }
+    }
+  ],
+  "route": {
+    "auto_detect_interface": true,
+    "override_android_vpn": true,
+    "rules": [
+      { "action": "sniff" },
+      { "protocol": "dns", "action": "hijack-dns" },
+      { "inbound": "in", "action": "resolve", "strategy": "prefer_ipv4" },
+      { "inbound": "in", "action": "sniff", "timeout": "1s" },
+      { "protocol": "bittorrent", "outbound": "direct" },
+      { "ip_is_private": true, "outbound": "direct" },
+      { "protocol": "quic", "outbound": "block" },
+      {
+        "outbound": "proxy",
+        "rule_set": ["geosite:cn", "geoip:cn"]
+      },
+      {
+        "action": "reject",
+        "rule_set": ["block"]
+      }
+    ],
+    "final": "proxy",
+    "rule_set": [
+      {
+        "tag": "geosite:cn",
+        "type": "builtin",
+        "format": "binary"
+      },
+      {
+        "tag": "geoip:cn",
+        "type": "builtin",
+        "format": "binary"
+      },
+      {
+        "tag": "block",
+        "type": "builtin",
+        "format": "binary"
+      }
+    ]
+  }
+}
