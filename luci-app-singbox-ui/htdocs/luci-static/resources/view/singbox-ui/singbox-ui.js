@@ -40,19 +40,44 @@ async function execService(name, action) {
 }
 
 async function execServiceLifecycle(name, action) {
-  if (action === 'stop') {
-    fs.exec(`/etc/init.d/${name}`, 'stop');
-    fs.exec(`/etc/init.d/${name}`, 'disable');
-  } else if (action === 'start') {
-    fs.exec(`/etc/init.d/${name}`, 'enable');
-    fs.exec(`/etc/init.d/${name}`, 'start');
-  } else if (action === 'restart') {
-    fs.exec(`/etc/init.d/${name}`, 'stop');
-    fs.exec(`/etc/init.d/${name}`, 'disable');
-    fs.exec(`/etc/init.d/${name}`, 'enable');
-    fs.exec(`/etc/init.d/${name}`, 'start');
-    fs.exec(`/etc/init.d/${name}`, 'restart');
-  }
+    const path = `/etc/init.d/${name}`;
+  
+    const run = async (cmd) => {
+      try {
+        console.log(`Running: ${path} ${cmd}`);
+        const { stdout } = await fs.exec(path, [cmd]);
+        if (stdout?.trim()) {
+          console.log(`${cmd} output: ${stdout.trim()}`);
+        }
+      } catch (err) {
+        console.error(`Error running "${path} ${cmd}":`, err);
+      }
+    };
+  
+    if (action === 'stop') {
+      await run('stop');
+      await run('disable');
+    } else if (action === 'start') {
+      await run('enable');
+      await run('start');
+    } else if (action === 'restart') {
+      await run('stop');
+      await run('disable');
+      await run('enable');
+      await run('start');
+      await run('restart');
+    } else {
+      console.warn(`Unknown action "${action}" for service "${name}"`);
+      return;
+    }
+  
+    // Финальный статус
+    try {
+      const { stdout } = await fs.exec(path, ['status']);
+      console.log(`Final status of "${name}": ${stdout.trim()}`);
+    } catch (err) {
+      console.error(`Failed to get status of "${name}":`, err);
+    }
 }
 
 async function isValidConfigFile(content) {
@@ -107,23 +132,29 @@ async function getServiceStatus(name) {
   }
 }
 
-async function getServiceIsEnabled(name) {
-  try {
-    await fs.stat(`/etc/init.d/${name}`);
-  } catch {
-    // службы нет — считаем выключенной
-    return false;
-  }
-
-  // Проверка включена ли служба
-  try {
-    const { stdout } = await fs.exec(`/etc/init.d/${name}`, ['enabled']);
-    return stdout.trim() === 'enabled';
-  } catch {
-    return false;
-  }
+async function isServiceActive(name) {
+    console.log(`Checking if service "${name}" exists...`);
+    try {
+      await fs.stat(`/etc/init.d/${name}`);
+      console.log(`Service "${name}" found.`);
+    } catch {
+      console.log(`Service "${name}" not found.`);
+      return false;
+    }
+  
+    try {
+      console.log(`Checking status of service "${name}"...`);
+      const { stdout } = await fs.exec(`/etc/init.d/${name}`, ['status']);
+      const running = stdout.trim().includes('running');
+      console.log(`Service "${name}" status output: "${stdout.trim()}"`);
+      console.log(`Service "${name}" is ${running ? 'running' : 'not running'}.`);
+      return running;
+    } catch (e) {
+      console.log(`Error while checking status of service "${name}":`, e);
+      return false;
+    }
 }
-
+  
 async function createServiceButton(section, singboxManagmentTab, sbStatus, healthAutoupdaterServiceEnabled, autoupdaterServiceEnabled) {
   const configPath = `/etc/sing-box/config.json`;
   const configContent = (await loadFile(configPath)).trim();
@@ -586,10 +617,10 @@ return view.extend({
     // getServiceStatus
     const sbStatus = await getServiceStatus('sing-box');
 
-    // getServiceIsEnabled
-    const healthAutoupdaterServiceEnabled = await getServiceIsEnabled('singbox-ui-health-autoupdater-service');
-    const autoupdaterServiceEnabled = await getServiceIsEnabled('singbox-ui-autoupdater-service');
-    const memdocServiceEnabled = await getServiceIsEnabled('singbox-ui-memdoc-service');
+    // isServiceActive
+    const healthAutoupdaterServiceEnabled = await isServiceActive('singbox-ui-health-autoupdater-service');
+    const autoupdaterServiceEnabled = await isServiceActive('singbox-ui-autoupdater-service');
+    const memdocServiceEnabled = await isServiceActive('singbox-ui-memdoc-service');
     
     //Singbox Management Tab
     const singboxManagmentTab = 'singbox-management'
