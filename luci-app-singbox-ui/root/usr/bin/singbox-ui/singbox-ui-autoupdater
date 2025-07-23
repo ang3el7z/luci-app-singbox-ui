@@ -1,11 +1,12 @@
 #!/bin/sh
 
-TEMP_STATE="/tmp/singbox-ui-autoupdater-service-state"
+UCI_OPTION="autoupdater_service_state"
 AUTOUNUPDATER_SERVICE_NAME="singbox-ui-autoupdater-service"
 
-# Проверяем наличие флага
-if [ ! -f "$TEMP_STATE" ]; then
-  logger -t $AUTOUNUPDATER_SERVICE_NAME "Flag file missing, stopping service"
+# Проверяем флаг UCI
+ENABLED=$(uci get singbox-ui.main.$UCI_OPTION 2>/dev/null || echo 0)
+if [ "$ENABLED" != "1" ]; then
+  logger -t $AUTOUNUPDATER_SERVICE_NAME "Autoupdater disabled via UCI config, stopping service"
   /etc/init.d/$AUTOUNUPDATER_SERVICE_NAME stop
   exit 0
 fi
@@ -13,9 +14,11 @@ fi
 # Проверяем, работает ли singbox
 while ! pgrep singbox >/dev/null 2>&1; do
   logger -t $AUTOUNUPDATER_SERVICE_NAME "Singbox not running, waiting..."
-  sleep 30  # подождать 30 секунд
+  sleep 30 # подождать 30 секунд
 done
 
+# Основной цикл #
+ 
 INTERVAL=3600     # 1 час
 
 while true; do
