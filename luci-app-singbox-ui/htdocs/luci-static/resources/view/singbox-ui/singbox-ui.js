@@ -3,9 +3,9 @@
 'require form';
 'require ui';
 'require fs';
+'require uci';
 
 // === Global variables =====================================================
-
 let editor = null;
 
 // === Helpers ==============================================================
@@ -128,11 +128,12 @@ function loadScript(src) {
 async function setUciOption(option, mode, value = null) {
   const config = 'singbox-ui';
   const section = 'main';
-
+  
   if (mode === 'read') {
     try {
-      const result = await uci.get(`${config}.${section}.${option}`);
-      return result === '1';
+      // Читаем через fs.exec
+      const result = await fs.exec('/sbin/uci', ['get', `${config}.${section}.${option}`]);
+      return result.stdout.trim() === '1';
     } catch {
       return false;
     }
@@ -141,8 +142,10 @@ async function setUciOption(option, mode, value = null) {
   if (mode === 'write') {
     try {
       const val = value ? '1' : '0';
-      await uci.set(`${config}.${section}.${option}=${val}`);
-      await uci.commit(config);
+      
+      // Используем прямую команду uci
+      await fs.exec('/sbin/uci', ['set', `${config}.${section}.${option}=${val}`]);
+      await fs.exec('/sbin/uci', ['commit', config]);
     } catch (e) {
       notify('error', `Failed to set UCI option "${option}": ${e.message || e.toString()}`);
     }
@@ -603,11 +606,9 @@ function createClearConfigButton(section, configTab, config) {
       await saveFile(`/etc/sing-box/url_${config.name}`, '', 'URL cleared');
       if (config.name === 'config.json') {
         await execService('sing-box', 'stop');
-        notify('info', 'Sing‑Box stopped');
-        await execService('singbox-ui-autoupdater', 'disable');
-        await execService('singbox-ui-autoupdater', 'stop');
-        await setHuEnabled(false);
-        notify('info', 'Health Updater stopped');
+        await execServiceLifecycle('singbox-ui-autoupdater', 'stop');
+        await execServiceLifecycle('singbox-ui-health-autoupdater', 'stop');
+        notify('info', 'Services stopped');
       }
     } catch (e) {
       notify('error', `Clear failed: ${e.message}`);
