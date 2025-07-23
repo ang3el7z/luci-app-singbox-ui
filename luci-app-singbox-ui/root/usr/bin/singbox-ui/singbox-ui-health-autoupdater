@@ -1,12 +1,13 @@
 #!/bin/sh
 
-TEMP_STATE="/tmp/singbox-ui-health-autoupdater-service-state"
+UCI_OPTION="health_autoupdater_service_state"
 HEALTH_AUTOUNUPDATER_SERVICE_NAME="singbox-ui-health-autoupdater-service"
 AUTOUNUPDATER_SERVICE_NAME="singbox-ui-autoupdater-service"
 
-# Проверяем наличие флага
-if [ ! -f "$TEMP_STATE" ]; then
-  logger -t $HEALTH_AUTOUNUPDATER_SERVICE_NAME "Flag file missing, stopping service"
+# Проверяем флаг UCI
+ENABLED=$(uci get singbox-ui.main.$UCI_OPTION 2>/dev/null || echo 0)
+if [ "$ENABLED" != "1" ]; then
+  logger -t $HEALTH_AUTOUNUPDATER_SERVICE_NAME "Health autoupdater disabled via UCI config, stopping service"
   /etc/init.d/$HEALTH_AUTOUNUPDATER_SERVICE_NAME stop
   exit 0
 fi
@@ -23,6 +24,8 @@ while ! pgrep singbox >/dev/null 2>&1; do
   logger -t $HEALTH_AUTOUNUPDATER_SERVICE_NAME "Singbox not running, waiting..."
   sleep 30  # подождать 30 секунд
 done
+
+# Основной цикл #
 
 ERROR_FLAG="/tmp/singbox-ui-health-autoupdater-error.flag"
 INTERVAL_HEALTH=90     # 1.5 минута

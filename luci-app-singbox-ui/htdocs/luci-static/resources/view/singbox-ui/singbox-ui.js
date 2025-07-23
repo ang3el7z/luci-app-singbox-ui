@@ -125,47 +125,26 @@ function loadScript(src) {
   });
 }
 
-/**
- * Многофункциональный доступ к временным флагам
- *
- * @param {string} name - Имя флага
- * @param {'read'|'write'} mode - Режим: чтение или запись
- * @param {'state'|'text'} type - Тип: состояние (1/0) или текст
- * @param {boolean|string} [value] - Значение для записи (true/false или текст)
- * @returns {Promise<boolean|string>} - true/false для state, текст/'none' для text
- * Примеры:
- * await tempFlag('health', 'write', 'state', true); // -> пишет '1'
- * await tempFlag('health', 'write', 'text', 'some text'); // -> пишет 'some text'
- * await tempFlag('health', 'read', 'state'); // -> читает '1' -> true
- * await tempFlag('health', 'read', 'text'); // -> читает 'some text' -> 'some text'
- */
-async function tempFlag(name, mode, type, value) {
-  const TEMP_FLAG_PREFIX = '/tmp/singbox-ui-';
-  const path = `${TEMP_FLAG_PREFIX}${name}`;
+async function setUciOption(option, mode, value = null) {
+  const config = 'singbox-ui';
+  const section = 'main';
 
   if (mode === 'read') {
     try {
-      const content = await fs.read(path);
-      if (type === 'state') {
-        return content.trim() === '1';
-      } else {
-        return content;
-      }
+      const result = await uci.get(`${config}.${section}.${option}`);
+      return result === '1';
     } catch {
-      return type === 'state' ? false : 'none';
+      return false;
     }
   }
 
   if (mode === 'write') {
     try {
-      if (type === 'state') {
-        const val = value ? '1' : '0';
-        await fs.write(path, val);
-      } else {
-        await fs.write(path, String(value));
-      }
+      const val = value ? '1' : '0';
+      await uci.set(`${config}.${section}.${option}=${val}`);
+      await uci.commit(config);
     } catch (e) {
-      notify('error', `Failed to write temp ${type} for "${name}": ${e.message || e.toString()}`);
+      notify('error', `Failed to set UCI option "${option}": ${e.message || e.toString()}`);
     }
   }
 }
@@ -201,8 +180,8 @@ async function createServiceButton(section, singboxManagmentTab, singboxStatus) 
     const isInitialConfigValid = await isValidConfigFile(configContent);
   
     const singboxRunning = (singboxStatus === 'running');
-    const healthAutoupdaterServiceTempFlag = await tempFlag('health-autoupdater-service-state', 'read', 'state');
-    const autoupdaterServiceTempFlag = await tempFlag('autoupdater-service-state', 'read', 'state');
+    const healthAutoupdaterServiceTempFlag = await setUciOption('health_autoupdater_service_state', 'read', 'state');
+    const autoupdaterServiceTempFlag = await setUciOption('autoupdater_service_state', 'read', 'state');
   
     function getServiceNames() {
       const names = ['Sing‑Box'];
@@ -330,14 +309,14 @@ async function createToggleAutoupdaterServiceButton(section, serviceManagementTa
     try {
       if (autoupdaterEnabled) {
         await execServiceLifecycle('singbox-ui-autoupdater-service', 'stop');
-        await tempFlag('autoupdater-service-state', 'write', 'state', false);
+        await setUciOption('autoupdater_service_state', 'write', false);
         notify('info', 'Autoupdater service stopped');
       } else {
         // При старте — выключаем health-autoupdater
         await execServiceLifecycle('singbox-ui-health-autoupdater-service', 'stop');
-        await tempFlag('health-autoupdater-service-state', 'write', 'state', false);
+        await setUciOption('health_autoupdater_service_state', 'write', false);
 
-        await tempFlag('autoupdater-service-state', 'write', 'state', true);
+        await setUciOption('autoupdater_service_state', 'write', true);
         await execServiceLifecycle('singbox-ui-autoupdater-service', 'start');
 
         notify('info', 'Autoupdater service started');
@@ -372,14 +351,14 @@ async function createToggleHealthAutoupdaterServiceButton(section, serviceManage
     try {
       if (healthAutoupdaterEnabled) {
         await execServiceLifecycle('singbox-ui-health-autoupdater-service', 'stop');
-        await tempFlag('health-autoupdater-service-state', 'write', 'state', false);
+        await setUciOption('health_autoupdater_service_state', 'write', false);
         notify('info', 'Health Autoupdater service stopped');
       } else {
          // При старте — выключаем autoupdater
         await execServiceLifecycle('singbox-ui-autoupdater-service', 'stop');
-        await tempFlag('autoupdater-service-state', 'write', 'state', false);
+        await setUciOption('autoupdater_service_state', 'write', false);
  
-        await tempFlag('health-autoupdater-service-state', 'write', 'state', true);
+        await setUciOption('health_autoupdater_service_state', 'write', true);
         await execServiceLifecycle('singbox-ui-health-autoupdater-service', 'start');
 
         notify('info', 'Health Autoupdater service started');
