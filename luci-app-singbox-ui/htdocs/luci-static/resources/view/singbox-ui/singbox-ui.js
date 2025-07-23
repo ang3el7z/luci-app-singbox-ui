@@ -36,48 +36,52 @@ async function saveFile(path, val, msg) {
 }
 
 async function execService(name, action) {
-  return fs.exec(`/etc/init.d/${name}`, [action]);
+  try {
+    const { stdout } = await fs.exec(`/etc/init.d/${name}`, [action]);
+    console.log(`[${name}] ${action} output: ${stdout.trim()}`);
+    return stdout.trim();
+  } catch (err) {
+    console.error(`[${name}] Error executing "${action}":`, err);
+    return null;
+  }
 }
 
 async function execServiceLifecycle(name, action) {
-    const path = `/etc/init.d/${name}`;
-  
-    const run = async (cmd) => {
-      try {
-        console.log(`Running: ${path} ${cmd}`);
-        const { stdout } = await fs.exec(path, [cmd]);
-        if (stdout?.trim()) {
-          console.log(`${cmd} output: ${stdout.trim()}`);
-        }
-      } catch (err) {
-        console.error(`Error running "${path} ${cmd}":`, err);
-      }
-    };
-  
-    if (action === 'stop') {
-      await run('stop');
-      await run('disable');
-    } else if (action === 'start') {
-      await run('enable');
-      await run('start');
-    } else if (action === 'restart') {
-      await run('stop');
-      await run('disable');
-      await run('enable');
-      await run('start');
-      await run('restart');
-    } else {
-      console.warn(`Unknown action "${action}" for service "${name}"`);
-      return;
-    }
-  
-    // Финальный статус
+  const path = `/etc/init.d/${name}`;
+
+  const run = async (cmd) => {
     try {
-      const { stdout } = await fs.exec(path, ['status']);
-      console.log(`Final status of "${name}": ${stdout.trim()}`);
+      console.log(`[${name}] Running: ${cmd}`);
+      const { stdout } = await fs.exec(path, [cmd]);
+      if (stdout?.trim()) {
+        console.log(`[${name}] ${cmd} output: ${stdout.trim()}`);
+      }
     } catch (err) {
-      console.error(`Failed to get status of "${name}":`, err);
+      console.error(`[${name}] Error running "${cmd}":`, err);
     }
+  };
+
+  switch (action) {
+    case 'stop':
+      await run('stop');
+      await run('disable');
+      break;
+    case 'start':
+      await run('enable');
+      await run('start');
+      break;
+    default:
+      await execService(name, action);
+      break;
+  }
+
+  // Статус после выполнения
+  try {
+    const { stdout } = await fs.exec(path, ['status']);
+    console.log(`[${name}] Final status: ${stdout.trim()}`);
+  } catch (err) {
+    console.error(`[${name}] Failed to get final status:`, err);
+  }
 }
 
 async function isValidConfigFile(content) {
