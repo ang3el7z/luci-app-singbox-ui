@@ -1,6 +1,6 @@
 #!/bin/sh
 
-THRESHOLD=20000 # Желаемый лимит памяти в КБ
+THRESHOLD=15000 # Желаемый лимит памяти в КБ
 SINGBOX="/etc/init.d/sing-box"
 
 # Проверяем запущен ли singbox
