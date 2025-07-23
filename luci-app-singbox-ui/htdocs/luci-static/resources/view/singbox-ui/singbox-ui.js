@@ -125,16 +125,7 @@ function loadScript(src) {
   });
 }
 
-// === Service Status & Controls ============================================
-
-async function getServiceStatus(name) {
-  try {
-    const r = await execService(name, 'status');
-    return r.stdout.trim().toLowerCase();
-  } catch {
-    return 'error';
-  }
-}
+// === Controls =============================================================
 
 async function isServiceActive(name) {
     console.log(`Checking if service "${name}" exists...`);
@@ -159,17 +150,17 @@ async function isServiceActive(name) {
     }
 }
   
-async function createServiceButton(section, singboxManagmentTab, sbStatus, healthAutoupdaterServiceEnabled, autoupdaterServiceEnabled) {
+async function createServiceButton(section, singboxManagmentTab, singboxStatus, healthAutoupdaterServiceEnabled, autoupdaterServiceEnabled) {
   const configPath = `/etc/sing-box/config.json`;
   const configContent = (await loadFile(configPath)).trim();
   const isInitialConfigValid = await isValidConfigFile(configContent);
 
-  const sbRunning = (sbStatus === 'running');
+  const singboxRunning = (singboxStatus === 'running');
 
   // Формируем текст на кнопке в зависимости от того, что запущено
   function getRunningServicesNames() {
     const names = [];
-    if (sbRunning) names.push('Sing‑Box');
+    if (singboxRunning) names.push('Sing‑Box');
     if (healthAutoupdaterServiceEnabled) names.push('Health Updater');
     if (autoupdaterServiceEnabled) names.push('Autoupdater');
     return names.join(' and ');
@@ -177,7 +168,7 @@ async function createServiceButton(section, singboxManagmentTab, sbStatus, healt
 
   const runningServicesNames = getRunningServicesNames();
 
-  const label = sbRunning 
+  const label = singboxRunning 
     ? `Stop ${runningServicesNames || ''}`.trim()
     : `Start ${runningServicesNames || 'Sing‑Box and Autoupdater'}`.trim();
 
@@ -187,21 +178,21 @@ async function createServiceButton(section, singboxManagmentTab, sbStatus, healt
     label
   );
 
-  btn.inputstyle = sbRunning ? 'remove' : 'apply';
+  btn.inputstyle = singboxRunning ? 'remove' : 'apply';
   btn.readonly = !isInitialConfigValid;
-  btn.title = sbRunning 
+  btn.title = singboxRunning 
     ? `Stop ${runningServicesNames || 'Sing‑Box and Updaters'}` 
     : `Start Sing‑Box and Autoupdater`;
   btn.inputtitle = label;
 
-  const action = sbRunning ? 'stop' : 'start';
+  const action = singboxRunning ? 'stop' : 'start';
 
   btn.onclick = async () => {
     try {
       if (action === 'stop') {
         const stoppedServices = [];
 
-        if (sbRunning) {
+        if (singboxRunning) {
           await execService('sing-box', 'stop');
           stoppedServices.push('Sing‑Box');
         }
@@ -237,7 +228,7 @@ async function createServiceButton(section, singboxManagmentTab, sbStatus, healt
     }
   };
 
-  if (sbRunning) {
+  if (singboxRunning) {
     const restartBtn = section.taboption(
       singboxManagmentTab, form.Button,
       'svc_restart',
@@ -381,8 +372,8 @@ async function createToggleMemdocServiceButton(section, serviceManagementTab, me
   };  
 }
 
-function createDashboardButton(section, singboxManagmentTab, status) {
-  if (status !== 'running') return;
+function createDashboardButton(section, singboxManagmentTab, singboxStatus) {
+  if (singboxStatus !== 'running') return;
 
   const btn = section.taboption(singboxManagmentTab, form.Button, 'dashboard', 'Dashboard');
   btn.inputstyle = 'apply';
@@ -392,16 +383,16 @@ function createDashboardButton(section, singboxManagmentTab, status) {
   btn.onclick = () => window.open('http://192.168.1.1:9090/ui/', '_blank');
 }
 
-function createServiceStatusDisplay(section,singboxManagmentTab, status) {
+function createServiceStatusDisplay(section,singboxManagmentTab, singboxStatus) {
   const dv = section.taboption(singboxManagmentTab, form.DummyValue, 'service_status', 'Service Status');
   dv.rawhtml = true;
   dv.cfgvalue = () => {
     const col = { running: 'green', inactive: 'orange', error: 'red' };
-    const txt = status === 'running' ? 'Running'
-              : status === 'inactive' ? 'Inactive'
-              : status === 'error' ? 'Error'
-              : status;
-    return `<span style="color:${col[status]||'orange'};font-weight:bold">${txt}</span>`;
+    const txt = singboxStatus === 'running' ? 'Running'
+              : singboxStatus === 'inactive' ? 'Inactive'
+              : singboxStatus === 'error' ? 'Error'
+              : singboxStatus;
+    return `<span style="color:${col[singboxStatus]||'orange'};font-weight:bold">${txt}</span>`;
   };
 }
 
@@ -619,7 +610,7 @@ return view.extend({
     section.anonymous = true;
 
     // getServiceStatus
-    const sbStatus = await getServiceStatus('sing-box');
+    const singboxStatus = await execService('sing-box', 'status');
 
     // isServiceActive
     const healthAutoupdaterServiceEnabled = await isServiceActive('singbox-ui-health-autoupdater-service');
@@ -630,9 +621,9 @@ return view.extend({
     const singboxManagmentTab = 'singbox-management'
     section.tab(singboxManagmentTab, 'Singbox');
 
-    createServiceStatusDisplay(section, singboxManagmentTab,sbStatus);
-    createDashboardButton(section, singboxManagmentTab, sbStatus);
-    await createServiceButton(section, singboxManagmentTab, sbStatus, healthAutoupdaterServiceEnabled, autoupdaterServiceEnabled);
+    createServiceStatusDisplay(section, singboxManagmentTab,singboxStatus);
+    createDashboardButton(section, singboxManagmentTab, singboxStatus);
+    await createServiceButton(section, singboxManagmentTab, singboxStatus, healthAutoupdaterServiceEnabled, autoupdaterServiceEnabled);
  
     //Configs Management Tab
     const configs = [
