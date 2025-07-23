@@ -1,0 +1,31 @@
+#!/bin/sh
+
+THRESHOLD=15000 # Желаемый лимит памяти в КБ
+
+SINGBOX="/etc/init.d/sing-box"
+
+[ -e "$SINGBOX" ] && USE_SINGBOX=1 || USE_SINGBOX=0
+
+if [ "$USE_SINGBOX" -eq 0 ]; then
+exit 0
+fi
+
+TOTAL_MEM=$(awk '/MemTotal/ {print $2}' /proc/meminfo)
+
+restart_service_if_running() {
+SERVICE=$1
+if [ -e "$SERVICE" ] && $SERVICE status | grep -q "running"; then
+$SERVICE restart
+fi
+}
+
+while true; do
+FREE_MEM=$(awk '/MemAvailable/ {print $2}' /proc/meminfo)
+
+if [ "$FREE_MEM" -le "$THRESHOLD" ]; then
+[ "$USE_SINGBOX" -eq 1 ] && restart_service_if_running "$SINGBOX"
+sleep 10
+fi
+
+sleep 1
+done
