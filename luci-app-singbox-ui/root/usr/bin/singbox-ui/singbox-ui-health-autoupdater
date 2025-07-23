@@ -1,6 +1,6 @@
 #!/bin/sh
 
-TEMP_STATE="/tmp/health-autoupdater-service-state"
+TEMP_STATE="/tmp/singbox-ui-health-autoupdater-service-state"
 HEALTH_AUTOUNUPDATER_SERVICE_NAME="singbox-ui-health-autoupdater-service"
 AUTOUNUPDATER_SERVICE_NAME="singbox-ui-autoupdater-service"
 
