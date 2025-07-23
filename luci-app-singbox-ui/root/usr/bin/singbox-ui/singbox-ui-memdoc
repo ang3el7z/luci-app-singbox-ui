@@ -1,31 +1,29 @@
 #!/bin/sh
 
-THRESHOLD=15000 # Желаемый лимит памяти в КБ
-
+THRESHOLD=20000 # Желаемый лимит памяти в КБ
 SINGBOX="/etc/init.d/sing-box"
 
-[ -e "$SINGBOX" ] && USE_SINGBOX=1 || USE_SINGBOX=0
-
-if [ "$USE_SINGBOX" -eq 0 ]; then
-exit 0
+# Проверяем запущен ли singbox
+if ! pgrep singbox >/dev/null 2>&1; then
+  logger -t singbox-ui-memdoc "Singbox not running, exiting"
+  exit 0
 fi
-
-TOTAL_MEM=$(awk '/MemTotal/ {print $2}' /proc/meminfo)
 
 restart_service_if_running() {
-SERVICE=$1
-if [ -e "$SERVICE" ] && $SERVICE status | grep -q "running"; then
-$SERVICE restart
-fi
+  SERVICE="$1"
+  if [ -x "$SERVICE" ] && "$SERVICE" status | grep -q "running"; then
+    logger "[memdoc] Restarting service $SERVICE due to low memory"
+    "$SERVICE" restart
+  fi
 }
 
 while true; do
-FREE_MEM=$(awk '/MemAvailable/ {print $2}' /proc/meminfo)
+  FREE_MEM=$(awk '/MemAvailable/ {print $2}' /proc/meminfo)
 
-if [ "$FREE_MEM" -le "$THRESHOLD" ]; then
-[ "$USE_SINGBOX" -eq 1 ] && restart_service_if_running "$SINGBOX"
-sleep 10
-fi
-
-sleep 1
+  if [ "$FREE_MEM" -le "$THRESHOLD" ]; then
+    restart_service_if_running "$SINGBOX"
+    sleep 10
+  else
+    sleep 1
+  fi
 done
