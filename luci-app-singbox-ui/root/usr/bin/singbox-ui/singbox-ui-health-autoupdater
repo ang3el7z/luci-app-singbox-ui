@@ -30,7 +30,7 @@ done
 ERROR_FLAG="/tmp/singbox-ui-health-autoupdater-error.flag"
 INTERVAL_HEALTH=90     # 1.5 минута
 CHECKS_TO_UPDATE=60    # Кол-во успешных health check перед обновлением
-MAX_FAILS=1            # Максимум подряд неудачных health check перед остановкой
+MAX_FAILS=2            # Максимум подряд неудачных health check перед остановкой
 
 CONFIG_URL=$(cat /etc/sing-box/url_config.json)
 TARGET_FILE="/etc/sing-box/config.json"
@@ -83,7 +83,6 @@ while true; do
           success_counter=0
         else
           logger -t $HEALTH_AUTOUNUPDATER_SERVICE_NAME "Updater failed"
-          /etc/init.d/sing-box stop
           touch "$ERROR_FLAG"
           success_counter=0
         fi
