@@ -41,14 +41,17 @@ async function execService(name, action) {
 
 async function execServiceLifecycle(name, action) {
   if (action === 'stop') {
-    fs.exec(`/etc/init.d/${name}`, 'disable');
     fs.exec(`/etc/init.d/${name}`, 'stop');
+    fs.exec(`/etc/init.d/${name}`, 'disable');
   } else if (action === 'start') {
     fs.exec(`/etc/init.d/${name}`, 'enable');
     fs.exec(`/etc/init.d/${name}`, 'start');
   } else if (action === 'restart') {
-    fs.exec(`/etc/init.d/${name}`, 'restart');
+    fs.exec(`/etc/init.d/${name}`, 'stop');
+    fs.exec(`/etc/init.d/${name}`, 'disable');
     fs.exec(`/etc/init.d/${name}`, 'enable');
+    fs.exec(`/etc/init.d/${name}`, 'start');
+    fs.exec(`/etc/init.d/${name}`, 'restart');
   }
 }
 
