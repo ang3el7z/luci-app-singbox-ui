@@ -11,9 +11,9 @@ if [ ! -f "$TEMP_STATE" ]; then
   exit 0
 fi
 
-# Проверяем, работает ли singbox-ui-autoupdater-service и если да, то останавливаем $HEALTH_AUTOUNUPDATER_SERVICE_NAME
-if pgrep singbox-ui-autoupdater-service >/dev/null 2>&1; then
-  logger -t $HEALTH_AUTOUNUPDATER_SERVICE_NAME "singbox-ui-autoupdater-service running, stopping $HEALTH_AUTOUNUPDATER_SERVICE_NAME service"
+# Проверяем, работает ли singbox-ui-autoupdater-service и если да, то выключаемся
+if pgrep $AUTOUNUPDATER_SERVICE_NAME >/dev/null 2>&1; then
+  logger -t $HEALTH_AUTOUNUPDATER_SERVICE_NAME "$AUTOUNUPDATER_SERVICE_NAME running, stopping $HEALTH_AUTOUNUPDATER_SERVICE_NAME service"
   /etc/init.d/$HEALTH_AUTOUNUPDATER_SERVICE_NAME stop
   exit 0
 fi
