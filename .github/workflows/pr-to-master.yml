@@ -1,9 +1,13 @@
-name: Runner Build for PR to master
+name: Runner Build for PR to main
+run-name: Build and push runner .ipk for PR #${{ github.event.pull_request.number }}
 
 on:
   pull_request:
     branches:
-      - master
+      - main
+
+permissions:
+  contents: write  # 👈 обязательно для git push
 
 jobs:
   build:
@@ -35,13 +39,14 @@ jobs:
       - name: Remove container
         run: docker rm singbox-ui
 
-      - name: Push .ipk to `runner-ipk` folder in master
+      - name: Push .ipk to `runner-ipk` folder in main
         run: |
           git config --global user.name "github-actions"
           git config --global user.email "actions@github.com"
-          git fetch origin master
-          git checkout master
+          git fetch origin main
+          git checkout main
+          mkdir -p runner-ipk
           cp ./runner-ipk/luci-app-singbox-ui.ipk ./runner-ipk/luci-app-singbox-ui.ipk
           git add runner-ipk/luci-app-singbox-ui.ipk
-          git commit -m "Update runner .ipk from PR #${{ github.event.pull_request.number }}" || true
-          git push origin master
+          git commit -m "Update runner .ipk from PR #${{ github.event.pull_request.number }}" || echo "Nothing to commit"
+          git push origin main
