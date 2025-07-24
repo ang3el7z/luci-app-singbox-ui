@@ -33,9 +33,11 @@ jobs:
       - name: Rename and move IPK with unique name
         run: |
           mkdir -p ./runner-ipk
-          DATE=$(date +%Y%m%d)
+          DATE=$(date +%Y%m%d-%H%M)
           PR_NUM=${{ github.event.pull_request.number }}
-          NEW_NAME="luci-app-singbox-ui-pr-${PR_NUM}-${DATE}.ipk"
+          PR_TITLE="${{ github.event.pull_request.title }}"
+          SAFE_TITLE=$(echo "$PR_TITLE" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/-/g' | sed -E 's/^-+|-+$//g')
+          NEW_NAME="luci-app-singbox-ui-pr-${PR_NUM}-${SAFE_TITLE}-${DATE}.ipk"
           cp ./bin/luci-app-singbox-ui*.ipk "./runner-ipk/${NEW_NAME}"
 
       - name: Remove container
