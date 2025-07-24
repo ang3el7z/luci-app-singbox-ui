@@ -6,33 +6,37 @@ on:
 
 jobs:
   build:
-    name: Build luci-app-singbox-ui
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4.2.1
 
-      - name: Build and push
+      - name: Build Docker image
         uses: docker/build-push-action@v6.9.0
         with:
           context: .
           tags: luci-app-singbox-ui:ci
+          build-args: |
+            BUILDKIT_INLINE_CACHE=1
+          network: host  # Важно, если feeds у OpenWrt глючат
 
-      - name: Create Docker container
-        run: docker create --name luci-app-singbox-ui luci-app-singbox-ui:ci
+      - name: Create container
+        run: docker create --name luci-builder luci-app-singbox-ui:ci
 
-      - name: Copy file from Docker container
+      - name: Copy .ipk files from container
         run: |
-          docker cp luci-app-singbox-ui:/builder/bin/packages/x86_64/luci/. ./bin/
+          mkdir -p ./bin
+          docker cp luci-builder:/builder/bin ./bin
 
-      - name: Filter IPK files
+      - name: Filter luci-app-singbox-ui IPK
         run: |
           mkdir -p ./filtered-bin
-          cp ./bin/luci-app-singbox-ui*.ipk ./filtered-bin/luci-app-singbox-ui.ipk
+          find ./bin -name 'luci-app-singbox-ui_*.ipk' -exec cp {} ./filtered-bin/luci-app-singbox-ui.ipk \;
 
-      - name: Remove Docker container
-        run: docker rm luci-app-singbox-ui
+      - name: Remove container
+        run: docker rm luci-builder
 
-      - name: Release
-        uses: softprops/action-gh-release@v2.0.8
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
         with:
-          files: ./filtered-bin/*.ipk
+          files: ./filtered-bin/luci-app-singbox-ui.ipk
