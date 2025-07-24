@@ -1,5 +1,5 @@
-name: Runner Build for PR to main
-run-name: Build and push runner .ipk for PR #${{ github.event.pull_request.number }}
+name: Build luci-app-singbox-ui from pr v1
+run-name: Build and push runner .ipk for PR ${{ github.event.pull_request.number }}
 
 on:
   pull_request:
@@ -16,17 +16,16 @@ jobs:
 
     steps:
       - name: Checkout PR branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@v4.2.1
         with:
           # Checkout the PR's head ref, so build happens from PR code
           ref: ${{ github.event.pull_request.head.ref }}
           fetch-depth: 0
 
       - name: Build Docker image with compiled package
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v6.9.0
         with:
           context: .
-          push: false
           tags: singbox-ui:ci
 
       - name: Create container
