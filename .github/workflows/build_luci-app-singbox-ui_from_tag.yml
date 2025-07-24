@@ -60,13 +60,17 @@ jobs:
           context: .
           tags: singbox-ui:ci
 
-      - name: Create container and extract IPKs
-        run: |
-          docker create --name singbox-ui singbox-ui:ci
-          docker cp singbox-ui:/builder/bin/packages/x86_64/luci/. ./bin/
-          docker rm singbox-ui
+      - name: Create Docker container
+        run: docker create --name singbox-ui singbox-ui:ci
 
-      - name: Filter output
+      - name: Copy file from Docker container
+        run: |
+          docker cp singbox-ui:/builder/bin/packages/x86_64/luci/. ./bin/
+
+      - name: Remove Docker container
+        run: docker rm singbox-ui
+
+      - name: Filter IPK files
         run: |
           mkdir -p ./filtered-bin
           cp ./bin/luci-app-singbox-ui*.ipk ./filtered-bin/luci-app-singbox-ui.ipk
