@@ -1,4 +1,3 @@
-# .github/workflows/singbox-ui-build.yml
 name: Build luci-app-singbox-ui
 
 on:
