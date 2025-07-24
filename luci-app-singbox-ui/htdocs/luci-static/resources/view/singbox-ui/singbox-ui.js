@@ -675,7 +675,7 @@ return view.extend({
 
     //Service Management Tab
     const serviceManagementTab = 'service-management'
-    section.tab(serviceManagementTab, 'Service');
+    section.tab(serviceManagementTab, 'Services');
 
     await createToggleAutoupdaterServiceButton(section, serviceManagementTab, configs[0], autoupdaterServiceEnabled, healthAutoupdaterServiceEnabled);
     await createToggleHealthAutoupdaterServiceButton(section, serviceManagementTab, configs[0], healthAutoupdaterServiceEnabled, autoupdaterServiceEnabled);
