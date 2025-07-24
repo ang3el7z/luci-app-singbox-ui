@@ -1,21 +1,32 @@
 # --- Прошлый вариант рабочий ---
-# FROM openwrt/sdk:x86_64-v24.10.1
+FROM openwrt/sdk:x86_64-v23.05.5
 
-# # Обновление фидов и подготовка директорий
-# RUN ./scripts/feeds update -a && \
-#     ./scripts/feeds install luci-base && \
-#     mkdir -p /builder/package/feeds/luci/
+# 1) ставим необходимые инструменты для feeds
+USER root
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends git wget subversion mercurial && \
+    rm -rf /var/lib/apt/lists/*
+    
+WORKDIR /builder
+    
+# 2) обновляем и устанавливаем все feeds (или только luci, если нужно)
+RUN ./scripts/feeds update -a && \
+    ./scripts/feeds install -a
+    
+# 3) создаём папки (обратите внимание: utilities, а не utilites)
+RUN mkdir -p /builder/package/feeds/utilities \
+                 /builder/package/feeds/luci
+    
+# 4) копируем ваш пакет
+COPY ./luci-app-singbox-ui /builder/package/feeds/luci/luci-app-singbox-ui
+    
+# 5) генерим дефолтную конфигурацию и собираем ваш пакет
+RUN make defconfig && \
+    make package/luci-app-singbox-ui/compile V=s -j$(nproc)
 
-# # Копируем сам пакет внутрь сборки
+# --- Новый вариант рабочий ---
+# FROM itdoginfo/openwrt-sdk:24.10.1
+
 # COPY ./luci-app-singbox-ui /builder/package/feeds/luci/luci-app-singbox-ui
 
-# # Включаем пакет явно и запускаем сборку
-# RUN echo "CONFIG_PACKAGE_luci-app-singbox-ui=y" >> .config && \
-#     make defconfig && \
-#     make package/luci-app-singbox-ui/compile V=s -j4
-
-FROM itdoginfo/openwrt-sdk:24.10.1
-
-COPY ./luci-app-singbox-ui /builder/package/feeds/luci/luci-app-singbox-ui
-
-RUN make defconfig && make package/luci-app-singbox-ui/compile  V=s -j4
+# RUN make defconfig && make package/luci-app-singbox-ui/compile  V=s -j4
