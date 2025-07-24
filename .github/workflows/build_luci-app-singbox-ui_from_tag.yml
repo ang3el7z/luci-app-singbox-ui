@@ -1,4 +1,5 @@
 name: Build luci-app-singbox-ui from tag v2
+run-name: Build release ${{ github.ref_name }}
 
 on:
   push:
