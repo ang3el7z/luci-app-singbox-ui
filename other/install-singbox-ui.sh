@@ -60,6 +60,7 @@ init_language() {
             MSG_OPTION_1="1) Latest (около 150 Кб)"
             MSG_OPTION_2="2) Lite версия (около 6 Кб)"
             MSG_OPTION_3="3) Pre-release (бета, возможны баги)"
+            MSG_OPTION_4="4) Runner сборка из Pull Request (тестовая)"
             MSG_INVALID_CHOICE="Некорректный выбор, выбрана версия Latest по умолчанию."
             MSG_INSTALL_COMPLETE="Установка завершена"
             MSG_CLEANUP="Очистка файлов..."
@@ -75,6 +76,7 @@ init_language() {
             MSG_OPTION_1="1) Latest (about 150 KB)"
             MSG_OPTION_2="2) Lite version (about 6 KB)"
             MSG_OPTION_3="3) Pre-release (beta, may have bugs)"
+            MSG_OPTION_4="4) Runner build from Pull Request (testing)"
             MSG_INVALID_CHOICE="Invalid choice, defaulting to Latest version."
             MSG_INSTALL_COMPLETE="Installation complete"
             MSG_CLEANUP="Cleaning up files..."
@@ -83,11 +85,11 @@ init_language() {
     esac
 }
 
-# Запрашиваем язык
+# Запрашиваем язык / Ask for language
 init_language
 header
 
-# Обновление репозиториев и установка зависимостей
+# Обновление репозиториев и установка зависимостей / Update repos and install dependencies
 show_progress "$MSG_UPDATE_PKGS"
 opkg update && opkg install openssh-sftp-server nano curl jq
 if [ $? -eq 0 ]; then
@@ -98,17 +100,19 @@ else
 fi
 separator
 
-# Выбор версии для установки
+# Выбор версии для установки / Version selection
 echo
 echo "$MSG_CHOOSE_VERSION"
 echo "$MSG_OPTION_1"
 echo "$MSG_OPTION_2"
 echo "$MSG_OPTION_3"
+echo "$MSG_OPTION_4"
 read -p "▷ " VERSION_CHOICE
 
-# Ссылки на файлы для каждой версии
+# Ссылки на файлы для каждой версии / URLs for each version
 URL_LATEST="https://github.com/ang3el7z/luci-app-singbox-ui/releases/latest/download/luci-app-singbox-ui.ipk"
 URL_LITE="https://github.com/ang3el7z/luci-app-singbox-ui/releases/download/v1.2.1/luci-app-singbox-ui.ipk"
+URL_RUNNER="https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/master/runner-ipk/luci-app-singbox-ui.ipk"
 
 case "$VERSION_CHOICE" in
     1)
@@ -118,7 +122,7 @@ case "$VERSION_CHOICE" in
         DOWNLOAD_URL="$URL_LITE"
         ;;
     3)
-        echo "Получаем ссылку на последнюю pre-release сборку..."
+        echo "Получаем ссылку на последнюю pre-release сборку... / Fetching latest pre-release build..."
         DOWNLOAD_URL=$(curl -s https://api.github.com/repos/ang3el7z/luci-app-singbox-ui/releases | \
         grep -A 20 '"prerelease": true' | \
         grep "browser_download_url.*luci-app-singbox-ui.ipk" | \
@@ -126,9 +130,12 @@ case "$VERSION_CHOICE" in
         sed -E 's/.*"browser_download_url": *"([^"]+)".*/\1/')
 
         if [ -z "$DOWNLOAD_URL" ]; then
-            echo "Не удалось получить pre-release, используем latest."
+            echo "Не удалось получить pre-release, используем latest. / Failed to fetch pre-release, using latest."
             DOWNLOAD_URL="$URL_LATEST"
         fi
+        ;;
+    4)
+        DOWNLOAD_URL="$URL_RUNNER"
         ;;
     *)
         echo "$MSG_INVALID_CHOICE"
@@ -136,11 +143,11 @@ case "$VERSION_CHOICE" in
         ;;
 esac
 
-# Установка singbox-ui
+# Установка singbox-ui / Install singbox-ui
 show_progress "$MSG_INSTALL_UI"
 wget -O /root/luci-app-singbox-ui.ipk "$DOWNLOAD_URL"
 if [ $? -ne 0 ]; then
-    show_error "Ошибка загрузки файла. Установка прервана."
+    show_error "Ошибка загрузки файла. Установка прервана. / Download failed. Installation aborted."
     exit 1
 fi
 chmod 0755 /root/luci-app-singbox-ui.ipk
@@ -149,7 +156,7 @@ opkg install /root/luci-app-singbox-ui.ipk
 /etc/init.d/uhttpd restart
 show_success "$MSG_INSTALL_COMPLETE"
 
-# Очистка файлов
+# Очистка временных файлов / Cleanup temporary files
 show_progress "$MSG_CLEANUP"
 rm -f /root/luci-app-singbox-ui.ipk
 rm -f -- "$0"
