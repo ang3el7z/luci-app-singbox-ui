@@ -15,9 +15,14 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout PR branch
+        uses: actions/checkout@v4
+        with:
+          # Checkout the PR's head ref, so build happens from PR code
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
 
-      - name: Build Docker image
+      - name: Build Docker image with compiled package
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -43,7 +48,7 @@ jobs:
       - name: Remove container
         run: docker rm singbox-ui
 
-      - name: Checkout main branch for cleanup
+      - name: Checkout main branch for cleanup and commit
         run: |
           git fetch origin main
           git checkout main
