@@ -1,5 +1,5 @@
-name: Build luci-app-singbox-ui from pr v1
-run-name: Build runner-ipk PR ${{ github.event.pull_request.number }}
+name: Build luci-app-singbox-ui from PR
+run-name: Build artifact PR ${{ github.event.pull_request.number }}
 
 on:
   pull_request:
@@ -11,59 +11,84 @@ permissions:
 
 jobs:
   build:
-    name: Build and push runner .ipk
+    name: Build .ipk from PR
     runs-on: ubuntu-latest
 
+    outputs:
+      ipk_name: ${{ steps.rename.outputs.ipk_name }}
+
     steps:
-      - name: Checkout PR branch
+      - name: Checkout PR code
         uses: actions/checkout@v4.2.1
         with:
-          # Checkout the PR's head ref, so build happens from PR code
           ref: ${{ github.event.pull_request.head.ref }}
           fetch-depth: 0
 
-      - name: Build Docker image with compiled package
+      - name: Build Docker image
         uses: docker/build-push-action@v6.9.0
         with:
           context: .
           tags: singbox-ui:ci
 
-      - name: Create Docker container
+      - name: Create container
         run: docker create --name singbox-ui singbox-ui:ci
 
-      - name: Copy file from Docker container
+      - name: Copy built .ipk from container
         run: docker cp singbox-ui:/builder/bin/packages/x86_64/luci/. ./bin/
 
-      - name: Rename and move IPK with unique name
+      - name: Rename and move .ipk
+        id: rename
         run: |
-          mkdir -p ./runner-ipk
+          mkdir -p ./artifacts
           DATE=$(date +%Y%m%d-%H%M)
           PR_NUM=${{ github.event.pull_request.number }}
           PR_TITLE="${{ github.event.pull_request.title }}"
           SAFE_TITLE=$(echo "$PR_TITLE" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/-/g' | sed -E 's/^-+|-+$//g')
           NEW_NAME="luci-app-singbox-ui-pr-${PR_NUM}-${SAFE_TITLE}-${DATE}.ipk"
-          cp ./bin/luci-app-singbox-ui*.ipk "./runner-ipk/${NEW_NAME}"
+          cp ./bin/luci-app-singbox-ui*.ipk "./artifacts/${NEW_NAME}"
+          echo "ipk_name=${NEW_NAME}" >> "$GITHUB_OUTPUT"
 
-      - name: Remove Docker container
+      - name: Remove container
         run: docker rm singbox-ui
 
-      - name: Checkout main branch for cleanup and commit
-        run: |
-          git fetch origin main
-          git checkout main
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: built-ipk
+          path: ./artifacts/
 
-      - name: Remove old IPK files older than 7 days
+  commit:
+    name: Commit to main branch
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - name: Checkout main branch
+        uses: actions/checkout@v4.2.1
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: built-ipk
+          path: artifacts/
+
+      - name: Remove old .ipk files (> 7 days)
         run: |
-          find runner-ipk/ -type f -name "*.ipk" -mtime +7 -print -delete
+          mkdir -p artifacts
+          find artifacts/ -type f -name "*.ipk" -mtime +7 -print -delete
 
       - name: Update index.txt
         run: |
-          ls runner-ipk/*.ipk | xargs -n1 basename > runner-ipk/index.txt
+          ls artifacts/*.ipk | xargs -n1 basename > artifacts/index.txt
 
       - name: Commit and push changes
         run: |
-          git config --global user.name "github-actions"
-          git config --global user.email "actions@github.com"
-          git add runner-ipk/
-          git commit -m "Update runner IPK files and index.txt from PR #${PR_NUM}" || echo "No changes to commit"
-          git push origin main
+          echo "📤 Committing updated .ipk to main"
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add artifacts/
+          git commit -m "github-actions[bot]: update .ipk from PR #${{ github.event.pull_request.number }}" || echo "No changes to commit"
+          git push origin HEAD:main
