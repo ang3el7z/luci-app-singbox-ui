@@ -1,0 +1,47 @@
+name: Runner Build for PR to master
+
+on:
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  build:
+    name: Build and push runner .ipk
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
+          tags: singbox-ui:ci
+
+      - name: Create container
+        run: docker create --name singbox-ui singbox-ui:ci
+
+      - name: Copy built packages
+        run: |
+          docker cp singbox-ui:/builder/bin/packages/x86_64/luci/. ./bin/
+
+      - name: Filter IPK file
+        run: |
+          mkdir -p ./runner-ipk
+          cp ./bin/luci-app-singbox-ui*.ipk ./runner-ipk/luci-app-singbox-ui.ipk
+
+      - name: Remove container
+        run: docker rm singbox-ui
+
+      - name: Push .ipk to `runner-ipk` folder in master
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "actions@github.com"
+          git fetch origin master
+          git checkout master
+          cp ./runner-ipk/luci-app-singbox-ui.ipk ./runner-ipk/luci-app-singbox-ui.ipk
+          git add runner-ipk/luci-app-singbox-ui.ipk
+          git commit -m "Update runner .ipk from PR #${{ github.event.pull_request.number }}" || true
+          git push origin master
