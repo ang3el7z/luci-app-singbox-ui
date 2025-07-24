@@ -65,6 +65,8 @@ init_language() {
             MSG_INSTALL_COMPLETE="Установка завершена"
             MSG_CLEANUP="Очистка файлов..."
             MSG_CLEANUP_DONE="Файлы удалены!"
+            MSG_NO_RUNNER_FILES="Файлы Runner сборок не найдены."
+            MSG_SELECT_RUNNER="Выберите Runner сборку для установки:"
             ;;
         *)
             MSG_INSTALL_TITLE="Singbox-ui installation and configuration"
@@ -81,6 +83,8 @@ init_language() {
             MSG_INSTALL_COMPLETE="Installation complete"
             MSG_CLEANUP="Cleaning up files..."
             MSG_CLEANUP_DONE="Files removed!"
+            MSG_NO_RUNNER_FILES="Runner build files not found."
+            MSG_SELECT_RUNNER="Select Runner build to install:"
             ;;
     esac
 }
@@ -112,7 +116,6 @@ read -p "▷ " VERSION_CHOICE
 # Ссылки на файлы для каждой версии / URLs for each version
 URL_LATEST="https://github.com/ang3el7z/luci-app-singbox-ui/releases/latest/download/luci-app-singbox-ui.ipk"
 URL_LITE="https://github.com/ang3el7z/luci-app-singbox-ui/releases/download/v1.2.1/luci-app-singbox-ui.ipk"
-URL_RUNNER="https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/master/runner-ipk/luci-app-singbox-ui.ipk"
 
 case "$VERSION_CHOICE" in
     1)
@@ -135,7 +138,39 @@ case "$VERSION_CHOICE" in
         fi
         ;;
     4)
-        DOWNLOAD_URL="$URL_RUNNER"
+        # Динамический выбор из списка runner сборок
+        RUNNER_BASE_URL="https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/runner-ipk"
+        INDEX_URL="$RUNNER_BASE_URL/index.txt"
+
+        show_progress "$MSG_SELECT_RUNNER"
+
+        # Получаем список файлов
+        RUNNER_FILES=$(curl -s "$INDEX_URL")
+
+        if [ -z "$RUNNER_FILES" ]; then
+            show_error "$MSG_NO_RUNNER_FILES"
+            exit 1
+        fi
+
+        i=1
+        declare -A RUNNER_MAP
+        echo
+        for file in $RUNNER_FILES; do
+            echo "  [$i] $file"
+            RUNNER_MAP[$i]="$file"
+            i=$((i+1))
+        done
+
+        echo
+        read -p "  ▷ " choice
+
+        SELECTED_RUNNER_FILE=${RUNNER_MAP[$choice]}
+        if [ -z "$SELECTED_RUNNER_FILE" ]; then
+            show_error "$MSG_INVALID_CHOICE"
+            DOWNLOAD_URL="$URL_LATEST"
+        else
+            DOWNLOAD_URL="$RUNNER_BASE_URL/$SELECTED_RUNNER_FILE"
+        fi
         ;;
     *)
         echo "$MSG_INVALID_CHOICE"
