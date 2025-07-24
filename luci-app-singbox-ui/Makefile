@@ -2,7 +2,7 @@ include $(TOPDIR)/rules.mk
 
 PKG_NAME:=luci-app-singbox-ui
 
-PKG_VERSION:=1.3.8
+PKG_VERSION:=1.3.9
 
 PKG_RELEASE:=1
 
@@ -18,5 +18,3 @@ PKG_MAINTAINER:=ang3el
 LUCI_LANGUAGES:=en ru
 
 include $(TOPDIR)/feeds/luci/luci.mk
-
-# call BuildPackage - OpenWrt buildroot signature
