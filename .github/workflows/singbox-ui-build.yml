@@ -9,32 +9,48 @@ jobs:
     name: Build luci-app-singbox-ui
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4.2.1
+
+      - name: Check version match
+        run: |
+          LUCI_APP_SINGBOX_UI_VERSION=$(grep '^PKG_VERSION:=' luci-app-singbox-ui/Makefile | cut -d '=' -f 2)
+
+          TAG_VERSION=${GITHUB_REF#refs/tags/v}
+
+          echo "Luci-app-singbox-ui version: $LUCI_APP_SINGBOX_UI_VERSION"
+          echo "Tag version: $TAG_VERSION"
+
+          if [ "$LUCI_APP_SINGBOX_UI_VERSION" != "$TAG_VERSION" ]; then
+            echo "Error: Version mismatch"
+            exit 1
+          fi
 
       - name: Build Docker image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v6.9.0
         with:
           context: .
-          push: false
           tags: singbox-ui:ci
 
-      - name: Create container
+      - name: Create Docker container
         run: docker create --name singbox-ui singbox-ui:ci
 
-      - name: Copy built packages
+      - name: Copy file from Docker container
         run: |
+          docker cp singbox-ui:/builder/bin/packages/x86_64/utilites/. ./bin/
           docker cp singbox-ui:/builder/bin/packages/x86_64/luci/. ./bin/
 
       - name: Filter IPK files
         run: |
-          VERSION=${GITHUB_REF#refs/tags/v}
+          # Извлекаем версию из тега, убирая префикс 'v'
+          # VERSION=${GITHUB_REF#refs/tags/v}
+          
           mkdir -p ./filtered-bin
           cp ./bin/luci-app-singbox-ui*.ipk ./filtered-bin/luci-app-singbox-ui.ipk
 
-      - name: Remove container
+      - name: Remove Docker container
         run: docker rm singbox-ui
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v2.0.8
         with:
           files: ./filtered-bin/*.ipk
