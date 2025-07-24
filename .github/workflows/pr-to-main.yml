@@ -7,7 +7,7 @@ on:
       - main
 
 permissions:
-  contents: write  # 👈 обязательно для git push
+  contents: write
 
 jobs:
   build:
@@ -28,25 +28,36 @@ jobs:
         run: docker create --name singbox-ui singbox-ui:ci
 
       - name: Copy built packages
-        run: |
-          docker cp singbox-ui:/builder/bin/packages/x86_64/luci/. ./bin/
+        run: docker cp singbox-ui:/builder/bin/packages/x86_64/luci/. ./bin/
 
-      - name: Filter IPK file
+      - name: Rename and move IPK with unique name
         run: |
           mkdir -p ./runner-ipk
-          cp ./bin/luci-app-singbox-ui*.ipk ./runner-ipk/luci-app-singbox-ui.ipk
+          DATE=$(date +%Y%m%d)
+          PR_NUM=${{ github.event.pull_request.number }}
+          NEW_NAME="luci-app-singbox-ui-pr-${PR_NUM}-${DATE}.ipk"
+          cp ./bin/luci-app-singbox-ui*.ipk "./runner-ipk/${NEW_NAME}"
 
       - name: Remove container
         run: docker rm singbox-ui
 
-      - name: Push .ipk to `runner-ipk` folder in main
+      - name: Checkout main branch for cleanup
+        run: |
+          git fetch origin main
+          git checkout main
+
+      - name: Remove old IPK files older than 7 days
+        run: |
+          find runner-ipk/ -type f -name "*.ipk" -mtime +7 -print -delete
+
+      - name: Update index.txt
+        run: |
+          ls runner-ipk/*.ipk | xargs -n1 basename > runner-ipk/index.txt
+
+      - name: Commit and push changes
         run: |
           git config --global user.name "github-actions"
           git config --global user.email "actions@github.com"
-          git fetch origin main
-          git checkout main
-          mkdir -p runner-ipk
-          cp ./runner-ipk/luci-app-singbox-ui.ipk ./runner-ipk/luci-app-singbox-ui.ipk
-          git add runner-ipk/luci-app-singbox-ui.ipk
-          git commit -m "Update runner .ipk from PR #${{ github.event.pull_request.number }}" || echo "Nothing to commit"
+          git add runner-ipk/
+          git commit -m "Update runner IPK files and index.txt from PR #${PR_NUM}" || echo "No changes to commit"
           git push origin main
