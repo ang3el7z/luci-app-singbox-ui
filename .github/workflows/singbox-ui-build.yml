@@ -180,6 +180,9 @@ jobs:
           context: .
           push: false
           tags: singbox-ui:ci
+          no-cache: true
+          build-args: |
+            BUILDKIT_PROGRESS=plain
 
       - name: Create Docker container
         run: docker create --name singbox-ui singbox-ui:ci
