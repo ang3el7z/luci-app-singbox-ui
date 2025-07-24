@@ -28,10 +28,10 @@ jobs:
           context: .
           tags: singbox-ui:ci
 
-      - name: Create container
+      - name: Create Docker container
         run: docker create --name singbox-ui singbox-ui:ci
 
-      - name: Copy built packages
+      - name: Copy file from Docker container
         run: docker cp singbox-ui:/builder/bin/packages/x86_64/luci/. ./bin/
 
       - name: Rename and move IPK with unique name
@@ -44,7 +44,7 @@ jobs:
           NEW_NAME="luci-app-singbox-ui-pr-${PR_NUM}-${SAFE_TITLE}-${DATE}.ipk"
           cp ./bin/luci-app-singbox-ui*.ipk "./runner-ipk/${NEW_NAME}"
 
-      - name: Remove container
+      - name: Remove Docker container
         run: docker rm singbox-ui
 
       - name: Checkout main branch for cleanup and commit
