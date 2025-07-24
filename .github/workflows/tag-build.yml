@@ -1,0 +1,38 @@
+name: Build packages
+on:
+  push:
+    tags:
+      - v*
+
+jobs:
+  build:
+    name: Build luci-app-singbox-ui
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4.2.1
+
+      - name: Build and push
+        uses: docker/build-push-action@v6.9.0
+        with:
+          context: .
+          tags: luci-app-singbox-ui:ci
+
+      - name: Create Docker container
+        run: docker create --name luci-app-singbox-ui luci-app-singbox-ui:ci
+
+      - name: Copy file from Docker container
+        run: |
+          docker cp luci-app-singbox-ui:/builder/bin/packages/x86_64/luci/. ./bin/
+
+      - name: Filter IPK files
+        run: |
+          mkdir -p ./filtered-bin
+          cp ./bin/luci-app-singbox-ui*.ipk ./filtered-bin/luci-app-singbox-ui.ipk
+
+      - name: Remove Docker container
+        run: docker rm luci-app-singbox-ui
+
+      - name: Release
+        uses: softprops/action-gh-release@v2.0.8
+        with:
+          files: ./filtered-bin/*.ipk
