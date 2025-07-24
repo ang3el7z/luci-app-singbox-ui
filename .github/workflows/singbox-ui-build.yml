@@ -67,8 +67,8 @@ jobs:
       
           if [ "$LUCI_APP_SINGBOX_UI_VERSION" != "$TAG_VERSION" ]; then
             echo "❌ Version mismatch detected!"
-            echo "⏳ Waiting 39 seconds to allow for manual cancellation..."
-            sleep 39
+            echo "⏳ Waiting 30 seconds to allow for manual cancellation..."
+            sleep 30
       
             echo "🔁 Updating Makefile version to match tag..."
             sed -i "s/^PKG_VERSION:=.*$/PKG_VERSION:=${TAG_VERSION}/" luci-app-singbox-ui/Makefile
