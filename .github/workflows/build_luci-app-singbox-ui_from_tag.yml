@@ -1,4 +1,4 @@
-name: Build packages
+name: Build luci-app-singbox-ui from tag
 on:
   push:
     tags:
