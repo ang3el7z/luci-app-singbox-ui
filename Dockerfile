@@ -1,7 +1,18 @@
 FROM openwrt/sdk:x86_64-v24.10.1
 
-RUN ./scripts/feeds update -a && ./scripts/feeds install luci-base && mkdir -p /builder/package/feeds/utilities/ && mkdir -p /builder/package/feeds/luci/
+# Обновляем feeds и устанавливаем зависимости
+RUN ./scripts/feeds update -a && \
+    ./scripts/feeds install luci-base
 
-COPY ./luci-app-singbox-ui /builder/package/feeds/luci/luci-app-singbox-ui
+# Создаем правильную структуру каталогов
+RUN mkdir -p package/feeds/luci
 
-RUN make defconfig && make package/luci-app-singbox-ui/compile V=s -j4
+# Копируем пакет в правильное место
+COPY ./luci-app-singbox-ui package/feeds/luci/luci-app-singbox-ui
+
+# Обновляем индекс после копирования
+RUN ./scripts/feeds update -a
+
+# Собираем с правильным путем к пакету
+RUN make defconfig && \
+    make package/feeds/luci/luci-app-singbox-ui/compile V=s -j4
