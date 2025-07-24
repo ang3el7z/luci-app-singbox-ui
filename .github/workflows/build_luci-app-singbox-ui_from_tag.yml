@@ -49,7 +49,7 @@ jobs:
             echo "📤 Committing updated Makefile..."
             git add luci-app-singbox-ui/Makefile
             git commit -m "chore: sync Makefile version with tag v${TAG_VERSION}"
-            git push origin HEAD:$GITHUB_REF_NAME
+            git push origin HEAD:main
           fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
