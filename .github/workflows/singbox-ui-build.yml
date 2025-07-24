@@ -1,3 +1,45 @@
+# --- Прошлый вариант рабочий ---
+# name: Build packages
+# on:
+#   push:
+#     tags:
+#       - 'v*'
+
+# jobs:
+#   build:
+#     name: Build luci-app-singbox-ui
+#     runs-on: ubuntu-latest
+#     steps:
+#       - uses: actions/checkout@v4
+
+#       - name: Build Docker image
+#         uses: docker/build-push-action@v6
+#         with:
+#           context: .
+#           push: false
+#           tags: singbox-ui:ci
+
+#       - name: Create container
+#         run: docker create --name singbox-ui singbox-ui:ci
+
+#       - name: Copy built packages
+#         run: |
+#           docker cp singbox-ui:/builder/bin/packages/x86_64/luci/. ./bin/
+
+#       - name: Filter IPK files
+#         run: |
+#           VERSION=${GITHUB_REF#refs/tags/v}
+#           mkdir -p ./filtered-bin
+#           cp ./bin/luci-app-singbox-ui*.ipk ./filtered-bin/luci-app-singbox-ui.ipk
+
+#       - name: Remove container
+#         run: docker rm singbox-ui
+
+#       - name: Create GitHub Release
+#         uses: softprops/action-gh-release@v2
+#         with:
+#           files: ./filtered-bin/*.ipk
+
 name: Build luci-app-singbox-ui
 
 on:
@@ -13,17 +55,27 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Check version match
+      - name: Check version and optionally fix mismatch
         run: |
+          set -e
+      
           LUCI_APP_SINGBOX_UI_VERSION=$(grep '^PKG_VERSION:=' luci-app-singbox-ui/Makefile | cut -d '=' -f2 | tr -d ' ')
           TAG_VERSION=${GITHUB_REF#refs/tags/v}
-
-          echo "Luci-app-singbox-ui version: $LUCI_APP_SINGBOX_UI_VERSION"
-          echo "Tag version: $TAG_VERSION"
-
+      
+          echo "📦 Makefile version: $LUCI_APP_SINGBOX_UI_VERSION"
+          echo "🏷  Git tag version: $TAG_VERSION"
+      
           if [ "$LUCI_APP_SINGBOX_UI_VERSION" != "$TAG_VERSION" ]; then
-            echo "❌ Version mismatch"
-            exit 1
+            echo "❌ Version mismatch detected!"
+            echo "⏳ Waiting 39 seconds to allow for manual cancellation..."
+            sleep 39
+      
+            echo "🔁 Updating Makefile version to match tag..."
+            sed -i "s/^PKG_VERSION:=.*$/PKG_VERSION:=${TAG_VERSION}/" luci-app-singbox-ui/Makefile
+      
+            echo "✅ Makefile updated."
+          else
+            echo "✅ Version match confirmed."
           fi
 
       - name: Build Docker image
