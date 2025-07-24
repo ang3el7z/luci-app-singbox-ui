@@ -1,4 +1,4 @@
-name: Build luci-app-singbox-ui from tag v2
+name: Build luci-app-singbox-ui from TAG
 run-name: Build release TAG ${{ github.ref_name }}
 
 on:
