@@ -4,4 +4,4 @@ RUN ./scripts/feeds update -a && ./scripts/feeds install luci-base && mkdir -p /
 
 COPY ./luci-app-singbox-ui /builder/package/feeds/luci/luci-app-singbox-ui
 
-RUN make defconfig && make package/luci-app-singbox-ui/compile V=s -j4
+RUN make defconfig && make package/luci-app-singbox-ui/compile V=s -j1
