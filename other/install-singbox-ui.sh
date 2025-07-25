@@ -67,6 +67,11 @@ init_language() {
             MSG_CLEANUP_DONE="Файлы удалены!"
             MSG_NO_RUNNER_FILES="Файлы Runner сборок не найдены."
             MSG_SELECT_RUNNER="Выберите Runner сборку для установки:"
+            MSG_NO_PRE_RELEASE="Не удалось получить pre-release, используем latest."
+            MSG_RUNNER_INDEX_UNAVAILABLE="Не удалось загрузить список runner сборок (index.txt)."
+            MSG_RUNNER_LIST_EMPTY="Список runner сборок пуст."
+            MSG_INVALID_CHOICE="Неверный выбор. Установлена последняя доступная сборка."
+            MSG_INSTALL_LATEST="Устанавливается последняя доступная сборка (latest)..."
             ;;
         *)
             MSG_INSTALL_TITLE="Singbox-ui installation and configuration"
@@ -85,6 +90,11 @@ init_language() {
             MSG_CLEANUP_DONE="Files removed!"
             MSG_NO_RUNNER_FILES="Runner build files not found."
             MSG_SELECT_RUNNER="Select Runner build to install:"
+            MSG_NO_PRE_RELEASE="Failed to fetch pre-release, using latest."
+            MSG_INSTALL_LATEST="Installing stable version latest"
+            MSG_RUNNER_INDEX_UNAVAILABLE="Failed to load runner build list (index.txt)."
+            MSG_RUNNER_LIST_EMPTY="Runner build list is empty."
+            MSG_INVALID_CHOICE="Invalid choice. Installing latest available build."
             ;;
     esac
 }
@@ -125,7 +135,7 @@ case "$VERSION_CHOICE" in
         DOWNLOAD_URL="$URL_LITE"
         ;;
     3)
-        echo "Получаем ссылку на последнюю pre-release сборку... / Fetching latest pre-release build..."
+        # Получаем ссылку на последнюю pre-release сборку / Fetch latest pre-release build  
         DOWNLOAD_URL=$(curl -s https://api.github.com/repos/ang3el7z/luci-app-singbox-ui/releases | \
         grep -A 20 '"prerelease": true' | \
         grep "browser_download_url.*luci-app-singbox-ui.ipk" | \
@@ -133,47 +143,58 @@ case "$VERSION_CHOICE" in
         sed -E 's/.*"browser_download_url": *"([^"]+)".*/\1/')
 
         if [ -z "$DOWNLOAD_URL" ]; then
-            echo "Не удалось получить pre-release, используем latest. / Failed to fetch pre-release, using latest."
+            show_error "$MSG_NO_PRE_RELEASE"
             DOWNLOAD_URL="$URL_LATEST"
         fi
         ;;
     4)
-        # Динамический выбор из списка runner сборок
         RUNNER_BASE_URL="https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/artifacts"
         INDEX_URL="$RUNNER_BASE_URL/index.txt"
 
         show_progress "$MSG_SELECT_RUNNER"
 
-        # Получаем список файлов
-        RUNNER_FILES=$(curl -s "$INDEX_URL")
+        # Получаем список runner сборок с проверкой / Get list of runner builds with validation
+        http_code=$(curl -s -o /tmp/index.txt -w "%{http_code}" "$INDEX_URL")
+        if [ "$http_code" != "200" ]; then
+            show_error "$MSG_RUNNER_INDEX_UNAVAILABLE"
+            show_progress "$MSG_INSTALL_LATEST"
+            DOWNLOAD_URL="$URL_LATEST"
+            break
+        fi
+
+        RUNNER_FILES=$(cat /tmp/index.txt)
 
         if [ -z "$RUNNER_FILES" ]; then
-            show_error "$MSG_NO_RUNNER_FILES"
-            exit 1
+            show_error "$MSG_RUNNER_LIST_EMPTY"
+            show_progress "$MSG_INSTALL_LATEST"
+            DOWNLOAD_URL="$URL_LATEST"
+            break
         fi
 
         i=1
-        declare -A RUNNER_MAP
         echo
         for file in $RUNNER_FILES; do
             echo "  [$i] $file"
-            RUNNER_MAP[$i]="$file"
+            eval RUNNER_$i="'$file'"
             i=$((i+1))
         done
 
         echo
-        read -p "  ▷ " choice
+        printf "  ▷ "
+        read choice
 
-        SELECTED_RUNNER_FILE=${RUNNER_MAP[$choice]}
+        eval SELECTED_RUNNER_FILE=\$RUNNER_$choice
+
         if [ -z "$SELECTED_RUNNER_FILE" ]; then
             show_error "$MSG_INVALID_CHOICE"
+            show_progress "$MSG_INSTALL_LATEST"
             DOWNLOAD_URL="$URL_LATEST"
         else
             DOWNLOAD_URL="$RUNNER_BASE_URL/$SELECTED_RUNNER_FILE"
         fi
         ;;
     *)
-        echo "$MSG_INVALID_CHOICE"
+        show_error "$MSG_INVALID_CHOICE"
         DOWNLOAD_URL="$URL_LATEST"
         ;;
 esac
