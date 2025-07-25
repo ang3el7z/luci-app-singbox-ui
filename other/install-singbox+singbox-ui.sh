@@ -45,6 +45,12 @@ show_warning() {
     echo -e "${INDENT}! ${FG_WARNING}$1${RESET}\n"
 }
 
+waiting() {
+    local interval="${1:-30}"
+    show_progress "$(printf "$MSG_WAITING" "$interval")"
+    sleep "$interval"
+}
+
 # Инициализация языка / Language initialization
 init_language() {
     # Если язык уже выбран (через переменную окружения), пропускаем запрос
@@ -144,7 +150,7 @@ network_check() {
             break
         fi
 
-        sleep $interval
+        waiting $interval
         i=$((i + 1))
     done
 
@@ -164,7 +170,7 @@ wget -O /root/install-singbox.sh https://raw.githubusercontent.com/ang3el7z/luci
 show_warning "$MSG_SINGBOX_RETURN"
 
 network_check
-sleep 15
+waiting 15
 
 if [ -z "$CONFIG_URL" ]; then
 echo
@@ -262,7 +268,7 @@ service network restart
 network_check
 
 show_progress "$MSG_START_SERVICE"
-sleep 15
+waiting 15
 service sing-box enable
 service sing-box start
 show_success "$MSG_SERVICE_STARTED"

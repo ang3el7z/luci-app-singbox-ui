@@ -44,6 +44,12 @@ show_warning() {
     echo -e "${INDENT}! ${FG_WARNING}$1${RESET}\n"
 }
 
+waiting() {
+    local interval="${1:-30}"
+    show_progress "$(printf "$MSG_WAITING" "$interval")"
+    sleep "$interval"
+}
+
 # Инициализация языка / Language initialization
 init_language() {
     # Если язык уже выбран (через переменную окружения), пропускаем запрос
