@@ -48,7 +48,7 @@ show_warning() {
 }
 
 show_message() {
-    echo -e "${FG_USER_COLOR}${INDENT}${ARROW} $1${RESET}\n"
+    echo -e "${FG_USER_COLOR}${INDENT}${ARROW} $1${RESET}"
 }
 
 read_input() {
