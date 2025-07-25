@@ -194,8 +194,9 @@ show_progress "$MSG_CONNECTING"
 sleep 2
 
 if [ -z "$password" ]; then
-    ssh -o "StrictHostKeyChecking no" "root@$router_ip" \
-        "export LANG_CHOICE=$LANG_CHOICE; \
+    ssh -t -o "StrictHostKeyChecking no" "root@$router_ip" \
+        "export TERM=xterm; \
+         export LANG_CHOICE=$LANG_CHOICE; \
          export CONFIG_URL=$CONFIG_URL; \
          wget -O /root/install-singbox+singbox-ui.sh https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/install-singbox+singbox-ui.sh && \
          chmod 0755 /root/install-singbox+singbox-ui.sh && \
@@ -204,8 +205,9 @@ if [ -z "$password" ]; then
         exit 1
     }
 else
-    sshpass -p "$password" ssh -o "StrictHostKeyChecking no" "root@$router_ip" \
-        "export LANG_CHOICE=$LANG_CHOICE; \
+    sshpass -p "$password" ssh -t -o "StrictHostKeyChecking no" "root@$router_ip" \
+        "export TERM=xterm; \
+         export LANG_CHOICE=$LANG_CHOICE; \
          export CONFIG_URL=$CONFIG_URL; \
          wget -O /root/install-singbox+singbox-ui.sh https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/install-singbox+singbox-ui.sh && \
          chmod 0755 /root/install-singbox+singbox-ui.sh && \
