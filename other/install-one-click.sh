@@ -9,6 +9,7 @@ FG_WARNING='\033[38;5;214m'
 FG_SUCCESS='\033[38;5;41m'
 FG_ERROR='\033[38;5;203m'
 RESET='\033[0m'
+FG_USER_COLOR='\033[38;5;117m'
 
 # Символы оформления / UI symbols
 SEP_CHAR="◈"
@@ -40,13 +41,39 @@ show_error() {
     echo -e "${INDENT}${CROSS} ${FG_ERROR}$1${RESET}\n"
 }
 
+show_message() {
+    echo -e "${FG_USER_COLOR}${INDENT}${ARROW} $1${RESET}\n"
+}
+
+read_input_secret() {
+    echo -ne "${FG_USER_COLOR}${INDENT} ▷ $1${RESET} "
+    if [ -n "$2" ]; then
+        read -s "$2" 
+    else
+        read -s REPLY 
+    fi
+    echo
+}
+
+read_input() {
+    echo -ne "${FG_USER_COLOR}${INDENT} ▷ $1${RESET} "
+    if [ -n "$2" ]; then
+        read -r "$2" 
+    else
+        read -r REPLY 
+    fi
+    echo
+}
+
 # Инициализация языка / Language initialization
 init_language() {
-    echo -e "\n  ▷ Выберите язык / Select language [1/2]:"
-    echo -e "  1. Русский (Russian)"
-    echo -e "  2. English (Английский)"
-    read -p "  ▷ Ваш выбор / Your choice [1/2]: " LANG_CHOICE
-
+    if [ -z "$LANG_CHOICE" ]; then
+        show_message "Выберите язык / Select language [1/2]:"
+        show_message "1. Русский (Russian)"
+        show_message "2. English (Английский)"
+        read_input " Ваш выбор / Your choice [1/2]: " LANG_CHOICE
+    fi
+    
     case ${LANG_CHOICE:-1} in
         1)
             MSG_INSTALL_TITLE="Установка в один клик -> singbox+singbox-ui"
@@ -177,14 +204,13 @@ init_language
 header
 
 # Запрос данных / Input data
-read -p "${MSG_ROUTER_IP}" router_ip
-router_ip=${router_ip:-"192.168.1.1"}
-read -s -p "${MSG_ROUTER_PASS}" password
-echo ""
-read -p "${MSG_CONFIG_PROMPT}" CONFIG_URL
-
+read_input "${MSG_ROUTER_IP}" router_ip
+router_ip="${router_ip:-192.168.1.1}"
+read_input_secret "${MSG_ROUTER_PASS}" password
+read_input "${MSG_CONFIG_PROMPT}" CONFIG_URL
 # Запрос на сброс роутера / Ask for router reset
-read -p "${MSG_RESET_ROUTER}" reset_choice
+read_input "$MSG_RESET_ROUTER" reset_choice
+
 if [[ "$reset_choice" =~ ^[Yy]$ ]]; then
     if reset_router; then
         waiting && wait_for_router && network_check

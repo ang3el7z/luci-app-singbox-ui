@@ -9,6 +9,7 @@ FG_WARNING='\033[38;5;214m'
 FG_SUCCESS='\033[38;5;41m'
 FG_ERROR='\033[38;5;203m'
 RESET='\033[0m'
+FG_USER_COLOR='\033[38;5;117m'
 
 # Символы оформления / UI symbols
 SEP_CHAR="◈"
@@ -44,15 +45,28 @@ show_warning() {
     echo -e "${INDENT}! ${FG_WARNING}$1${RESET}\n"
 }
 
+show_message() {
+    echo -e "${FG_USER_COLOR}${INDENT}${ARROW} $1${RESET}\n"
+}
+
+read_input() {
+    echo -ne "${FG_USER_COLOR}${INDENT} ▷ $1${RESET} "
+    if [ -n "$2" ]; then
+        read -r "$2" 
+    else
+        read -r REPLY 
+    fi
+    echo
+}
+
+
 # Инициализация языка / Language initialization
 init_language() {
-    # Если язык уже выбран (через переменную окружения), пропускаем запрос
-    # If language already selected (via env var), skip prompt
     if [ -z "$LANG_CHOICE" ]; then
-        echo -e "\n  ▷ Выберите язык / Select language [1/2]:"
-        echo -e "  1. Русский (Russian)"
-        echo -e "  2. English (Английский)"
-        read -p "  ▷ Ваш выбор / Your choice [1/2]: " LANG_CHOICE
+        show_message "Выберите язык / Select language [1/2]:"
+        show_message "1. Русский (Russian)"
+        show_message "2. English (Английский)"
+        read_input " Ваш выбор / Your choice [1/2]: " LANG_CHOICE
     fi
 
     # Установка языка по умолчанию (английский) / Default to English
