@@ -68,6 +68,7 @@ init_language() {
             MSG_ROUTER_AVAILABLE="Роутер доступен через %s (%d сек)"
             MSG_WAITING="Ожидание %d сек"
             MSG_ROUTER_NOT_AVAILABLE="Роутер %s не доступен после %d сек"
+            MSG_CONFIG_PROMPT="Введите URL конфигурации (если нет - нажмите Enter): "
             ;;
         *)
             MSG_INSTALL_TITLE="Install one click -> singbox+singbox-ui"
@@ -89,12 +90,14 @@ init_language() {
             MSG_ROUTER_AVAILABLE="Router available via %s (%d sec)"
             MSG_WAITING="Waiting %d sec"
             MSG_ROUTER_NOT_AVAILABLE="Router %s not available after %d sec"
+            MSG_CONFIG_PROMPT="Enter configuration URL (press Enter to skip): "
             ;;
     esac
 }
 waiting(){
     local timeout=60
     show_progress "$(printf "$MSG_WAITING" "$timeout")"
+    sleep $timeout
 }
 
 wait_for_router() {
@@ -165,8 +168,8 @@ header
 # Запрос данных / Input data
 read -p "${MSG_ROUTER_IP}" router_ip
 router_ip=${router_ip:-"192.168.1.1"}
-
 read -s -p "${MSG_ROUTER_PASS}" password
+read -s -p "${MSG_CONFIG_PROMPT}" CONFIG_URL
 echo ""
 
 # Запрос на сброс роутера / Ask for router reset
@@ -190,18 +193,20 @@ sleep 2
 if [ -z "$password" ]; then
     ssh -o "StrictHostKeyChecking no" "root@$router_ip" \
         "export LANG_CHOICE=$LANG_CHOICE; \
-        wget -O /root/install-singbox+singbox-ui.sh https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/install-singbox+singbox-ui.sh && \
-        chmod 0755 /root/install-singbox+singbox-ui.sh && \
-        sh /root/install-singbox+singbox-ui.sh" || {
+         export CONFIG_URL=$CONFIG_URL; \
+         wget -O /root/install-singbox+singbox-ui.sh https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/install-singbox+singbox-ui.sh && \
+         chmod 0755 /root/install-singbox+singbox-ui.sh && \
+         sh /root/install-singbox+singbox-ui.sh" || {
         show_error "$MSG_SSH_ERROR"
         exit 1
     }
 else
     sshpass -p "$password" ssh -o "StrictHostKeyChecking no" "root@$router_ip" \
         "export LANG_CHOICE=$LANG_CHOICE; \
-        wget -O /root/install-singbox+singbox-ui.sh https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/install-singbox+singbox-ui.sh && \
-        chmod 0755 /root/install-singbox+singbox-ui.sh && \
-        sh /root/install-singbox+singbox-ui.sh" || {
+         export CONFIG_URL=$CONFIG_URL; \
+         wget -O /root/install-singbox+singbox-ui.sh https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/install-singbox+singbox-ui.sh && \
+         chmod 0755 /root/install-singbox+singbox-ui.sh && \
+         sh /root/install-singbox+singbox-ui.sh" || {
         show_error "$MSG_SSH_ERROR"
         exit 1
     }
