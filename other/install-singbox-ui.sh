@@ -14,6 +14,7 @@ FG_USER_COLOR='\033[38;5;117m'
 # Символы оформления / UI symbols
 SEP_CHAR="◈"
 ARROW="▸"
+ARROW_CLEAR="▷"
 CHECK="✓"
 CROSS="✗"
 INDENT="  "
@@ -46,7 +47,7 @@ show_message() {
 }
 
 read_input() {
-    echo -ne "${FG_USER_COLOR}${INDENT} ▷ $1${RESET} "
+    echo -ne "${FG_USER_COLOR}${INDENT}${ARROW_CLEAR} $1${RESET} "
     if [ -n "$2" ]; then
         read -r "$2" 
     else
