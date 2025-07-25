@@ -72,6 +72,7 @@ init_language() {
             MSG_RUNNER_LIST_EMPTY="Список runner сборок пуст."
             MSG_INVALID_CHOICE="Неверный выбор. Установлена последняя доступная сборка."
             MSG_INSTALL_LATEST="Устанавливается последняя доступная сборка (latest)..."
+            MSG_DOWNLOAD_ERROR="Ошибка загрузки файла. Установка прервана."
             ;;
         *)
             MSG_INSTALL_TITLE="Singbox-ui installation and configuration"
@@ -84,17 +85,17 @@ init_language() {
             MSG_OPTION_2="2) Lite version (about 6 KB)"
             MSG_OPTION_3="3) Pre-release (beta, may have bugs)"
             MSG_OPTION_4="4) Runner build from Pull Request (testing)"
-            MSG_INVALID_CHOICE="Invalid choice, defaulting to Latest version."
             MSG_INSTALL_COMPLETE="Installation complete"
             MSG_CLEANUP="Cleaning up files..."
             MSG_CLEANUP_DONE="Files removed!"
             MSG_NO_RUNNER_FILES="Runner build files not found."
             MSG_SELECT_RUNNER="Select Runner build to install:"
             MSG_NO_PRE_RELEASE="Failed to fetch pre-release, using latest."
-            MSG_INSTALL_LATEST="Installing stable version latest"
             MSG_RUNNER_INDEX_UNAVAILABLE="Failed to load runner build list (index.txt)."
             MSG_RUNNER_LIST_EMPTY="Runner build list is empty."
             MSG_INVALID_CHOICE="Invalid choice. Installing latest available build."
+            MSG_INSTALL_LATEST="Installing stable version latest"
+            MSG_DOWNLOAD_ERROR="Download failed. Installation aborted."
             ;;
     esac
 }
@@ -187,7 +188,6 @@ case "$VERSION_CHOICE" in
 
         if [ -z "$SELECTED_RUNNER_FILE" ]; then
             show_error "$MSG_INVALID_CHOICE"
-            show_progress "$MSG_INSTALL_LATEST"
             DOWNLOAD_URL="$URL_LATEST"
         else
             DOWNLOAD_URL="$RUNNER_BASE_URL/$SELECTED_RUNNER_FILE"
@@ -203,7 +203,7 @@ esac
 show_progress "$MSG_INSTALL_UI"
 wget -O /root/luci-app-singbox-ui.ipk "$DOWNLOAD_URL"
 if [ $? -ne 0 ]; then
-    show_error "Ошибка загрузки файла. Установка прервана. / Download failed. Installation aborted."
+    show_error "$MSG_DOWNLOAD_ERROR"
     exit 1
 fi
 chmod 0755 /root/luci-app-singbox-ui.ipk
