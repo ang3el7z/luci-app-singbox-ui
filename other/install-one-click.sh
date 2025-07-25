@@ -100,6 +100,7 @@ waiting() {
     show_progress "$(printf "$MSG_WAITING" "$interval")"
     sleep "$interval"
 }
+
 wait_for_router() {
     local timeout=300
     local interval=5
