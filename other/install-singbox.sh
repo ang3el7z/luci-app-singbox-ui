@@ -78,6 +78,7 @@ init_language() {
             MSG_RESTART_NETWORK="Перезапуск network..."
             MSG_CLEANUP="Очистка файлов..."
             MSG_CLEANUP_DONE="Файлы удалены!"
+            MSG_WAITING="Ожидание %d сек"
             ;;
         *)
             # Английские тексты / English texts
@@ -100,6 +101,7 @@ init_language() {
             MSG_RESTART_NETWORK="Restarting network..."
             MSG_CLEANUP="Cleaning up files..."
             MSG_CLEANUP_DONE="Files removed!"
+            MSG_WAITING="Waiting %d sec"
             ;;
     esac
 }

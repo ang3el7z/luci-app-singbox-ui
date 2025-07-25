@@ -86,6 +86,7 @@ init_language() {
         MSG_CLEANUP="Очистка файлов..."
         MSG_CLEANUP_DONE="Файлы удалены!"
         MSG_INSTALL_COMPLETE="Установка завершена!"
+        MSG_WAITING="Ожидание %d сек"
         ;;
     *)
         # Английские тексты / English texts
@@ -115,6 +116,7 @@ init_language() {
         MSG_CLEANUP="Cleaning up files..."
         MSG_CLEANUP_DONE="Files removed!"
         MSG_INSTALL_COMPLETE="Installation complete!"
+        MSG_WAITING="Waiting %d sec"
         ;;
 esac
 }
@@ -170,7 +172,6 @@ wget -O /root/install-singbox.sh https://raw.githubusercontent.com/ang3el7z/luci
 show_warning "$MSG_SINGBOX_RETURN"
 
 waiting 30
-
 network_check
 
 if [ -z "$CONFIG_URL" ]; then
@@ -235,7 +236,7 @@ fi
 if [ "$AUTO_CONFIG_SUCCESS" -ne 1 ]; then
     while true; do
         separator
-        read -p "${MSG_EDIT_COMPLETE} (Y/n) " edit_choice
+        read -p "${MSG_EDIT_COMPLETE}" edit_choice
         case "${edit_choice:-Y}" in  # По умолчанию Y если ввод пустой / Default to Y if input is empty
             [Yy]* )
                 show_success "$MSG_EDIT_SUCCESS"

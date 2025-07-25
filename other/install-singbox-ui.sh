@@ -73,6 +73,7 @@ init_language() {
             MSG_INVALID_CHOICE="Неверный выбор. Установлена последняя доступная сборка."
             MSG_INSTALL_LATEST="Устанавливается последняя доступная сборка (latest)..."
             MSG_DOWNLOAD_ERROR="Ошибка загрузки файла. Установка прервана."
+            MSG_WAITING="Ожидание %d сек"
             ;;
         *)
             MSG_INSTALL_TITLE="Singbox-ui installation and configuration"
@@ -96,6 +97,7 @@ init_language() {
             MSG_INVALID_CHOICE="Invalid choice. Installing latest available build."
             MSG_INSTALL_LATEST="Installing stable version latest"
             MSG_DOWNLOAD_ERROR="Download failed. Installation aborted."
+            MSG_WAITING="Waiting %d sec"
             ;;
     esac
 }
