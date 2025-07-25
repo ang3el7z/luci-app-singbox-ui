@@ -412,7 +412,11 @@ function createDashboardButton(section, singboxManagmentTab, singboxStatus) {
   btn.title = 'Open Sing‑Box Web UI';
   btn.inputtitle = 'Dashboard';
 
-  btn.onclick = () => window.open('http://192.168.1.1:9090/ui/', '_blank');
+  btn.onclick = () => {
+    const routerHost = window.location.hostname;
+    const dashboardUrl = `http://${routerHost}:9090/ui/`;
+    window.open(dashboardUrl, '_blank');
+  };
 }
 
 function createServiceStatusDisplay(section,singboxManagmentTab, singboxStatus) {
