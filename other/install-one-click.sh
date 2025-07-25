@@ -61,6 +61,12 @@ init_language() {
             MSG_CLEANUP_DONE="Готово! Скрипт удален."
             MSG_SSH_ERROR="Ошибка подключения к роутеру"
             MSG_RESET_COMPLETE="Сброс роутера выполнен"
+            MSG_NETWORK_CHECK="Проверка подключения к интернету..."
+            MSG_NETWORK_SUCCESS="Подключение восстановлено через %s (%d сек)"
+            MSG_NETWORK_ERROR="Не удалось восстановить подключение после %d сек"
+            MSG_WAITING_ROUTER="Ожидание восстановления связи с роутером..."
+            MSG_ROUTER_AVAILABLE="Роутер доступен через %s (%d сек)"
+            MSG_ROUTER_NOT_AVAILABLE="Роутер не доступен после %d сек"
             ;;
         *)
             MSG_INSTALL_TITLE="Install one click -> singbox+singbox-ui"
@@ -75,63 +81,74 @@ init_language() {
             MSG_CLEANUP_DONE="Done! Script removed."
             MSG_SSH_ERROR="Failed to connect to router"
             MSG_RESET_COMPLETE="Router reset complete"
+            MSG_NETWORK_CHECK="Checking internet connection..."
+            MSG_NETWORK_SUCCESS="Connection restored via %s (%d sec)"
+            MSG_NETWORK_ERROR="Failed to restore connection after %d sec"
+            MSG_WAITING_ROUTER="Waiting for router to come back online..."
+            MSG_ROUTER_NOT_AVAILABLE="Router not available after %d sec"
             ;;
     esac
 }
 
+wait_for_router() {
+    local timeout=300
+    local interval=5
+    local attempts=$((timeout/interval))
+    
+    show_progress "$MSG_WAITING_ROUTER"
+    
+    for ((i=1; i<=attempts; i++)); do
+        if ping -c 1 -W 2 "$router_ip" >/dev/null 2>&1; then
+            show_success "$MSG_ROUTER_AVAILABLE" "$router_ip" "$((i*interval))"
+            return 0
+        fi
+        sleep $interval
+    done
+    
+    show_error "$MSG_ROUTER_NOT_AVAILABLE" "$router_ip" "$timeout"
+    return 1
+}
+
 network_check() {
-    timeout=5000
-    interval=5
-    targets="223.5.5.5 180.76.76.76 77.88.8.8 1.1.1.1 8.8.8.8 9.9.9.9 94.140.14.14"
-
-    attempts=$((timeout / interval))
-    success=0
-    i=0
-
+    local timeout=100
+    local interval=5
+    local attempts=$((timeout/interval))
+    local success=0
+    
     show_progress "$MSG_NETWORK_CHECK"
-
-    while [ $i -lt $attempts ]; do
-        # Получаем текущий индекс для выбора адреса / Get current index for target selection
-        num_targets=$(echo "$targets" | wc -w)
-        index=$((i % num_targets))
-        target=$(echo "$targets" | cut -d' ' -f$((index + 1)))
-
-        if ping -c 1 -W 2 "$target" >/dev/null 2>&1; then
+    
+    for ((i=1; i<=attempts; i++)); do
+        if ping -c 1 -W 2 "8.8.8.8" >/dev/null 2>&1; then
             success=1
             break
         fi
-
         sleep $interval
-        i=$((i + 1))
     done
-
+    
     if [ $success -eq 1 ]; then
-        total_time=$((i * interval))
-        show_success "$(printf "$MSG_NETWORK_SUCCESS" "$target" "$total_time")"
+        show_success "$(printf "$MSG_NETWORK_SUCCESS" "8.8.8.8" "$((i*interval))")"
+        return 0
     else
-        show_error "$(printf "$MSG_NETWORK_ERROR" "$timeout")" >&2
-        exit 1
+        show_error "$(printf "$MSG_NETWORK_ERROR" "$timeout")"
+        return 1
     fi
 }
 
-# Функция сброса роутера / Router reset function
 reset_router() {
     show_progress "$MSG_RESETTING"
     if [ -z "$password" ]; then
-        ssh -o "StrictHostKeyChecking no" "root@$router_ip" "firstboot -y && reboot now" && {
-            show_success "$MSG_RESET_COMPLETE"  
-        } || {
+        if ! ssh -o "StrictHostKeyChecking no" "root@$router_ip" "firstboot -y && reboot now"; then
             show_error "$MSG_SSH_ERROR"
-            exit 1
-        }
+            return 1
+        fi
     else
-        sshpass -p "$password" ssh -o "StrictHostKeyChecking no" "root@$router_ip" "firstboot -y && reboot now" && {
-            show_success "$MSG_RESET_COMPLETE"
-        } || {
+        if ! sshpass -p "$password" ssh -o "StrictHostKeyChecking no" "root@$router_ip" "firstboot -y && reboot now"; then
             show_error "$MSG_SSH_ERROR"
-            exit 1
-        }
+            return 1
+        fi
     fi
+    show_success "$MSG_RESET_COMPLETE"
+    return 0
 }
 
 # Инициализация / Initialize
@@ -142,14 +159,17 @@ header
 read -p "${MSG_ROUTER_IP}" router_ip
 router_ip=${router_ip:-"192.168.1.1"}
 
-read -p "${MSG_ROUTER_PASS}" password
+read -s -p "${MSG_ROUTER_PASS}" password
 echo ""
 
 # Запрос на сброс роутера / Ask for router reset
 read -p "${MSG_RESET_ROUTER}" reset_choice
 if [[ "$reset_choice" =~ ^[Yy]$ ]]; then
-    reset_router
-    network_check
+    if reset_router; then
+        wait_for_router && network_check
+    else
+        exit 1
+    fi
 fi
 
 # Удаление старого ключа / Remove old key
