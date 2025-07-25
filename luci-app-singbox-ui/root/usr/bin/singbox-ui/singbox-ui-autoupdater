@@ -2,33 +2,50 @@
 
 UCI_OPTION="autoupdater_service_state"
 AUTOUNUPDATER_SERVICE_NAME="singbox-ui-autoupdater-service"
+TARGET_FILE="/etc/sing-box/config.json"
+INTERVAL=3600 # 1 час
 
 # Проверяем флаг UCI
-ENABLED=$(uci get singbox-ui.main.$UCI_OPTION 2>/dev/null || echo 0)
-if [ "$ENABLED" != "1" ]; then
-  logger -t $AUTOUNUPDATER_SERVICE_NAME "Autoupdater disabled via UCI config, stopping service"
-  /etc/init.d/$AUTOUNUPDATER_SERVICE_NAME stop
-  exit 0
-fi
+check_uci() {
+  ENABLED=$(uci get singbox-ui.main.$UCI_OPTION 2>/dev/null || echo 0)
+  if [ "$ENABLED" != "1" ]; then
+    logger -t $AUTOUNUPDATER_SERVICE_NAME "Autoupdater disabled via UCI config, stopping service"
+    /etc/init.d/$AUTOUNUPDATER_SERVICE_NAME stop
+    exit 0
+  fi
+}
 
 # Проверяем, работает ли singbox
-while ! pgrep singbox >/dev/null 2>&1; do
-  logger -t $AUTOUNUPDATER_SERVICE_NAME "Singbox not running, waiting..."
-  sleep 30 # подождать 30 секунд
-done
+check_singbox() {
+  while ! pgrep singbox >/dev/null 2>&1; do
+    logger -t $AUTOUNUPDATER_SERVICE_NAME "Singbox not running, waiting..."
+    sleep 30 # подождать 30 секунд
+  done
+}
 
-# Основной цикл #
+update_config() {
+  /usr/bin/singbox-ui/singbox-ui-updater /etc/sing-box/url_config.json $TARGET_FILE
+}
+
+
+
+check_uci
+check_singbox
  
-INTERVAL=3600     # 1 час
-
 while true; do
   logger -t $AUTOUNUPDATER_SERVICE_NAME "Running updater"
-  if /usr/bin/singbox-ui/singbox-ui-updater /etc/sing-box/url_config.json /etc/sing-box/config.json; then
-    logger -t $AUTOUNUPDATER_SERVICE_NAME "Update OK, reloading sing-box"
-    /etc/init.d/sing-box reload
-  else
-    logger -t $AUTOUNUPDATER_SERVICE_NAME "Update failed"
-  fi
+  RESULT=$(update_config)
+  CODE=$?
 
-  sleep "$INTERVAL"
+if [ "$CODE" = 0 ]; then
+  logger -t $AUTOUNUPDATER_SERVICE_NAME "Config updated, reloading singbox"
+  /etc/init.d/sing-box reload
+elif [ "$CODE" = 2 ]; then
+  logger -t $AUTOUNUPDATER_SERVICE_NAME "No changes in config"
+else
+  logger -t $AUTOUNUPDATER_SERVICE_NAME "Updater failed"
+fi
+
+sleep $INTERVAL
+check_singbox
 done
