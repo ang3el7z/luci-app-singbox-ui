@@ -8,7 +8,7 @@ on:
 
 jobs:
   build:
-    name: Build artifact PR ${{ github.event.pull_request.number }}
+    name: Build artifact
     runs-on: ubuntu-latest
 
     outputs:
