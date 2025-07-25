@@ -62,7 +62,6 @@ read_input() {
     else
         read -r REPLY 
     fi
-    echo
 }
 
 # Инициализация языка / Language initialization
