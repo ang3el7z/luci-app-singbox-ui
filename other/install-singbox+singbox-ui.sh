@@ -169,8 +169,9 @@ show_warning "$MSG_SINGBOX_INSTALL"
 wget -O /root/install-singbox.sh https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/install-singbox.sh && chmod 0755 /root/install-singbox.sh && LANG_CHOICE=$LANG_CHOICE sh /root/install-singbox.sh
 show_warning "$MSG_SINGBOX_RETURN"
 
+waiting 30
+
 network_check
-waiting 15
 
 if [ -z "$CONFIG_URL" ]; then
 echo ""
