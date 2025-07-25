@@ -9,6 +9,7 @@ FG_WARNING='\033[38;5;214m'
 FG_SUCCESS='\033[38;5;41m'
 FG_ERROR='\033[38;5;203m'
 RESET='\033[0m'
+FG_USER_COLOR='\033[38;5;117m'
 
 # Символы оформления / UI symbols
 SEP_CHAR="◈"
@@ -40,13 +41,27 @@ show_error() {
     echo -e "${INDENT}${CROSS} ${FG_ERROR}$1${RESET}\n"
 }
 
+show_message() {
+    echo -e "${FG_USER_COLOR}${INDENT}${ARROW} $1${RESET}\n"
+}
+
+read_input() {
+    echo -ne "${FG_USER_COLOR}${INDENT} ▷ $1${RESET} "
+    if [ -n "$2" ]; then
+        read -r "$2" 
+    else
+        read -r REPLY 
+    fi
+    echo
+}
+
 # Инициализация языка / Language initialization
 init_language() {
     if [ -z "$LANG_CHOICE" ]; then
-        echo -e "\n  ▷ Выберите язык / Select language [1/2]:"
-        echo -e "  1. Русский (Russian)"
-        echo -e "  2. English (Английский)"
-        read -p "  ▷ Ваш выбор / Your choice [1/2]: " LANG_CHOICE
+        show_message "Выберите язык / Select language [1/2]:"
+        show_message "1. Русский (Russian)"
+        show_message "2. English (Английский)"
+        read_input " Ваш выбор / Your choice [1/2]: " LANG_CHOICE
     fi
 
     case ${LANG_CHOICE:-2} in
@@ -124,13 +139,12 @@ fi
 separator
 
 # Выбор версии для установки / Version selection
-echo
-echo "$MSG_CHOOSE_VERSION"
-echo "$MSG_OPTION_1"
-echo "$MSG_OPTION_2"
-echo "$MSG_OPTION_3"
-echo "$MSG_OPTION_4"
-read -p "▷ " VERSION_CHOICE
+show_message "$MSG_CHOOSE_VERSION"
+show_message "$MSG_OPTION_1"
+show_message "$MSG_OPTION_2"
+show_message "$MSG_OPTION_3"
+show_message "$MSG_OPTION_4"
+read_input " " VERSION_CHOICE
 
 # Ссылки на файлы для каждой версии / URLs for each version
 URL_LATEST="https://github.com/ang3el7z/luci-app-singbox-ui/releases/latest/download/luci-app-singbox-ui.ipk"
@@ -181,16 +195,13 @@ case "$VERSION_CHOICE" in
         fi
 
         i=1
-        echo
         for file in $RUNNER_FILES; do
-            echo "  [$i] $file"
+            show_message "  [$i] $file"
             eval RUNNER_$i="'$file'"
             i=$((i+1))
         done
 
-        echo
-        printf "  ▷ "
-        read choice
+        read_input " " choice
 
         eval SELECTED_RUNNER_FILE=\$RUNNER_$choice
 
