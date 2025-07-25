@@ -19,7 +19,7 @@ INDENT="  "
 
 # Функция разделителя / Separator function
 separator() {
-    echo -e "${WHITE}                -------------------------------------                ${RESET}"
+    echo -e "${FG_MAIN}                -------------------------------------                ${RESET}"
 }
 
 header() {
