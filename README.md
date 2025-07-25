@@ -1,7 +1,8 @@
 # luci-app-singbox-ui
-Web interface for Sing-Box on OpenWrt 23/24
 
 [🇷🇺 Читать на русском](./README.ru.md)
+
+Web interface for Sing-Box on OpenWrt 23/24
 
 **luci-app-singbox-ui** is a simple, personal web interface for managing the Sing-Box service on OpenWRT.
 
@@ -12,6 +13,8 @@ Web interface for Sing-Box on OpenWrt 23/24
 > You use all provided content **at your own risk**.  
 > The author **does not encourage** any commercial or malicious use.  
 > If you do not agree with these terms, **delete all files** obtained from this repository.
+
+# [Screenshots](./preview.md)
 
 ## Features
 - Control the Sing-Box service (start/stop/restart)
@@ -38,16 +41,23 @@ wget -O /root/install-singbox-ui.sh https://raw.githubusercontent.com/ang3el7z/l
 wget -O /root/install-singbox.sh https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/install-singbox.sh && chmod 0755 /root/install-singbox.sh && sh /root/install-singbox.sh
 ```
 
-# [Screenshot](./preview.md)
-
 # other helps
- - Ssh-keygen -R 192.168.1.1
- - Connect router -> ssh root@192.168.1.1
- - REFRESH OPENWRT (Fix visibility plugin) -> CNTRL + SHIFT + I
- - [openwrt-template-original-openwrt_2.11.json](https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/file/openwrt-template-original-openwrt_2.11.json)
- - [openwrt-template-bot-openwrt_2.11.json](https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/file/openwrt-template-bot-openwrt_2.11.json)
- - ["tun" interface with "auto_route" option limited performance on routers](https://github.com/ang3el7z/luci-app-singbox-ui/issues/1)
- - lite version Singbox-ui v1.2.1
+ - ssh keygen clear
+```shell
+ssh-keygen -R 192.168.1.1
+```
+ - connect router
+```shell
+ssh root@192.168.1.1
+```
+ - refresh openwrt (fix visibility plugin) -> `Cntrl + Shift + I`
+ - [`openwrt template original 2.11`](https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/file/openwrt-template-original-openwrt_2.11.json)
+ - [`openwrt template bot 2.11`](https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/file/openwrt-template-bot-openwrt_2.11.json)
+ - [`fix low "tun mode" speed`](https://github.com/ang3el7z/luci-app-singbox-ui/issues/1)
+ - install one click
+```shell
+hash -r && rm -f ./install-one-click.sh && wget -O install-one-click.sh https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/install-one-click.sh && chmod +x install-one-click.sh && ./install-one-click.sh
+```
 
 # Thanks
 [@strayge](https://github.com/strayge)

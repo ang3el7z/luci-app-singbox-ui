@@ -1,9 +1,10 @@
 # luci-app-singbox-ui
-Веб-интерфейс для Sing-Box на OpenWrt 23/24
 
 [🇬🇧 Read in English](./README.md)
 
-**luci-app-singbox-ui** — это простая панель управления Sing-Box для OpenWRT.
+Веб-интерфейс для Sing-Box на OpenWrt 23/24
+
+**luci-app-singbox-ui** — это простой персональный веб-интерфейс для управления сервисом Sing-Box на OpenWRT.
 
 > ⚠️ **Предупреждение**
 >
@@ -13,18 +14,19 @@
 > Автор **не поощряет** коммерческое или вредоносное использование.  
 > Если вы **не согласны** с этими условиями, удалите все полученные из репозитория материалы.
 
-## Возможности
-- Управление сервисом Sing-Box (запуск/остановка/перезапуск)
-- Добавление подписок через URL или вручную (JSON)
-- Хранение и редактирование нескольких конфигов
-- Сервис автоматического обновления
-- Сервис поддержка здоровья автообновления и sing-box
-- Сервис низкой памяти (перезапуск sing-box)
+# [Скриншоты](./preview.md)
 
+## Возможности
+- Управление сервисом Sing-Box (старт/стоп/перезапуск)
+- Добавление подписок через URL или вставка JSON вручную
+- Хранение и редактирование нескольких конфигураций в браузере
+- Автоматическое обновление сервиса
+- Автоматическая проверка состояния сервиса и Sing-Box
+- Перезапуск Sing-Box при нехватке памяти
 
 # Установка
 
-## Установить singbox (tun mode) + singbox-ui
+## Установить singbox (tun режим) + singbox-ui
 ```shell
 wget -O /root/install-singbox+singbox-ui.sh https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/install-singbox+singbox-ui.sh && chmod 0755 /root/install-singbox+singbox-ui.sh && sh /root/install-singbox+singbox-ui.sh
 ```
@@ -34,21 +36,28 @@ wget -O /root/install-singbox+singbox-ui.sh https://raw.githubusercontent.com/an
 wget -O /root/install-singbox-ui.sh https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/install-singbox-ui.sh && chmod 0755 /root/install-singbox-ui.sh && sh /root/install-singbox-ui.sh
 ```
 
-## Установить singbox (tun mode)
+## Установить singbox (tun режим)
 ```shell
 wget -O /root/install-singbox.sh https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/install-singbox.sh && chmod 0755 /root/install-singbox.sh && sh /root/install-singbox.sh
 ```
 
-# [Скриншот](./preview.md)
-
 # Дополнительно
- - ssh-keygen -R 192.168.1.1
- - Подключение к роутеру -> ssh root@192.168.1.1
- - Обновить OPENWRT (Fix visibility plugin) -> CNTRL + SHIFT + I
- - [openwrt-template-original-openwrt_2.11.json](https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/file/openwrt-template-original-openwrt_2.11.json)
- - [openwrt-template-bot-openwrt_2.11.json](https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/file/openwrt-template-bot-openwrt_2.11.json)
- - ["tun" interface выдает низкую скорость](https://github.com/ang3el7z/luci-app-singbox-ui/issues/1)
- - лайт версия Singbox-ui v1.2.1
+ - очистить ssh keygen 
+```shell
+ssh-keygen -R 192.168.1.1
+```
+ - подключение к роутеру
+```shell
+ssh root@192.168.1.1
+```
+ - обновить openwrt (исправления видиммости плагина) -> `Cntrl + Shift + I`
+ - [`openwrt template original 2.11`](https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/file/openwrt-template-original-openwrt_2.11.json)
+ - [`openwrt template bot 2.11`](https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/file/openwrt-template-bot-openwrt_2.11.json)
+ - [`исправление низкой скорости в "tun режиме"`](https://github.com/ang3el7z/luci-app-singbox-ui/issues/1)
+ - установить в одно нажатие
+```shell
+hash -r && rm -f ./install-one-click.sh && wget -O install-one-click.sh https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/install-one-click.sh && chmod +x install-one-click.sh && ./install-one-click.sh
+```
 
 # Спасибо
 [@strayge](https://github.com/strayge)
