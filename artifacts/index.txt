@@ -1,3 +1,4 @@
 luci-app-singbox-ui-pr-34-set-version-workflows-20250725-0011.ipk
 luci-app-singbox-ui-pr-35-test-new-version-ci-20250725-0024.ipk
 luci-app-singbox-ui-pr-36-fix-runner-build-from-pull-request-testing-20250725-0108.ipk
+luci-app-singbox-ui-pr-37-fix-fix-memdoc-dashboard-20250725-1345.ipk
