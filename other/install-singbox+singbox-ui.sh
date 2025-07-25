@@ -66,7 +66,7 @@ init_language() {
         MSG_NETWORK_ERROR="Сеть не доступна после %s сек!"
         MSG_SINGBOX_INSTALL="Переход к установке singbox..."
         MSG_SINGBOX_RETURN="Вернулись к основному скрипту"
-        MSG_CONFIG_PROMPT="▷ URL подписки на конфигурацию (Enter для ручного ввода): "
+        MSG_CONFIG_PROMPT="URL подписки на конфигурацию (Enter для ручного ввода)"
         MSG_CONFIG_LOADING="Загрузка конфигурации с %s (Попытка %s из %s)"
         MSG_CONFIG_SUCCESS="Конфигурация успешно загружена"
         MSG_CONFIG_ERROR="Ошибка загрузки: %s"
@@ -95,7 +95,7 @@ init_language() {
         MSG_NETWORK_ERROR="Network is not available after %s sec!"
         MSG_SINGBOX_INSTALL="Proceeding to singbox installation..."
         MSG_SINGBOX_RETURN="Returned to main script"
-        MSG_CONFIG_PROMPT="▷ Configuration subscription URL (Enter for manual input): "
+        MSG_CONFIG_PROMPT="Configuration subscription URL (Enter for manual input)"
         MSG_CONFIG_LOADING="Loading configuration from %s (Attempt %s of %s)"
         MSG_CONFIG_SUCCESS="Configuration loaded successfully"
         MSG_CONFIG_ERROR="Loading error: %s"
@@ -167,7 +167,9 @@ network_check
 sleep 15
 
 if [ -z "$CONFIG_URL" ]; then
-    read -p "$(echo -e "  ${FG_ACCENT}$MSG_CONFIG_PROMPT ${RESET}")" CONFIG_URL
+echo
+echo "$MSG_CONFIG_PROMPT"
+read -p "▷ " CONFIG_URL
 fi
 
 # Проверяем, что URL не пустой / Check if URL is not empty
@@ -218,8 +220,8 @@ fi
 if [ "$AUTO_CONFIG_SUCCESS" -eq 0 ]; then
     while true; do
         separator
-        read -p "$(echo -e "  ${FG_ACCENT}$MSG_EDIT_COMPLETE ${RESET}")" yn
-        case ${yn:-n} in
+        read -p "${MSG_EDIT_COMPLETE}" edit_choice
+        case "$edit_choice" in
             [Yy]* )
                 show_success "$MSG_EDIT_SUCCESS"
                 break
