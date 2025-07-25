@@ -264,7 +264,7 @@ service sing-box start
 show_success "$MSG_SERVICE_STARTED"
  
 separator
-echo -e "${BG_ACCENT}${FG_MAIN} $MSG_INSTALL_COMPLETE ${RESET}"
+show_success "$MSG_INSTALL_COMPLETE"
 separator
 
 show_progress "$MSG_CLEANUP"
