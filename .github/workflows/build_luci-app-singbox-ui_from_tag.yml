@@ -8,6 +8,7 @@ on:
 
 jobs:
   build:
+    name: Build release TAG ${{ github.ref_name }}
     runs-on: ubuntu-latest
 
     steps:
