@@ -40,13 +40,6 @@ show_error() {
     echo -e "${INDENT}${CROSS} ${FG_ERROR}$1${RESET}\n"
 }
 
-waiting() {
-    local interval="${1:-30}"
-    show_progress "$(printf "$MSG_WAITING" "$interval")"
-    sleep "$interval"
-}
-
-
 # Инициализация языка / Language initialization
 init_language() {
     echo -e "\n  ▷ Выберите язык / Select language [1/2]:"
@@ -102,6 +95,11 @@ init_language() {
     esac
 }
 
+waiting() {
+    local interval="${1:-30}"
+    show_progress "$(printf "$MSG_WAITING" "$interval")"
+    sleep "$interval"
+}
 wait_for_router() {
     local timeout=300
     local interval=5
