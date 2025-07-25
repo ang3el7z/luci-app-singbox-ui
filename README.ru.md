@@ -5,6 +5,14 @@
 
 **luci-app-singbox-ui** — это простая панель управления Sing-Box для OpenWRT.
 
+> ⚠️ **Warning**
+>
+> This material is provided strictly for **educational and research purposes only**.  
+> The author **is not responsible** for any distribution, misuse, damage to devices, or violations caused by using this software.  
+> You use all provided content **at your own risk**.  
+> The author **does not encourage** any commercial or malicious use.  
+> If you do not agree with these terms, **delete all files** obtained from this repository.
+
 ## Возможности
 - Управление сервисом Sing-Box (запуск/остановка/перезапуск)
 - Добавление подписок через URL или вручную (JSON)
