@@ -139,7 +139,7 @@ case "$VERSION_CHOICE" in
         ;;
     4)
         # Динамический выбор из списка runner сборок
-        RUNNER_BASE_URL="https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/runner-ipk"
+        RUNNER_BASE_URL="https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/artifacts"
         INDEX_URL="$RUNNER_BASE_URL/index.txt"
 
         show_progress "$MSG_SELECT_RUNNER"
