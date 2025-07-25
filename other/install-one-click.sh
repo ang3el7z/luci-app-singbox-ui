@@ -66,7 +66,8 @@ init_language() {
             MSG_NETWORK_ERROR="Не удалось восстановить подключение после %d сек"
             MSG_WAITING_ROUTER="Ожидание восстановления связи с роутером..."
             MSG_ROUTER_AVAILABLE="Роутер доступен через %s (%d сек)"
-            MSG_ROUTER_NOT_AVAILABLE="Роутер не доступен после %d сек"
+            MSG_WAITING="Ожидание %d сек"
+            MSG_ROUTER_NOT_AVAILABLE="Роутер %s не доступен после %d сек"
             ;;
         *)
             MSG_INSTALL_TITLE="Install one click -> singbox+singbox-ui"
@@ -85,9 +86,15 @@ init_language() {
             MSG_NETWORK_SUCCESS="Connection restored via %s (%d sec)"
             MSG_NETWORK_ERROR="Failed to restore connection after %d sec"
             MSG_WAITING_ROUTER="Waiting for router to come back online..."
-            MSG_ROUTER_NOT_AVAILABLE="Router not available after %d sec"
+            MSG_ROUTER_AVAILABLE="Router available via %s (%d sec)"
+            MSG_WAITING="Waiting %d sec"
+            MSG_ROUTER_NOT_AVAILABLE="Router %s not available after %d sec"
             ;;
     esac
+}
+waiting(){
+    local timeout=60
+    show_progress "$(printf "$MSG_WAITING" "$timeout")"
 }
 
 wait_for_router() {
@@ -99,13 +106,13 @@ wait_for_router() {
     
     for ((i=1; i<=attempts; i++)); do
         if ping -c 1 -W 2 "$router_ip" >/dev/null 2>&1; then
-            show_success "$MSG_ROUTER_AVAILABLE" "$router_ip" "$((i*interval))"
+            show_success "$(printf "$MSG_ROUTER_AVAILABLE" "$router_ip" "$((i*interval))")"
             return 0
         fi
         sleep $interval
     done
     
-    show_error "$MSG_ROUTER_NOT_AVAILABLE" "$router_ip" "$timeout"
+    show_error "$(printf "$MSG_ROUTER_NOT_AVAILABLE" "$router_ip" "$timeout")"
     return 1
 }
 
@@ -166,7 +173,7 @@ echo ""
 read -p "${MSG_RESET_ROUTER}" reset_choice
 if [[ "$reset_choice" =~ ^[Yy]$ ]]; then
     if reset_router; then
-        sleep 60 && wait_for_router && network_check
+        waiting && wait_for_router && network_check
     else
         exit 1
     fi
