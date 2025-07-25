@@ -3,37 +3,39 @@
 UCI_OPTION="health_autoupdater_service_state"
 HEALTH_AUTOUNUPDATER_SERVICE_NAME="singbox-ui-health-autoupdater-service"
 AUTOUNUPDATER_SERVICE_NAME="singbox-ui-autoupdater-service"
-
-# Проверяем флаг UCI
-ENABLED=$(uci get singbox-ui.main.$UCI_OPTION 2>/dev/null || echo 0)
-if [ "$ENABLED" != "1" ]; then
-  logger -t $HEALTH_AUTOUNUPDATER_SERVICE_NAME "Health autoupdater disabled via UCI config, stopping service"
-  /etc/init.d/$HEALTH_AUTOUNUPDATER_SERVICE_NAME stop
-  exit 0
-fi
-
-# Проверяем, работает ли singbox-ui-autoupdater-service и если да, то выключаемся
-if pgrep $AUTOUNUPDATER_SERVICE_NAME >/dev/null 2>&1; then
-  logger -t $HEALTH_AUTOUNUPDATER_SERVICE_NAME "$AUTOUNUPDATER_SERVICE_NAME running, stopping $HEALTH_AUTOUNUPDATER_SERVICE_NAME service"
-  /etc/init.d/$HEALTH_AUTOUNUPDATER_SERVICE_NAME stop
-  exit 0
-fi
-
-# Проверяем, работает ли singbox
-while ! pgrep singbox >/dev/null 2>&1; do
-  logger -t $HEALTH_AUTOUNUPDATER_SERVICE_NAME "Singbox not running, waiting..."
-  sleep 30  # подождать 30 секунд
-done
-
-# Основной цикл #
-
-ERROR_FLAG="/tmp/singbox-ui-health-autoupdater-error.flag"
-INTERVAL_HEALTH=90     # 1.5 минута
-CHECKS_TO_UPDATE=60    # Кол-во успешных health check перед обновлением
-MAX_FAILS=2            # Максимум подряд неудачных health check перед остановкой
-
 CONFIG_URL=$(cat /etc/sing-box/url_config.json)
 TARGET_FILE="/etc/sing-box/config.json"
+ERROR_FLAG="/tmp/singbox-ui-health-autoupdater-error.flag"
+INTERVAL_HEALTH=90 # 1.5 минута
+CHECKS_TO_UPDATE=60 # Кол-во успешных health check перед обновлением
+MAX_FAILS=2 # Максимум подряд неудачных health check перед остановкой
+
+# Проверяем флаг UCI
+check_uci() {
+  ENABLED=$(uci get singbox-ui.main.$UCI_OPTION 2>/dev/null || echo 0)
+  if [ "$ENABLED" != "1" ]; then
+    logger -t $HEALTH_AUTOUNUPDATER_SERVICE_NAME "Health autoupdater disabled via UCI config, stopping service"
+    /etc/init.d/$HEALTH_AUTOUNUPDATER_SERVICE_NAME stop
+    exit 0
+  fi
+}
+
+# Проверяем, работает ли singbox-ui-autoupdater-service и если да, то выключаемся
+check_autoupdater_service() {
+  if pgrep $AUTOUNUPDATER_SERVICE_NAME >/dev/null 2>&1; then
+    logger -t $HEALTH_AUTOUNUPDATER_SERVICE_NAME "$AUTOUNUPDATER_SERVICE_NAME running, stopping $HEALTH_AUTOUNUPDATER_SERVICE_NAME service"
+    /etc/init.d/$HEALTH_AUTOUNUPDATER_SERVICE_NAME stop
+    exit 0
+  fi
+}
+
+# Проверяем, работает ли singbox
+check_singbox() {
+  while ! pgrep singbox >/dev/null 2>&1; do
+    logger -t $HEALTH_AUTOUNUPDATER_SERVICE_NAME "Singbox not running, waiting..."
+    sleep 30  # подождать 30 секунд
+  done
+}
 
 check_server() {
   code=$(curl -s -o /dev/null -w "%{http_code}" -m 5 "$CONFIG_URL")
@@ -43,6 +45,12 @@ check_server() {
 update_config() {
   /usr/bin/singbox-ui/singbox-ui-updater /etc/sing-box/url_config.json $TARGET_FILE
 }
+
+
+
+check_uci
+check_autoupdater_service
+check_singbox
 
 success_counter=0
 fail_counter=0
@@ -102,4 +110,5 @@ while true; do
   fi
 
   sleep $INTERVAL_HEALTH
+  check_singbox
 done
