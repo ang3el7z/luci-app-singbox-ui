@@ -1,10 +1,45 @@
 #!/bin/sh
 
-rm -f /var/luci-indexcache*
-rm -f /tmp/luci-indexcache*
+APP_TAG="singbox-ui"
+TIMESTAMP="$(date '+%Y-%m-%d %H:%M:%S')"
 
-[ -x /etc/init.d/rpcd ] && /etc/init.d/rpcd reload
+LOG=""
+log_append() {
+    LOG="$LOG
+[$(date '+%H:%M:%S')] $*"
+}
 
-logger -t "singbox-ui" "$timestamp uci-defaults script executed"
+log_append "uci-defaults script started"
+
+# Удаление кэша LuCI
+rm -f /var/luci-indexcache* /tmp/luci-indexcache* 2>/dev/null
+find /tmp -name "luci-*cache*" -exec rm -f {} \; 2>/dev/null && \
+    log_append "LuCI cache cleared"
+
+# Удаление кэшей uhttpd
+rm -f /var/lib/uhttpd* 2>/dev/null && \
+    log_append "uhttpd cache removed"
+
+# Перезапуск rpcd
+[ -x /etc/init.d/rpcd ] && /etc/init.d/rpcd restart && \
+    log_append "rpcd restarted"
+
+# Перезапуск uhttpd
+[ -x /etc/init.d/uhttpd ] && /etc/init.d/uhttpd restart && \
+    log_append "uhttpd restarted"
+
+# Обновление dnsmasq
+killall -HUP dnsmasq 2>/dev/null && \
+    log_append "dnsmasq reloaded"
+
+# Права на статику
+STATIC_DIR="/www/luci-static/singbox-ui"
+[ -d "$STATIC_DIR" ] && chmod 755 "$STATIC_DIR" && \
+    log_append "Permissions set for $STATIC_DIR"
+
+log_append "uci-defaults script finished"
+
+# Отправка всего лога одной пачкой
+echo "$LOG" | logger -t "$APP_TAG" "init: $TIMESTAMP"
 
 exit 0
