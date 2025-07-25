@@ -10,7 +10,7 @@ Web interface for Sing-Box on OpenWrt 23/24
 - Add subscriptions via URL or paste JSON manually
 - Store and edit multiple configs in the browser
 - Service autoupdate
-- Service health autoupdate 
+- Service health autoupdate && sing-Box
 - Service memory low (restat sing-box)
 
 # Installation
