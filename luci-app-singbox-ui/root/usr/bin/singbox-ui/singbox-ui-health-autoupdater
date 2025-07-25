@@ -48,6 +48,7 @@ update_config() {
 
 
 
+logger -t $HEALTH_AUTOUNUPDATER_SERVICE_NAME "Starting service"
 check_uci
 check_autoupdater_service
 check_singbox

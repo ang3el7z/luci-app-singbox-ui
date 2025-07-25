@@ -29,6 +29,7 @@ update_config() {
 
 
 
+logger -t $AUTOUNUPDATER_SERVICE_NAME "Starting service"
 check_uci
 check_singbox
  
