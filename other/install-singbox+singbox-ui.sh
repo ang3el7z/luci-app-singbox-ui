@@ -166,7 +166,8 @@ show_warning "$MSG_SINGBOX_RETURN"
 network_check
 
 sleep 15
-read -p "$(echo -e "  ${FG_ACCENT}$MSG_CONFIG_PROMPT ${RESET}")" CONFIG_URL
+#read -p "$(echo -e "  ${FG_ACCENT}$MSG_CONFIG_PROMPT ${RESET}")" CONFIG_URL
+read -p "$MSG_CONFIG_PROMPT" CONFIG_URL
 
 # Проверяем, что URL не пустой / Check if URL is not empty
 if [ -n "$CONFIG_URL" ]; then
