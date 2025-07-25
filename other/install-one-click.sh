@@ -135,15 +135,18 @@ network_check() {
 }
 
 reset_router() {
+    local timeout=30
     show_progress "$MSG_RESETTING"
     if [ -z "$password" ]; then
         if ! ssh -o "StrictHostKeyChecking no" "root@$router_ip" "firstboot -y && reboot now"; then
             show_error "$MSG_SSH_ERROR"
+            sleep $timeout
             return 1
         fi
     else
         if ! sshpass -p "$password" ssh -o "StrictHostKeyChecking no" "root@$router_ip" "firstboot -y && reboot now"; then
             show_error "$MSG_SSH_ERROR"
+            sleep $timeout
             return 1
         fi
     fi
