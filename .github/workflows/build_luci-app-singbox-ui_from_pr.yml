@@ -8,7 +8,7 @@ on:
 
 jobs:
   build:
-    name: Build .ipk from PR
+    name: Build artifact PR ${{ github.event.pull_request.number }}
     runs-on: ubuntu-latest
 
     outputs:
