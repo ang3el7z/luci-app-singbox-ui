@@ -169,7 +169,8 @@ header
 read -p "${MSG_ROUTER_IP}" router_ip
 router_ip=${router_ip:-"192.168.1.1"}
 read -s -p "${MSG_ROUTER_PASS}" password
-read -s -p "${MSG_CONFIG_PROMPT}" CONFIG_URL
+echo ""
+read -p "${MSG_CONFIG_PROMPT}" CONFIG_URL
 echo ""
 
 # Запрос на сброс роутера / Ask for router reset
