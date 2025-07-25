@@ -40,13 +40,6 @@ show_error() {
     echo -e "${INDENT}${CROSS} ${FG_ERROR}$1${RESET}\n"
 }
 
-waiting() {
-    local interval="${1:-30}"
-    show_progress "$(printf "$MSG_WAITING" "$interval")"
-    sleep "$interval"
-}
-
-
 # Инициализация языка / Language initialization
 init_language() {
     if [ -z "$LANG_CHOICE" ]; then
@@ -105,6 +98,12 @@ init_language() {
             MSG_DOWNLOAD_ERROR="Download failed. Installation aborted."
             ;;
     esac
+}
+
+waiting() {
+    local interval="${1:-30}"
+    show_progress "$(printf "$MSG_WAITING" "$interval")"
+    sleep "$interval"
 }
 
 # Запрашиваем язык / Ask for language
