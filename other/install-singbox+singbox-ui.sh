@@ -177,21 +177,22 @@ echo ""
 read -p "${MSG_CONFIG_PROMPT}" CONFIG_URL
 fi
 
+# Добавьте в начало скрипта (перед проверкой CONFIG_URL)
+AUTO_CONFIG_SUCCESS=0  # Инициализация переменной
+
 # Проверяем, что URL не пустой / Check if URL is not empty
 if [ -n "$CONFIG_URL" ]; then
-    MAX_ATTEMPTS=3  # Максимальное количество попыток загрузки / Max download attempts
-    ATTEMPT=1  # Счетчик попыток / Attempt counter
-    SUCCESS=0  # Флаг успешной загрузки / Success flag
+    MAX_ATTEMPTS=3
+    ATTEMPT=1
+    SUCCESS=0
 
     # Пытаемся загрузить конфигурацию / Try to load configuration
     while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
         show_progress "$(printf "$MSG_CONFIG_LOADING" "$CONFIG_URL" "$ATTEMPT" "$MAX_ATTEMPTS")"
-        RAW_JSON=$(curl -fsS "$CONFIG_URL" 2>&1)
         
-        if [ $? -eq 0 ]; then
-            FORMATTED_JSON=$(echo "$RAW_JSON" | jq '.' 2>/dev/null)
-            
-            if [ $? -eq 0 ]; then
+        # Улучшенная загрузка и проверка JSON / Improved JSON loading and validation
+        if RAW_JSON=$(curl -fsS "$CONFIG_URL" 2>/dev/null) && [ -n "$RAW_JSON" ]; then
+            if FORMATTED_JSON=$(echo "$RAW_JSON" | jq -e '.' 2>/dev/null); then
                 echo "$FORMATTED_JSON" > /etc/sing-box/config.json
                 show_success "$MSG_CONFIG_SUCCESS"
                 AUTO_CONFIG_SUCCESS=1
@@ -201,7 +202,7 @@ if [ -n "$CONFIG_URL" ]; then
                 show_error "$MSG_FORMAT_ERROR"
             fi
         else
-            show_error "$(printf "$MSG_CONFIG_ERROR" "${RAW_JSON}")"
+            show_error "$(printf "$MSG_CONFIG_ERROR" "${RAW_JSON:-"Unknown error"}")"
         fi
 
         if [ $ATTEMPT -lt $MAX_ATTEMPTS ]; then
@@ -214,25 +215,37 @@ if [ -n "$CONFIG_URL" ]; then
 
     if [ $SUCCESS -eq 0 ]; then
         show_warning "$MSG_MANUAL_CONFIG"
-        nano /etc/sing-box/config.json
+        export TERM=xterm
+        nano /etc/sing-box/config.json || {
+            show_error "Failed to open editor. Please check your terminal settings."
+            exit 1
+        }
     fi
 else
     show_warning "$MSG_MANUAL_CONFIG"
-    nano /etc/sing-box/config.json
+    export TERM=xterm
+    nano /etc/sing-box/config.json || {
+        show_error "Failed to open editor. Please check your terminal settings."
+        exit 1
+    }
 fi
 
 # Проверка ручной конфигурации / Manual configuration check
-if [ "$AUTO_CONFIG_SUCCESS" -eq 0 ]; then
+if [ "$AUTO_CONFIG_SUCCESS" -ne 1 ]; then
     while true; do
         separator
-        read -p "${MSG_EDIT_COMPLETE}" edit_choice
-        case "$edit_choice" in
+        read -p "${MSG_EDIT_COMPLETE} (Y/n) " edit_choice
+        case "${edit_choice:-Y}" in  # По умолчанию Y если ввод пустой / Default to Y if input is empty
             [Yy]* )
                 show_success "$MSG_EDIT_SUCCESS"
                 break
                 ;;
             [Nn]* )
-                nano /etc/sing-box/config.json
+                export TERM=xterm
+                nano /etc/sing-box/config.json || {
+                    show_error "Failed to open editor. Please check your terminal settings."
+                    continue
+                }
                 ;;
             * )
                 show_error "$MSG_INVALID_INPUT"
