@@ -122,27 +122,37 @@ wait_for_router() {
 }
 
 network_check() {
-    local timeout=100
-    local interval=5
-    local attempts=$((timeout/interval))
-    local success=0
-    
+    timeout=200
+    interval=5
+    targets="223.5.5.5 180.76.76.76 77.88.8.8 1.1.1.1 8.8.8.8 9.9.9.9 94.140.14.14"
+
+    attempts=$((timeout / interval))
+    success=0
+    i=0
+
     show_progress "$MSG_NETWORK_CHECK"
-    
-    for ((i=1; i<=attempts; i++)); do
-        if ping -c 1 -W 2 "8.8.8.8" >/dev/null 2>&1; then
+
+    while [ $i -lt $attempts ]; do
+        # Получаем текущий индекс для выбора адреса / Get current index for target selection
+        num_targets=$(echo "$targets" | wc -w)
+        index=$((i % num_targets))
+        target=$(echo "$targets" | cut -d' ' -f$((index + 1)))
+
+        if ping -c 1 -W 2 "$target" >/dev/null 2>&1; then
             success=1
             break
         fi
-        sleep $interval
+
+        waiting $interval
+        i=$((i + 1))
     done
-    
+
     if [ $success -eq 1 ]; then
-        show_success "$(printf "$MSG_NETWORK_SUCCESS" "8.8.8.8" "$((i*interval))")"
-        return 0
+        total_time=$((i * interval))
+        show_success "$(printf "$MSG_NETWORK_SUCCESS" "$target" "$total_time")"
     else
-        show_error "$(printf "$MSG_NETWORK_ERROR" "$timeout")"
-        return 1
+        show_error "$(printf "$MSG_NETWORK_ERROR" "$timeout")" >&2
+        exit 1
     fi
 }
 
