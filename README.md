@@ -5,6 +5,14 @@ Web interface for Sing-Box on OpenWrt 23/24
 
 **luci-app-singbox-ui** is a simple, personal web interface for managing the Sing-Box service on OpenWRT.
 
+> ⚠️ **Warning**
+>
+> This material is provided strictly for **educational and research purposes only**.  
+> The author **is not responsible** for any distribution, misuse, damage to devices, or violations caused by using this software.  
+> You use all provided content **at your own risk**.  
+> The author **does not encourage** any commercial or malicious use.  
+> If you do not agree with these terms, **delete all files** obtained from this repository.
+
 ## Features
 - Control the Sing-Box service (start/stop/restart)
 - Add subscriptions via URL or paste JSON manually
