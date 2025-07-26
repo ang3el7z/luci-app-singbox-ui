@@ -132,7 +132,7 @@ header
 # Обновление репозиториев и установка зависимостей
 # Update repositories and install dependencies
 show_progress "$MSG_UPDATE_PKGS"
-opkg update && opkg install openssh-sftp-server nano curl jq
+opkg update && opkg install openssh-sftp-server curl jq && (opkg install nano || opkg install nano-full)
 [ $? -eq 0 ] && show_success "$MSG_DEPS_SUCCESS" || show_error "$MSG_DEPS_ERROR"
 separator
 
