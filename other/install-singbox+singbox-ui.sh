@@ -198,6 +198,8 @@ network_check() {
 init_language
 header
 
+update_pkgs
+
 # Установка singbox / Install singbox
 separator
 show_warning "$MSG_SINGBOX_INSTALL"
