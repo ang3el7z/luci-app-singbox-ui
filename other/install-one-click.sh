@@ -169,7 +169,6 @@ network_check() {
             break
         fi
 
-        waiting $interval
         i=$((i + 1))
     done
 

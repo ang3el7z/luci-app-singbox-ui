@@ -181,8 +181,7 @@ network_check() {
             success=1
             break
         fi
-
-        waiting $interval
+        
         i=$((i + 1))
     done
 
