@@ -14,7 +14,7 @@ FG_USER_COLOR='\033[38;5;117m'
 # Символы оформления / UI symbols
 SEP_CHAR="◈"
 ARROW="▸"
-ARROW_CLEAR="▷"
+ARROW_CLEAR=">"
 CHECK="✓"
 CROSS="✗"
 INDENT="  "
