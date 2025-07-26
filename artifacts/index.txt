@@ -4,3 +4,4 @@ luci-app-singbox-ui-pr-36-fix-runner-build-from-pull-request-testing-20250725-01
 luci-app-singbox-ui-pr-37-fix-fix-memdoc-dashboard-20250725-1345.ipk
 luci-app-singbox-ui-pr-38-edit-50-luci-20250725-1505.ipk
 luci-app-singbox-ui-pr-41-fix-deps-20250726-1938.ipk
+luci-app-singbox-ui-pr-41-fix-deps-20250726-1941.ipk
