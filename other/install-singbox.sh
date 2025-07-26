@@ -14,7 +14,7 @@ FG_USER_COLOR='\033[38;5;117m'
 # Символы оформления / UI symbols
 SEP_CHAR="◈"
 ARROW="▸"
-ARROW_CLEAR="▷"
+ARROW_CLEAR=">"
 CHECK="✓"
 CROSS="✗"
 INDENT="  "
@@ -73,9 +73,9 @@ init_language() {
         1)
             # Русские тексты / Russian texts
             MSG_INSTALL_TITLE="Установка и настройка sing-box"
-            MSG_UPDATE_PKGS="Обновление пакетов и установка зависимостей..."
-            MSG_DEPS_SUCCESS="Зависимости успешно установлены"
-            MSG_DEPS_ERROR="Ошибка установки зависимостей"
+            MSG_UPDATE_PKGS="Обновление репозиториев..."
+            MSG_PKGS_SUCCESS="Репозитории успешно обновлены"
+            MSG_PKGS_ERROR="Ошибка обновления репозиториев"
             MSG_INSTALL_SINGBOX="Установка последней версии sing-box..."
             MSG_INSTALL_SUCCESS="Sing-box успешно установлен"
             MSG_INSTALL_ERROR="Ошибка установки sing-box"
@@ -97,8 +97,8 @@ init_language() {
             # Английские тексты / English texts
             MSG_INSTALL_TITLE="Sing-box installation and configuration"
             MSG_UPDATE_PKGS="Updating packages and installing dependencies..."
-            MSG_DEPS_SUCCESS="Dependencies installed successfully"
-            MSG_DEPS_ERROR="Error installing dependencies"
+            MSG_PKGS_SUCCESS="Packages updated successfully"
+            MSG_PKGS_ERROR="Error updating packages"
             MSG_INSTALL_SINGBOX="Installing latest sing-box version..."
             MSG_INSTALL_SUCCESS="Sing-box installed successfully"
             MSG_INSTALL_ERROR="Error installing sing-box"
@@ -125,16 +125,25 @@ waiting() {
     sleep "$interval"
 }
 
+# Обновление репозиториев / Update repos
+update_pkgs() {
+    show_progress "$MSG_UPDATE_PKGS"
+    opkg update
+    if [ $? -eq 0 ]; then
+        show_success "$MSG_PKGS_SUCCESS"
+        separator
+    else
+        show_error "$MSG_PKGS_ERROR"
+        separator
+        exit 1
+    fi
+}
+
 # Инициализация языка / Initialize language
 init_language
 header
 
-# Обновление репозиториев и установка зависимостей
-# Update repositories and install dependencies
-show_progress "$MSG_UPDATE_PKGS"
-opkg update && opkg install openssh-sftp-server curl jq && (opkg install nano || opkg install nano-full)
-[ $? -eq 0 ] && show_success "$MSG_DEPS_SUCCESS" || show_error "$MSG_DEPS_ERROR"
-separator
+update_pkgs
 
 # Установка sing-box / Install sing-box
 show_progress "$MSG_INSTALL_SINGBOX"
