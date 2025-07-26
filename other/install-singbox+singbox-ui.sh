@@ -100,6 +100,9 @@ init_language() {
         MSG_CLEANUP_DONE="Файлы удалены!"
         MSG_INSTALL_COMPLETE="Установка завершена!"
         MSG_WAITING="Ожидание %d сек"
+        MSG_UPDATE_PKGS="Обновление пакетов и установка зависимостей..."
+        MSG_DEPS_SUCCESS="Зависимости успешно установлены"
+        MSG_DEPS_ERROR="Ошибка установки зависимостей"
         ;;
     *)
         # Английские тексты / English texts
@@ -130,6 +133,9 @@ init_language() {
         MSG_CLEANUP_DONE="Files removed!"
         MSG_INSTALL_COMPLETE="Installation complete!"
         MSG_WAITING="Waiting %d sec"
+        MSG_UPDATE_PKGS="Updating packages and installing dependencies..."
+        MSG_DEPS_SUCCESS="Dependencies successfully installed"
+        MSG_DEPS_ERROR="Error installing dependencies"
         ;;
 esac
 }
@@ -138,6 +144,20 @@ waiting() {
     local interval="${1:-30}"
     show_progress "$(printf "$MSG_WAITING" "$interval")"
     sleep "$interval"
+}
+
+# Обновление репозиториев и установка зависимостей / Update repos and install dependencies
+update_pkgs() {
+    show_progress "$MSG_UPDATE_PKGS"
+    opkg update && opkg install openssh-sftp-server curl jq && (opkg install nano || opkg install nano-full)
+    if [ $? -eq 0 ]; then
+        show_success "$MSG_DEPS_SUCCESS"
+        separator
+    else
+        show_error "$MSG_DEPS_ERROR"
+        separator
+        exit 1
+    fi
 }
 
 network_check() {
