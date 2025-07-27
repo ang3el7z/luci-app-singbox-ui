@@ -72,8 +72,11 @@ init_language() {
             MSG_PKGS_SUCCESS="Репозитории успешно обновлены"
             MSG_PKGS_ERROR="Ошибка обновления репозиториев"
             MSG_INSTALL_SINGBOX="Установка последней версии sing-box..."
-            MSG_INSTALL_SUCCESS="Sing-box успешно установлен"
-            MSG_INSTALL_ERROR="Ошибка установки sing-box"
+            MSG_INSTALL_SINGBOX_SUCCESS="Установка sing-box завершена"
+            MSG_INSTALL_SINGBOX_ERROR="Ошибка установки sing-box"
+            MSG_UNINSTALL_SINGBOX="Удаление sing-box..."
+            MSG_UNINSTALL_SINGBOX_SUCCESS="Удаление sing-box завершено"
+            MSG_UNINSTALL_SINGBOX_ERROR="Ошибка удаления sing-box"
             MSG_SERVICE_CONFIG="Настройка системного сервиса..."
             MSG_SERVICE_APPLIED="Конфигурация сервиса применена"
             MSG_SERVICE_DISABLED="Сервис временно отключен"
@@ -87,17 +90,29 @@ init_language() {
             MSG_CLEANUP_DONE="Файлы удалены!"
             MSG_WAITING="Ожидание %d сек"
             MSG_COMPLETE="Выполнено! ($script_name)"
-            MSG_DISABLE_IPV6="Disabling IPv6..."
-            MSG_IPV6_DISABLED="IPv6 disabled"
-            MSG_RESTART_FIREWALL="Restarting firewall..."
-            MSG_RESTART_NETWORK="Restarting network..."
-            MSG_START_SERVICE="Starting sing-box service"
-            MSG_SERVICE_STARTED="Service started successfully"
+            MSG_DISABLE_IPV6="Отключение IPv6..."
+            MSG_IPV6_DISABLED="IPv6 отключен"
+            MSG_RESTART_FIREWALL="Перезапуск firewall..."
+            MSG_RESTART_NETWORK="Перезапуск network..."
+            MSG_START_SERVICE="Запуск сервиса sing-box"
+            MSG_SERVICE_STARTED="Сервис успешно запущен"
             MSG_INSTALL_OPERATION="Выберите тип операции:"
             MSG_INSTALL_OPERATION_INSTALL="1. Установка"
             MSG_INSTALL_OPERATION_DELETE="2. Удаление"
             MSG_INSTALL_OPERATION_REINSTALL_UPDATE="3. Переустановка/Обновление"
             MSG_INSTALL_OPERATION_CHOICE=" Ваш выбор: "
+            MSG_ALREADY_INSTALLED="Ошибка: Пакет уже установлен. Для переустановки выберите опцию 3"
+            MSG_INSTALLING="Установка..."
+            MSG_INSTALL_SUCCESS="Установка завершена"
+            MSG_UNINSTALLING="Полное удаление..."
+            MSG_UNINSTALL_SUCCESS="Удаление завершено"
+            MSG_NOT_INSTALLED="Ошибка: Пакет не установлен. Нечего удалять."
+            MSG_INVALID_OPERATION="Ошибка: Некорректная операция"
+            MSG_RESTORING_IPV6="Восстановление настроек IPv6..."
+            MSG_IPV6_RESTORED="Настройки IPv6 восстановлены"
+            MSG_REMOVING_NETWORK_CONFIG="Удаление сетевого интерфейса proxy..."
+            MSG_REMOVING_FIREWALL_RULES="Удаление правил фаервола..."
+            MSG_REMOVING_CONFIGS="Удаление конфигурационных файлов..."
             ;;
         *)
             MSG_INSTALL_TITLE="Starting! ($script_name)"
@@ -105,8 +120,11 @@ init_language() {
             MSG_PKGS_SUCCESS="Packages updated successfully"
             MSG_PKGS_ERROR="Error updating packages"
             MSG_INSTALL_SINGBOX="Installing latest sing-box version..."
-            MSG_INSTALL_SUCCESS="Sing-box installed successfully"
-            MSG_INSTALL_ERROR="Error installing sing-box"
+            MSG_INSTALL_SINGBOX_SUCCESS="Sing-box installed successfully"
+            MSG_INSTALL_SINGBOX_ERROR="Error installing sing-box"
+            MSG_UNINSTALL_SINGBOX="Uninstalling sing-box..."
+            MSG_UNINSTALL_SINGBOX_SUCCESS="Sing-box uninstalled successfully"
+            MSG_UNINSTALL_SINGBOX_ERROR="Error uninstalling sing-box"
             MSG_SERVICE_CONFIG="Configuring system service..."
             MSG_SERVICE_APPLIED="Service configuration applied"
             MSG_SERVICE_DISABLED="Service temporarily disabled"
@@ -131,6 +149,18 @@ init_language() {
             MSG_INSTALL_OPERATION_DELETE="2. Delete"
             MSG_INSTALL_OPERATION_REINSTALL_UPDATE="3. Reinstall/Update"
             MSG_INSTALL_OPERATION_CHOICE="Your choice: "
+            MSG_ALREADY_INSTALLED="Error: Package already installed. For reinstall choose option 3"
+            MSG_INSTALLING="Installing..."
+            MSG_INSTALL_SUCCESS="Install completed"
+            MSG_UNINSTALLING="Completely uninstalling..."
+            MSG_UNINSTALL_SUCCESS="Uninstalled successfully"
+            MSG_NOT_INSTALLED="Error: Package not installed. Nothing to remove."
+            MSG_INVALID_OPERATION="Error: Invalid operation"
+            MSG_RESTORING_IPV6="Restoring IPv6 settings..."
+            MSG_IPV6_RESTORED="IPv6 settings restored"
+            MSG_REMOVING_NETWORK_CONFIG="Removing proxy network interface..."
+            MSG_REMOVING_FIREWALL_RULES="Removing firewall rules..."
+            MSG_REMOVING_CONFIGS="Removing configuration files..."
             ;;
     esac
 }
@@ -201,13 +231,28 @@ network_check() {
     fi
 }
 
+# Установка sing-box / Install sing-box
 install_singbox() {
     show_progress "$MSG_INSTALL_SINGBOX"
     opkg install sing-box
     if [ $? -eq 0 ]; then
-        show_success "$MSG_INSTALL_SUCCESS"
+        show_success "$MSG_INSTALL_SINGBOX_SUCCESS"
     else
-        show_error "$MSG_INSTALL_ERROR"
+        show_error "$MSG_INSTALL_SINGBOX_ERROR"
+        exit 1
+    fi
+}
+
+# Удаление sing-box / Uninstall sing-box
+uninstall_singbox() {
+    show_progress "$MSG_UNINSTALL_SINGBOX"
+    service sing-box stop 2>/dev/null
+    service sing-box disable 2>/dev/null
+    opkg remove sing-box
+    if [ $? -eq 0 ]; then
+        show_success "$MSG_UNINSTALL_SINGBOX_SUCCESS"
+    else
+        show_error "$MSG_UNINSTALL_SINGBOX_ERROR"
         exit 1
     fi
 }
@@ -246,6 +291,17 @@ disabled_ipv6() {
     show_success "$MSG_IPV6_DISABLED"
 }
 
+# Восстановление IPv6 / Restore IPv6
+restore_ipv6() {
+    show_progress "$MSG_RESTORING_IPV6"
+    uci set 'network.lan.ipv6=1'
+    uci set 'network.wan.ipv6=1'
+    uci set 'dhcp.lan.dhcpv6=server'
+    /etc/init.d/odhcpd enable
+    uci commit
+    show_success "$MSG_IPV6_RESTORED"
+}
+
 # Создание сетевого интерфейса / Create network interface
 configure_proxy() {
     show_progress "$MSG_NETWORK_CONFIG"
@@ -256,6 +312,13 @@ configure_proxy() {
     uci set network.proxy.delegate="0"
     uci set network.proxy.peerdns="0"
     uci set network.proxy.auto="1"
+    uci commit network
+}
+
+# Удаление сетевого интерфейса / Remove network interface
+remove_configure_proxy() {
+    show_progress "$MSG_REMOVING_NETWORK_CONFIG"
+    uci -q delete network.proxy
     uci commit network
 }
 
@@ -286,6 +349,24 @@ configure_firewall() {
     show_success "$MSG_FIREWALL_APPLIED"
 }
 
+
+# Удаление правил фаервола / Remove firewall rules
+remove_firewall_rules() {
+    show_progress "$MSG_REMOVING_FIREWALL_RULES"
+    
+    # Удаление зоны proxy / Remove zone proxy
+    local zone_id
+    zone_id=$(uci -q show firewall | grep -E "firewall\.@zone\[.*\].name='proxy'" | cut -d'[' -f2 | cut -d']' -f1)
+    [ -n "$zone_id" ] && uci -q delete firewall.@zone[$zone_id]
+    
+    # Удаление правил переадресации / Remove forwarding rules
+    local fwd_id
+    fwd_id=$(uci -q show firewall | grep -E "firewall\.@forwarding\[.*\].dest='proxy'" | cut -d'[' -f2 | cut -d']' -f1)
+    [ -n "$fwd_id" ] && uci -q delete firewall.@forwarding[$fwd_id]
+    
+    uci commit firewall
+}
+
 # Перезагрузка firewall / Restart firewall
 restart_firewall() {
     show_progress "$MSG_RESTART_FIREWALL"
@@ -306,6 +387,80 @@ enable_singbox() {
     show_success "$MSG_SERVICE_STARTED"
 }
 
+# Проверка установки / Check installation
+check_installed() {
+    opkg list-installed | grep -q "sing-box"
+    return $?
+}
+
+# Удаление конфигураций / Remove configurations
+remove_configs() {
+    show_progress "$MSG_REMOVING_CONFIGS"
+    rm -f /etc/sing-box/config.json
+    uci -q delete sing-box
+    uci commit sing-box
+}
+
+# Установка / Install
+install() {
+    show_progress "$MSG_INSTALLING"
+    install_singbox
+    configure_singbox_service
+    disable_singbox_service
+    clean_singbox_config
+    disabled_ipv6
+    configure_proxy
+    configure_firewall
+    restart_firewall
+    restart_network
+    network_check
+    enable_singbox
+    show_success "$MSG_INSTALL_SUCCESS"
+}
+
+# Удаление / Uninstall
+uninstall() {
+    show_progress "$MSG_UNINSTALLING"
+    uninstall_singbox
+    remove_configure_proxy
+    remove_firewall_rules
+    restore_ipv6
+    # remove_configs
+    restart_firewall
+    restart_network
+    show_success "$MSG_UNINSTALL_SUCCESS"
+}
+
+# Выполнение операций / Perform operations
+perform_operation() {
+    case $INSTALL_OPERATION in
+        1)  
+            if check_installed; then
+                show_error "$MSG_ALREADY_INSTALLED"
+                exit 1
+            fi
+            install
+            ;;
+        2)  
+            if ! check_installed; then
+                show_error "$MSG_NOT_INSTALLED"
+                exit 1
+            fi
+            uninstall
+            ;;
+        3)  
+            if check_installed; then
+                uninstall
+            fi
+            install
+            ;;
+        *)
+            show_error "$MSG_INVALID_OPERATION"
+            exit 1
+            ;;
+    esac
+}
+
 cleanup() {
     show_progress "$MSG_CLEANUP"
     rm -- "$0"
@@ -323,15 +478,5 @@ init_language
 header "$MSG_INSTALL_TITLE"
 update_pkgs
 choose_install_operation
-install_singbox
-configure_singbox_service
-disable_singbox_service
-clean_singbox_config
-disabled_ipv6
-configure_proxy
-configure_firewall
-restart_firewall
-restart_network
-network_check
-enable_singbox
+perform_operation
 complete_script
