@@ -410,8 +410,20 @@ uninstall_singbox_ui() {
     show_success "$MSG_UNINSTALL_SUCCESS"
 }
 
-# Установка / Installation
-install_operation() {
+# Установка / Install
+install() {
+    choose_install_version
+    install_singbox_ui
+    get_config
+}
+
+# Удаление / Uninstall
+uninstall() {
+    uninstall_singbox_ui
+}
+
+# Выполнение операций / Perform operations
+perform_operation() {
     check_installed
     INSTALLED=$?
 
@@ -421,24 +433,20 @@ install_operation() {
             show_error "$MSG_ALREADY_INSTALLED"
             exit 1
         fi
-        choose_install_version
-        install_singbox_ui
-        get_config
+        install
         ;;
     2)  
         if [ $INSTALLED -ne 0 ]; then
             show_error "$MSG_NOT_INSTALLED"
             exit 1
         fi
-        uninstall_singbox_ui
+        uninstall
         ;;
     3)  
         if [ $INSTALLED -eq 0 ]; then
-            uninstall_singbox_ui
+            uninstall
         fi
-        choose_install_version
-        install_singbox_ui
-        get_config
+        install
         ;;
     *)
         show_error "$MSG_INVALID_OPERATION"
@@ -467,5 +475,5 @@ init_language
 header "$MSG_INSTALL_TITLE"
 update_pkgs
 choose_install_operation
-install_operation
+perform_operation
 complete_script
