@@ -28,13 +28,13 @@ Web interface for Sing-Box on OpenWrt 23/24
 
 1. Run script
 ```shell
-wget -O /root/install.sh https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/install.sh && chmod 0755 /root/install.sh && sh /root/install.sh
+wget -O /root/install.sh https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/install.sh && chmod 0755 /root/install.sh && sh /root/install.sh
 ```
 
 2. Choose action:
-    - Install singbox (tun mode) + singbox-ui
     - Install singbox-ui
     - Install singbox (tun mode)
+    - Install singbox (tun mode) + singbox-ui
 
 # other helps
  - ssh keygen clear
