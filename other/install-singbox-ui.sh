@@ -104,6 +104,9 @@ init_language() {
             MSG_UNINSTALL_SUCCESS="Удаление завершено"
             MSG_NOT_INSTALLED="Ошибка: Пакет не установлен. Нечего удалять."
             MSG_INVALID_OPERATION="Ошибка: Некорректная операция"
+            MSG_NETWORK_CHECK="Проверка доступности сети..."
+            MSG_NETWORK_SUCCESS="Сеть доступна (через %s, за %s сек)"
+            MSG_NETWORK_ERROR="Сеть не доступна после %s сек!"
             ;;
         *)
             MSG_INSTALL_TITLE="Starting! ($script_name)"
@@ -149,6 +152,9 @@ init_language() {
             MSG_UNINSTALL_SUCCESS="Uninstall completed"
             MSG_NOT_INSTALLED="Error: Package not installed. Nothing to remove."
             MSG_INVALID_OPERATION="Error: Invalid operation"
+            MSG_NETWORK_CHECK="Checking network availability..."
+            MSG_NETWORK_SUCCESS="Network available (via %s, in %s sec)"
+            MSG_NETWORK_ERROR="Network not available after %s sec!"
             ;;
     esac
 }
@@ -196,10 +202,13 @@ network_check() {
 
     sleep $interval
 
-    while [ $i -lt $attempts ]; do
+    while [ $i -le $attempts ]; do
         num_targets=$(echo "$targets" | wc -w)
         index=$((i % num_targets))
-        target=$(echo "$targets" | cut -d' ' -f$((index + 1)))
+        if [ $index -eq 0 ]; then
+            index=$num_targets
+        fi
+        target=$(echo "$targets" | cut -d' ' -f$index)
 
         if ping -c 1 -W 2 "$target" >/dev/null 2>&1; then
             success=1
