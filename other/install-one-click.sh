@@ -172,19 +172,22 @@ network_check() {
     i=1
 
     show_progress "$MSG_NETWORK_CHECK"
-    
+
     sleep $interval
 
-    while [ $i -lt $attempts ]; do
+    while [ $i -le $attempts ]; do
         num_targets=$(echo "$targets" | wc -w)
         index=$((i % num_targets))
-        target=$(echo "$targets" | cut -d' ' -f$((index + 1)))
+        if [ $index -eq 0 ]; then
+            index=$num_targets
+        fi
+        target=$(echo "$targets" | cut -d' ' -f$index)
 
         if ping -c 1 -W 2 "$target" >/dev/null 2>&1; then
             success=1
             break
         fi
-          
+        
         i=$((i + 1))
     done
 
@@ -244,7 +247,6 @@ remove_old_key() {
 # Подключение и установка / Connect and install
 connect_and_install() {
     show_progress "$MSG_CONNECTING"
-    sleep 2
 
     local install_script_name="install.sh"
 

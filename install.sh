@@ -170,10 +170,13 @@ network_check() {
 
     sleep $interval
 
-    while [ $i -lt $attempts ]; do
+    while [ $i -le $attempts ]; do
         num_targets=$(echo "$targets" | wc -w)
         index=$((i % num_targets))
-        target=$(echo "$targets" | cut -d' ' -f$((index + 1)))
+        if [ $index -eq 0 ]; then
+            index=$num_targets
+        fi
+        target=$(echo "$targets" | cut -d' ' -f$index)
 
         if ping -c 1 -W 2 "$target" >/dev/null 2>&1; then
             success=1
@@ -191,7 +194,6 @@ network_check() {
         exit 1
     fi
 }
-
 # Установка singbox / Install singbox
 install_singbox_script() {
     show_warning "$MSG_SINGBOX_INSTALL"
@@ -257,7 +259,7 @@ complete_script() {
 
 init_language
 header "$MSG_INSTALL_TITLE"
-update_pkgs
+#update_pkgs
 choose_install_operation
 choose_action
 complete_script
