@@ -90,6 +90,16 @@ init_language() {
             MSG_WAITING="Ожидание %d сек"
             MSG_YOUR_CHOICE="Ваш выбор: "
             MSG_COMPLETE="Выполнено! (install-singbox-ui.sh)"
+            MSG_CONFIG_PROMPT="Введите URL конфигурации (Enter для ручного ввода): "
+            MSG_CONFIG_LOADING="Загрузка конфигурации с %s (Попытка %s из %s)"
+            MSG_CONFIG_SUCCESS="Конфигурация успешно загружена"
+            MSG_CONFIG_ERROR="Ошибка загрузки: %s"
+            MSG_FORMAT_ERROR="Ошибка формата конфигурации"
+            MSG_RETRY="Попробую снова..."
+            MSG_MANUAL_CONFIG="Ручная настройка конфигурации"
+            MSG_EDIT_COMPLETE="Завершили редактирование config.json? [y/N]: "
+            MSG_EDIT_SUCCESS="Успешно"
+            MSG_INVALID_INPUT="Некорректный ввод"
             ;;
         *)
             MSG_INSTALL_TITLE="Singbox-ui installation and configuration"
@@ -116,6 +126,16 @@ init_language() {
             MSG_WAITING="Waiting %d sec"
             MSG_YOUR_CHOICE="Your choice: "
             MSG_COMPLETE="Completed! (install-singbox-ui.sh)"
+            MSG_CONFIG_PROMPT="Enter Configuration subscription URL (Enter for manual input): "
+            MSG_CONFIG_LOADING="Loading configuration from %s (Attempt %s of %s)"
+            MSG_CONFIG_SUCCESS="Configuration loaded successfully"
+            MSG_CONFIG_ERROR="Loading error: %s"
+            MSG_FORMAT_ERROR="Configuration format error"
+            MSG_RETRY="Retrying..."
+            MSG_MANUAL_CONFIG="Manual configuration"
+            MSG_EDIT_COMPLETE="Finished editing config.json? [y/N]: "
+            MSG_EDIT_SUCCESS="Success"
+            MSG_INVALID_INPUT="Invalid input"
             ;;
     esac
 }
@@ -129,7 +149,7 @@ waiting() {
 # Обновление репозиториев и установка зависимостей / Update repos and install dependencies
 update_pkgs() {
     show_progress "$MSG_UPDATE_PKGS"
-    opkg update && opkg install curl jq
+    opkg update && opkg install curl jq && (opkg install nano || opkg install nano-full)
     if [ $? -eq 0 ]; then
         show_success "$MSG_DEPS_SUCCESS"
         separator
@@ -273,6 +293,88 @@ install_singbox_ui() {
     show_success "$MSG_INSTALL_COMPLETE"
 }
 
+# Получение конфигурации / Configuration download
+get_config() {
+    if [ -z "$CONFIG_URL" ]; then
+        read_input "${MSG_CONFIG_PROMPT}" CONFIG_URL
+    fi
+
+    AUTO_CONFIG_SUCCESS=0
+    # Проверяем, что URL не пустой / Check if URL is not empty
+    if [ -n "$CONFIG_URL" ]; then
+        MAX_ATTEMPTS=3
+        ATTEMPT=1
+        SUCCESS=0
+
+        # Загрузка конфигурации / Configuration download
+        while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
+            show_progress "$(printf "$MSG_CONFIG_LOADING" "$CONFIG_URL" "$ATTEMPT" "$MAX_ATTEMPTS")"
+            
+            # Проверка JSON / JSON validation
+            if RAW_JSON=$(curl -fsS "$CONFIG_URL" 2>/dev/null) && [ -n "$RAW_JSON" ]; then
+                if FORMATTED_JSON=$(echo "$RAW_JSON" | jq -e '.' 2>/dev/null); then
+                    echo "$FORMATTED_JSON" > /etc/sing-box/config.json
+                    show_success "$MSG_CONFIG_SUCCESS"
+                    AUTO_CONFIG_SUCCESS=1
+                    SUCCESS=1
+                    break
+                else
+                    show_error "$MSG_FORMAT_ERROR"
+                fi
+            else
+                show_error "$(printf "$MSG_CONFIG_ERROR" "${RAW_JSON:-"Unknown error"}")"
+            fi
+
+            if [ $ATTEMPT -lt $MAX_ATTEMPTS ]; then
+                show_progress "$MSG_RETRY"
+                network_check
+            fi
+        
+            ATTEMPT=$((ATTEMPT + 1))
+        done
+
+        if [ $SUCCESS -eq 0 ]; then
+            show_error "$MSG_MANUAL_CONFIG"
+            export TERM=xterm
+            nano /etc/sing-box/config.json || {
+                show_error "Failed to open editor. Please check your terminal settings."
+                exit 1
+            }
+        fi
+    else
+        show_error "$MSG_MANUAL_CONFIG"
+        export TERM=xterm
+        nano /etc/sing-box/config.json || {
+            show_error "Failed to open editor. Please check your terminal settings."
+            exit 1
+        }
+    fi
+
+    # Проверка ручной конфигурации / Manual configuration check
+    if [ "$AUTO_CONFIG_SUCCESS" -ne 1 ]; then
+        while true; do
+            separator
+            read_input "${MSG_EDIT_COMPLETE}" edit_choice
+            case "${edit_choice:-Y}" in
+                [Yy]* )
+                    show_success "$MSG_EDIT_SUCCESS"
+                    break
+                    ;;
+                [Nn]* )
+                    export TERM=xterm
+                    nano /etc/sing-box/config.json || {
+                        show_error "Failed to open editor. Please check your terminal settings."
+                        continue
+                    }
+                    ;;
+                * )
+                    show_error "$MSG_INVALID_INPUT"
+                    ;;
+            esac
+        done
+    fi
+}
+
 # Очистка / Cleanup
 cleanup() {
     show_progress "$MSG_CLEANUP"
@@ -294,4 +396,5 @@ header "$MSG_INSTALL_TITLE"
 update_pkgs
 choose_install_version
 install_singbox_ui
+get_config
 complete_script
