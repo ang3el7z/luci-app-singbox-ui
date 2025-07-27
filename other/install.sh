@@ -61,6 +61,8 @@ read_input() {
 
 # Инициализация языка / Language initialization
 init_language() {
+    local script_name="install.sh"
+
     if [ -z "$LANG_CHOICE" ]; then
         show_message "Выберите язык / Select language [1/2]:"
         show_message "1. Русский (Russian)"
@@ -70,7 +72,7 @@ init_language() {
 
     case ${LANG_CHOICE:-2} in
     1)
-        MSG_INSTALL_TITLE="Установка и настройка singbox-ui"
+        MSG_INSTALL_TITLE="Запуск! ($script_name)"
         MSG_NETWORK_CHECK="Проверка доступности сети..."
         MSG_NETWORK_SUCCESS="Сеть доступна (через %s, за %s сек)"
         MSG_NETWORK_ERROR="Сеть не доступна после %s сек!"
@@ -79,14 +81,15 @@ init_language() {
         MSG_SINGBOX_UI_INSTALL="Переход к установке singbox-ui..."
         MSG_CLEANUP="Очистка файлов..."
         MSG_CLEANUP_DONE="Файлы удалены!"
-        MSG_COMPLETE="Выполнено! (install-singbox+singbox-ui.sh)"
+        MSG_COMPLETE="Выполнено! ($script_name)"
         MSG_WAITING="Ожидание %d сек"
         MSG_UPDATE_PKGS="Обновление пакетов и установка зависимостей..."
         MSG_DEPS_SUCCESS="Зависимости успешно установлены"
         MSG_DEPS_ERROR="Ошибка установки зависимостей"
         MSG_INSTALL_ACTION="Выберите действие:"
         MSG_INSTALL_SINGBOX_UI="1. Установка singbox-ui"
-        MSG_INSTALL_SINGBOX_UI_AND_SINGBOX="2. Установка singbox-ui и singbox"
+        MSG_INSTALL_SINGBOX="2. Установка singbox"
+        MSG_INSTALL_SINGBOX_UI_AND_SINGBOX="3. Установка singbox-ui и singbox"
         MSG_INSTALL_ACTION_CHOICE=" Ваш выбор: "
         MSG_INSTALL_OPERATION="Выберите тип операции:"
         MSG_INSTALL_OPERATION_INSTALL="1. Установка"
@@ -95,7 +98,7 @@ init_language() {
         MSG_INSTALL_OPERATION_CHOICE=" Ваш выбор: "
         ;;
     *)
-        MSG_INSTALL_TITLE="Starting installation"
+        MSG_INSTALL_TITLE="Starting! ($script_name)"
         MSG_NETWORK_CHECK="Checking network availability..."
         MSG_NETWORK_SUCCESS="Network is available (via %s, in %s sec)"
         MSG_NETWORK_ERROR="Network is not available after %s sec!"
@@ -104,14 +107,15 @@ init_language() {
         MSG_SINGBOX_UI_INSTALL="Proceeding to singbox-ui installation..."
         MSG_CLEANUP="Cleaning up files..."
         MSG_CLEANUP_DONE="Files removed!"
-        MSG_COMPLETE="Done! (install-singbox+singbox-ui.sh)"
+        MSG_COMPLETE="Done! ($script_name)"
         MSG_WAITING="Waiting %d sec"
         MSG_UPDATE_PKGS="Updating packages and installing dependencies..."
         MSG_DEPS_SUCCESS="Dependencies successfully installed"
         MSG_DEPS_ERROR="Error installing dependencies"
         MSG_INSTALL_ACTION="Select action:"
         MSG_INSTALL_SINGBOX_UI="1. Install singbox-ui"
-        MSG_INSTALL_SINGBOX_UI_AND_SINGBOX="2. Install singbox-ui and singbox"
+        MSG_INSTALL_SINGBOX="2. Install singbox"
+        MSG_INSTALL_SINGBOX_UI_AND_SINGBOX="3. Install singbox-ui and singbox"
         MSG_INSTALL_ACTION_CHOICE="Your choice: "
         MSG_INSTALL_OPERATION="Select install operation:"
         MSG_INSTALL_OPERATION_INSTALL="1. Install"
@@ -213,6 +217,7 @@ choose_action() {
     if [ -z "$ACTION_CHOICE" ]; then
         show_message "$MSG_INSTALL_ACTION"
         show_message "$MSG_INSTALL_SINGBOX_UI"
+        show_message "$MSG_INSTALL_SINGBOX"
         show_message "$MSG_INSTALL_SINGBOX_UI_AND_SINGBOX"
         read_input "$MSG_INSTALL_ACTION_CHOICE" ACTION_CHOICE
     fi
@@ -222,6 +227,9 @@ choose_action() {
         install_singbox_ui_script
         ;;
     2)
+        install_singbox_script
+        ;;
+    3)
         install_singbox_script
         install_singbox_ui_script
         ;;

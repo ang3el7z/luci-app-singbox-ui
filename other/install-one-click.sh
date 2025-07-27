@@ -67,6 +67,8 @@ read_input() {
 
 # Инициализация языка / Language initialization
 init_language() {
+    local script_name="install-one-click.sh"
+
     if [ -z "$LANG_CHOICE" ]; then
         show_message "Выберите язык / Select language [1/2]:"
         show_message "1. Русский (Russian)"
@@ -76,14 +78,14 @@ init_language() {
     
     case ${LANG_CHOICE:-1} in
         1)
-            MSG_INSTALL_TITLE="Установка в один клик -> singbox+singbox-ui"
+            MSG_INSTALL_TITLE="Запуск! ($script_name)"
             MSG_ROUTER_IP="Введите адрес роутера (по умолчанию 192.168.1.1, нажмите Enter): "
             MSG_ROUTER_PASS="Введите пароль для root (если нет пароля - нажмите Enter): "
             MSG_RESET_ROUTER="Сбросить настройки роутера перед установкой? [y/N]: "
             MSG_RESETTING="Сбрасываем настройки роутера..."
             MSG_REMOVE_KEY="Удаляем старый ключ хоста для"
             MSG_CONNECTING="Подключаемся к роутеру и выполняем установку..."
-            MSG_COMPLETE="Выполнено! (install-one-click.sh)"
+            MSG_COMPLETE="Выполнено! ($script_name)"
             MSG_CLEANUP="Очистка и удаление скрипта..."
             MSG_CLEANUP_DONE="Готово! Скрипт удален."
             MSG_SSH_ERROR="Ошибка подключения к роутеру"
@@ -97,14 +99,14 @@ init_language() {
             MSG_ROUTER_NOT_AVAILABLE="Роутер %s не доступен после %d сек"
             ;;
         *)
-            MSG_INSTALL_TITLE="Install one click -> singbox+singbox-ui"
+            MSG_INSTALL_TITLE="Starting! ($script_name)"
             MSG_ROUTER_IP="Enter router address (default 192.168.1.1, press Enter): "
             MSG_ROUTER_PASS="Enter root password (if no password - press Enter): "
             MSG_RESET_ROUTER="Reset router settings before installation? [y/N]: "
             MSG_RESETTING="Resetting router settings..."
             MSG_REMOVE_KEY="Removing old host key for"
             MSG_CONNECTING="Connecting to router and installing..."
-            MSG_COMPLETE="Done! (install-one-click.sh)"
+            MSG_COMPLETE="Done! ($script_name)"
             MSG_CLEANUP="Cleaning up and removing script..."
             MSG_CLEANUP_DONE="Done! Script removed."
             MSG_SSH_ERROR="Failed to connect to router"
@@ -244,21 +246,23 @@ connect_and_install() {
     show_progress "$MSG_CONNECTING"
     sleep 2
 
+    local install_script_name="install.sh"
+
     if [ -z "$password" ]; then
         ssh -t -o "StrictHostKeyChecking no" "root@$router_ip" \
              export LANG_CHOICE=$LANG_CHOICE; \
-             wget -O /root/install-singbox+singbox-ui.sh https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/install-singbox+singbox-ui.sh && \
-             chmod 0755 /root/install-singbox+singbox-ui.sh && \
-             sh /root/install-singbox+singbox-ui.sh" || {
+             wget -O /root/$install_script_name https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/$install_script_name && \
+             chmod 0755 /root/$install_script_name && \
+             sh /root/$install_script_name" || {
             show_error "$MSG_SSH_ERROR"
             exit 1
         }
     else
         sshpass -p "$password" ssh -t -o "StrictHostKeyChecking no" "root@$router_ip" \
              export LANG_CHOICE=$LANG_CHOICE; \
-             wget -O /root/install-singbox+singbox-ui.sh https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/install-singbox+singbox-ui.sh && \
-             chmod 0755 /root/install-singbox+singbox-ui.sh && \
-             sh /root/install-singbox+singbox-ui.sh" || {
+             wget -O /root/$install_script_name https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/$install_script_name && \
+             chmod 0755 /root/$install_script_name && \
+             sh /root/$install_script_name" || {
             show_error "$MSG_SSH_ERROR"
             exit 1
         }

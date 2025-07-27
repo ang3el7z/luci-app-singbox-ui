@@ -56,6 +56,8 @@ read_input() {
 
 # Инициализация языка / Language initialization
 init_language() {
+    local script_name="install-singbox.sh"
+
     if [ -z "$LANG_CHOICE" ]; then
         show_message "Выберите язык / Select language [1/2]:"
         show_message "1. Русский (Russian)"
@@ -65,7 +67,7 @@ init_language() {
 
     case ${LANG_CHOICE:-2} in
         1)
-            MSG_INSTALL_TITLE="Установка и настройка sing-box"
+            MSG_INSTALL_TITLE="Запуск! ($script_name)"
             MSG_UPDATE_PKGS="Обновление репозиториев..."
             MSG_PKGS_SUCCESS="Репозитории успешно обновлены"
             MSG_PKGS_ERROR="Ошибка обновления репозиториев"
@@ -84,7 +86,7 @@ init_language() {
             MSG_CLEANUP="Очистка файлов..."
             MSG_CLEANUP_DONE="Файлы удалены!"
             MSG_WAITING="Ожидание %d сек"
-            MSG_COMPLETE="Выполнено! (install-singbox.sh)"
+            MSG_COMPLETE="Выполнено! ($script_name)"
             MSG_DISABLE_IPV6="Disabling IPv6..."
             MSG_IPV6_DISABLED="IPv6 disabled"
             MSG_RESTART_FIREWALL="Restarting firewall..."
@@ -98,7 +100,7 @@ init_language() {
             MSG_INSTALL_OPERATION_CHOICE=" Ваш выбор: "
             ;;
         *)
-            MSG_INSTALL_TITLE="Sing-box installation and configuration"
+            MSG_INSTALL_TITLE="Starting! ($script_name)"
             MSG_UPDATE_PKGS="Updating packages and installing dependencies..."
             MSG_PKGS_SUCCESS="Packages updated successfully"
             MSG_PKGS_ERROR="Error updating packages"
@@ -117,7 +119,7 @@ init_language() {
             MSG_CLEANUP="Cleaning up files..."
             MSG_CLEANUP_DONE="Files removed!"
             MSG_WAITING="Waiting %d sec"
-            MSG_COMPLETE="Done! (install-singbox.sh)"
+            MSG_COMPLETE="Done! ($script_name)"
             MSG_DISABLE_IPV6="Disabling IPv6..."
             MSG_IPV6_DISABLED="IPv6 disabled"
             MSG_RESTART_FIREWALL="Restarting firewall..."
