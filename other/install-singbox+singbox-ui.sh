@@ -203,7 +203,7 @@ install_singbox_ui_script() {
 
     wget -O /root/install-singbox-ui.sh https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/install-singbox-ui.sh && 
     chmod 0755 /root/install-singbox-ui.sh && LANG_CHOICE=$LANG_CHOICE && INSTALL_OPERATION=$INSTALL_OPERATION sh /root/install-singbox-ui.sh
-    
+
     show_warning "$MSG_SINGBOX_RETURN"
 }
 
@@ -248,6 +248,7 @@ complete_script() {
 
 init_language
 header "$MSG_INSTALL_TITLE"
-# update_pkgs
+update_pkgs
+choose_install_operation
 choose_action
 complete_script
