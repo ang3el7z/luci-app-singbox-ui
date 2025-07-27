@@ -19,33 +19,32 @@ CHECK="✓"
 CROSS="✗"
 INDENT="  "
 
-# Функция разделителя / Separator function
-separator() {
-    echo -e "${FG_MAIN}                -------------------------------------                ${RESET}"
-}
-
+# Заголовок / Header
 header() {
-    separator
-    echo -e "${BG_ACCENT}${FG_MAIN}                $MSG_INSTALL_TITLE                ${RESET}"
-    separator
+    echo -e "${BG_ACCENT}${FG_MAIN}                $1                ${RESET}"
 }
 
+# Прогресс / Progress
 show_progress() {
     echo -e "${INDENT}${ARROW} ${FG_ACCENT}$1${RESET}"
 }
 
+# Успех / Success
 show_success() {
     echo -e "${INDENT}${CHECK} ${FG_SUCCESS}$1${RESET}\n"
 }
 
+# Ошибка / Error
 show_error() {
     echo -e "${INDENT}${CROSS} ${FG_ERROR}$1${RESET}\n"
 }
 
+# Сообщение / Message
 show_message() {
     echo -e "${FG_USER_COLOR}${INDENT}${ARROW} $1${RESET}"
 }
 
+# Ввод скрытый / Input hidden
 read_input_secret() {
     echo -ne "${FG_USER_COLOR}${INDENT}${ARROW_CLEAR} $1${RESET} "
     if [ -n "$2" ]; then
@@ -56,6 +55,7 @@ read_input_secret() {
     echo
 }
 
+# Ввод / Input
 read_input() {
     echo -ne "${FG_USER_COLOR}${INDENT}${ARROW_CLEAR} $1${RESET} "
     if [ -n "$2" ]; then
@@ -83,7 +83,7 @@ init_language() {
             MSG_RESETTING="Сбрасываем настройки роутера..."
             MSG_REMOVE_KEY="Удаляем старый ключ хоста для"
             MSG_CONNECTING="Подключаемся к роутеру и выполняем установку..."
-            MSG_COMPLETE="Установка завершена!"
+            MSG_COMPLETE="Выполнено! (install-one-click.sh)"
             MSG_CLEANUP="Очистка и удаление скрипта..."
             MSG_CLEANUP_DONE="Готово! Скрипт удален."
             MSG_SSH_ERROR="Ошибка подключения к роутеру"
@@ -95,7 +95,6 @@ init_language() {
             MSG_ROUTER_AVAILABLE="Роутер доступен через %s (%d сек)"
             MSG_WAITING="Ожидание %d сек"
             MSG_ROUTER_NOT_AVAILABLE="Роутер %s не доступен после %d сек"
-            MSG_CONFIG_PROMPT="Введите URL конфигурации (если нет - нажмите Enter): "
             ;;
         *)
             MSG_INSTALL_TITLE="Install one click -> singbox+singbox-ui"
@@ -105,7 +104,7 @@ init_language() {
             MSG_RESETTING="Resetting router settings..."
             MSG_REMOVE_KEY="Removing old host key for"
             MSG_CONNECTING="Connecting to router and installing..."
-            MSG_COMPLETE="Installation complete!"
+            MSG_COMPLETE="Done! (install-one-click.sh)"
             MSG_CLEANUP="Cleaning up and removing script..."
             MSG_CLEANUP_DONE="Done! Script removed."
             MSG_SSH_ERROR="Failed to connect to router"
@@ -117,17 +116,30 @@ init_language() {
             MSG_ROUTER_AVAILABLE="Router available via %s (%d sec)"
             MSG_WAITING="Waiting %d sec"
             MSG_ROUTER_NOT_AVAILABLE="Router %s not available after %d sec"
-            MSG_CONFIG_PROMPT="Enter configuration URL (press Enter to skip): "
             ;;
     esac
 }
 
+# Ожидание / Waiting
 waiting() {
     local interval="${1:-30}"
     show_progress "$(printf "$MSG_WAITING" "$interval")"
     sleep "$interval"
 }
 
+# Обновление репозиториев и установка зависимостей / Update repos and install dependencies
+update_pkgs() {
+    show_progress "$MSG_UPDATE_PKGS"
+    opkg update && opkg install openssh-sftp-server
+    if [ $? -eq 0 ]; then
+        show_success "$MSG_DEPS_SUCCESS"
+    else
+        show_error "$MSG_DEPS_ERROR"
+        exit 1
+    fi
+}
+
+# Ожидание связи с роутером / Waiting for router connection
 wait_for_router() {
     local timeout=300
     local interval=5
@@ -147,6 +159,7 @@ wait_for_router() {
     return 1
 }
 
+# Проверка доступности сети / Network availability check
 network_check() {
     timeout=200
     interval=5
@@ -154,12 +167,13 @@ network_check() {
 
     attempts=$((timeout / interval))
     success=0
-    i=0
+    i=1
 
     show_progress "$MSG_NETWORK_CHECK"
+    
+    sleep $interval
 
     while [ $i -lt $attempts ]; do
-        # Получаем текущий индекс для выбора адреса / Get current index for target selection
         num_targets=$(echo "$targets" | wc -w)
         index=$((i % num_targets))
         target=$(echo "$targets" | cut -d' ' -f$((index + 1)))
@@ -168,7 +182,7 @@ network_check() {
             success=1
             break
         fi
-
+          
         i=$((i + 1))
     done
 
@@ -181,6 +195,8 @@ network_check() {
     fi
 }
 
+
+# Сброс роутера / Reset router
 reset_router() {
     show_progress "$MSG_RESETTING"
     if [ -z "$password" ]; then
@@ -198,62 +214,78 @@ reset_router() {
     return 0
 }
 
-# Инициализация / Initialize
-init_language
-header
-
 # Запрос данных / Input data
-read_input "${MSG_ROUTER_IP}" router_ip
-router_ip="${router_ip:-192.168.1.1}"
-read_input_secret "${MSG_ROUTER_PASS}" password
-read_input "${MSG_CONFIG_PROMPT}" CONFIG_URL
-# Запрос на сброс роутера / Ask for router reset
-read_input "$MSG_RESET_ROUTER" reset_choice
+input_data() {
+    read_input "${MSG_ROUTER_IP}" router_ip
+    router_ip="${router_ip:-192.168.1.1}"
+    read_input_secret "${MSG_ROUTER_PASS}" password
+}
 
-if [[ "$reset_choice" =~ ^[Yy]$ ]]; then
-    if reset_router; then
-        waiting && wait_for_router && network_check
-    else
-        exit 1
+# Запрос на сброс роутера / Ask for router reset
+clear_router() {
+    read_input "$MSG_RESET_ROUTER" reset_choice
+    if [[ "$reset_choice" =~ ^[Yy]$ ]]; then
+        if reset_router; then
+            waiting && wait_for_router && network_check
+        else
+            exit 1
+        fi
     fi
-fi
+}
 
 # Удаление старого ключа / Remove old key
-show_progress "${MSG_REMOVE_KEY} ${router_ip}"
-ssh-keygen -R "$router_ip" 2>/dev/null
+remove_old_key() {
+    show_progress "${MSG_REMOVE_KEY} ${router_ip}"
+    ssh-keygen -R "$router_ip" 2>/dev/null
+}
 
 # Подключение и установка / Connect and install
-show_progress "$MSG_CONNECTING"
-sleep 2
+connect_and_install() {
+    show_progress "$MSG_CONNECTING"
+    sleep 2
 
-if [ -z "$password" ]; then
-    ssh -t -o "StrictHostKeyChecking no" "root@$router_ip" \
-        "export TERM=xterm; \
-         export LANG_CHOICE=$LANG_CHOICE; \
-         export CONFIG_URL=$CONFIG_URL; \
-         wget -O /root/install-singbox+singbox-ui.sh https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/install-singbox+singbox-ui.sh && \
-         chmod 0755 /root/install-singbox+singbox-ui.sh && \
-         sh /root/install-singbox+singbox-ui.sh" || {
-        show_error "$MSG_SSH_ERROR"
-        exit 1
-    }
-else
-    sshpass -p "$password" ssh -t -o "StrictHostKeyChecking no" "root@$router_ip" \
-        "export TERM=xterm; \
-         export LANG_CHOICE=$LANG_CHOICE; \
-         export CONFIG_URL=$CONFIG_URL; \
-         wget -O /root/install-singbox+singbox-ui.sh https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/install-singbox+singbox-ui.sh && \
-         chmod 0755 /root/install-singbox+singbox-ui.sh && \
-         sh /root/install-singbox+singbox-ui.sh" || {
-        show_error "$MSG_SSH_ERROR"
-        exit 1
-    }
-fi
-
-# Завершение / Completion
-show_success "$MSG_COMPLETE"
+    if [ -z "$password" ]; then
+        ssh -t -o "StrictHostKeyChecking no" "root@$router_ip" \
+             export LANG_CHOICE=$LANG_CHOICE; \
+             wget -O /root/install-singbox+singbox-ui.sh https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/install-singbox+singbox-ui.sh && \
+             chmod 0755 /root/install-singbox+singbox-ui.sh && \
+             sh /root/install-singbox+singbox-ui.sh" || {
+            show_error "$MSG_SSH_ERROR"
+            exit 1
+        }
+    else
+        sshpass -p "$password" ssh -t -o "StrictHostKeyChecking no" "root@$router_ip" \
+             export LANG_CHOICE=$LANG_CHOICE; \
+             wget -O /root/install-singbox+singbox-ui.sh https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/install-singbox+singbox-ui.sh && \
+             chmod 0755 /root/install-singbox+singbox-ui.sh && \
+             sh /root/install-singbox+singbox-ui.sh" || {
+            show_error "$MSG_SSH_ERROR"
+            exit 1
+        }
+    fi
+}
 
 # Очистка / Cleanup
-show_progress "$MSG_CLEANUP"
-rm -f -- "$0"
-show_success "$MSG_CLEANUP_DONE"
+cleanup() {
+    show_progress "$MSG_CLEANUP"
+    rm -- "$0"
+    show_success "$MSG_CLEANUP_DONE"
+    exit 1
+}
+
+# Завершение скрипта / Complete script
+complete_script() {
+    show_success "$MSG_COMPLETE"
+    cleanup
+}
+
+# ======== Основной код / Main code ========
+
+init_language
+header "$MSG_INSTALL_TITLE"
+update_pkgs
+input_data
+clear_router
+remove_old_key
+connect_and_install
+complete_script

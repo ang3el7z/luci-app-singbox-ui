@@ -19,37 +19,32 @@ CHECK="✓"
 CROSS="✗"
 INDENT="  "
 
-# Функция разделителя / Separator function
-separator() {
-    echo -e "${FG_MAIN}                -------------------------------------                ${RESET}"
-}
-
+# Заголовок / Header
 header() {
-    separator
-    echo -e "${BG_ACCENT}${FG_MAIN}                $MSG_INSTALL_TITLE                ${RESET}"
-    separator
+    echo -e "${BG_ACCENT}${FG_MAIN}                $1                ${RESET}"
 }
 
+# Прогресс / Progress
 show_progress() {
     echo -e "${INDENT}${ARROW} ${FG_ACCENT}$1${RESET}"
 }
 
+# Успех / Success
 show_success() {
     echo -e "${INDENT}${CHECK} ${FG_SUCCESS}$1${RESET}\n"
 }
 
+# Ошибка / Error
 show_error() {
     echo -e "${INDENT}${CROSS} ${FG_ERROR}$1${RESET}\n"
 }
 
-show_warning() {
-    echo -e "${INDENT}! ${FG_WARNING}$1${RESET}\n"
-}
-
+# Сообщение / Message
 show_message() {
     echo -e "${FG_USER_COLOR}${INDENT}${ARROW} $1${RESET}"
 }
 
+# Ввод / Input
 read_input() {
     echo -ne "${FG_USER_COLOR}${INDENT}${ARROW_CLEAR} $1${RESET} "
     if [ -n "$2" ]; then
@@ -68,10 +63,8 @@ init_language() {
         read_input " Ваш выбор / Your choice [1/2]: " LANG_CHOICE
     fi
 
-    # Установка языка по умолчанию (английский) / Default to English
     case ${LANG_CHOICE:-2} in
         1)
-            # Русские тексты / Russian texts
             MSG_INSTALL_TITLE="Установка и настройка sing-box"
             MSG_UPDATE_PKGS="Обновление репозиториев..."
             MSG_PKGS_SUCCESS="Репозитории успешно обновлены"
@@ -83,7 +76,6 @@ init_language() {
             MSG_SERVICE_APPLIED="Конфигурация сервиса применена"
             MSG_SERVICE_DISABLED="Сервис временно отключен"
             MSG_CONFIG_RESET="Конфигурационный файл сброшен"
-            MSG_CONFIG_IMPORT="Импорт конфигурации sing-box"
             MSG_NETWORK_CONFIG="Создание сетевого интерфейса proxy..."
             MSG_FIREWALL_CONFIG="Конфигурация правил фаервола..."
             MSG_FIREWALL_APPLIED="Правила фаервола применены"
@@ -92,9 +84,20 @@ init_language() {
             MSG_CLEANUP="Очистка файлов..."
             MSG_CLEANUP_DONE="Файлы удалены!"
             MSG_WAITING="Ожидание %d сек"
+            MSG_COMPLETE="Выполнено! (install-singbox.sh)"
+            MSG_DISABLE_IPV6="Disabling IPv6..."
+            MSG_IPV6_DISABLED="IPv6 disabled"
+            MSG_RESTART_FIREWALL="Restarting firewall..."
+            MSG_RESTART_NETWORK="Restarting network..."
+            MSG_START_SERVICE="Starting sing-box service"
+            MSG_SERVICE_STARTED="Service started successfully"
+            MSG_INSTALL_OPERATION="Выберите тип операции:"
+            MSG_INSTALL_OPERATION_INSTALL="1. Установка"
+            MSG_INSTALL_OPERATION_DELETE="2. Удаление"
+            MSG_INSTALL_OPERATION_REINSTALL_UPDATE="3. Переустановка/Обновление"
+            MSG_INSTALL_OPERATION_CHOICE=" Ваш выбор: "
             ;;
         *)
-            # Английские тексты / English texts
             MSG_INSTALL_TITLE="Sing-box installation and configuration"
             MSG_UPDATE_PKGS="Updating packages and installing dependencies..."
             MSG_PKGS_SUCCESS="Packages updated successfully"
@@ -106,7 +109,6 @@ init_language() {
             MSG_SERVICE_APPLIED="Service configuration applied"
             MSG_SERVICE_DISABLED="Service temporarily disabled"
             MSG_CONFIG_RESET="Configuration file reset"
-            MSG_CONFIG_IMPORT="Importing sing-box configuration"
             MSG_NETWORK_CONFIG="Creating proxy network interface..."
             MSG_FIREWALL_CONFIG="Configuring firewall rules..."
             MSG_FIREWALL_APPLIED="Firewall rules applied"
@@ -115,10 +117,23 @@ init_language() {
             MSG_CLEANUP="Cleaning up files..."
             MSG_CLEANUP_DONE="Files removed!"
             MSG_WAITING="Waiting %d sec"
+            MSG_COMPLETE="Done! (install-singbox.sh)"
+            MSG_DISABLE_IPV6="Disabling IPv6..."
+            MSG_IPV6_DISABLED="IPv6 disabled"
+            MSG_RESTART_FIREWALL="Restarting firewall..."
+            MSG_RESTART_NETWORK="Restarting network..."
+            MSG_START_SERVICE="Starting sing-box service"
+            MSG_SERVICE_STARTED="Service started successfully"
+            MSG_INSTALL_OPERATION="Select install operation:"
+            MSG_INSTALL_OPERATION_INSTALL="1. Install"
+            MSG_INSTALL_OPERATION_DELETE="2. Delete"
+            MSG_INSTALL_OPERATION_REINSTALL_UPDATE="3. Reinstall/Update"
+            MSG_INSTALL_OPERATION_CHOICE="Your choice: "
             ;;
     esac
 }
 
+# Ожидание / Waiting
 waiting() {
     local interval="${1:-30}"
     show_progress "$(printf "$MSG_WAITING" "$interval")"
@@ -131,49 +146,103 @@ update_pkgs() {
     opkg update
     if [ $? -eq 0 ]; then
         show_success "$MSG_PKGS_SUCCESS"
-        separator
     else
         show_error "$MSG_PKGS_ERROR"
-        separator
         exit 1
     fi
 }
 
-# Инициализация языка / Initialize language
-init_language
-header
+# Выбор операции установки / Choose install operation
+choose_install_operation() {
+    if [ -z "$INSTALL_OPERATION" ]; then
+        show_message "$MSG_INSTALL_OPERATION"
+        show_message "$MSG_INSTALL_OPERATION_INSTALL"
+        show_message "$MSG_INSTALL_OPERATION_DELETE"
+        show_message "$MSG_INSTALL_OPERATION_REINSTALL_UPDATE"
+        read_input "$MSG_INSTALL_OPERATION_CHOICE" INSTALL_OPERATION
+    fi
+}
 
-update_pkgs
+# Проверка доступности сети / Network availability check
+network_check() {
+    timeout=200
+    interval=5
+    targets="223.5.5.5 180.76.76.76 77.88.8.8 1.1.1.1 8.8.8.8 9.9.9.9 94.140.14.14"
 
-# Установка sing-box / Install sing-box
-show_progress "$MSG_INSTALL_SINGBOX"
-opkg install sing-box
-if [ $? -eq 0 ]; then
-    show_success "$MSG_INSTALL_SUCCESS"
-else
-    show_error "$MSG_INSTALL_ERROR"
-    exit 1
-fi
+    attempts=$((timeout / interval))
+    success=0
+    i=1
+
+    show_progress "$MSG_NETWORK_CHECK"
+
+    sleep $interval
+
+    while [ $i -lt $attempts ]; do
+        num_targets=$(echo "$targets" | wc -w)
+        index=$((i % num_targets))
+        target=$(echo "$targets" | cut -d' ' -f$((index + 1)))
+
+        if ping -c 1 -W 2 "$target" >/dev/null 2>&1; then
+            success=1
+            break
+        fi
+        
+        i=$((i + 1))
+    done
+
+    if [ $success -eq 1 ]; then
+        total_time=$((i * interval))
+        show_success "$(printf "$MSG_NETWORK_SUCCESS" "$target" "$total_time")"
+    else
+        show_error "$(printf "$MSG_NETWORK_ERROR" "$timeout")" >&2
+        exit 1
+    fi
+}
+
+install_singbox() {
+    show_progress "$MSG_INSTALL_SINGBOX"
+    opkg install sing-box
+    if [ $? -eq 0 ]; then
+        show_success "$MSG_INSTALL_SUCCESS"
+    else
+        show_error "$MSG_INSTALL_ERROR"
+        exit 1
+    fi
+}
 
 # Конфигурация сервиса / Service configuration
-show_progress "$MSG_SERVICE_CONFIG"
-uci set sing-box.main.enabled="1"
-uci set sing-box.main.user="root"
-uci commit sing-box
-show_success "$MSG_SERVICE_APPLIED"
+configure_singbox_service() {
+    show_progress "$MSG_SERVICE_CONFIG"
+    uci set sing-box.main.enabled="1"
+    uci set sing-box.main.user="root"
+    uci commit sing-box
+    show_success "$MSG_SERVICE_APPLIED"
+}
 
 # Отключение сервиса / Disable service
-service sing-box disable
-show_warning "$MSG_SERVICE_DISABLED"
+disable_singbox_service() {
+    show_progress "$MSG_SERVICE_DISABLED"
+    service sing-box disable
+    show_success "$MSG_SERVICE_DISABLED"
+}
 
 # Очистка конфигурации / Reset configuration
-echo '{}' > /etc/sing-box/config.json
-show_warning "$MSG_CONFIG_RESET"
+clean_singbox_config() {
+    show_progress "$MSG_CONFIG_RESET"
+    echo '{}' > /etc/sing-box/config.json
+    show_success "$MSG_CONFIG_RESET"
+}
 
-# Автоматическая настройка конфигурации / Auto configuration
-separator
-AUTO_CONFIG_SUCCESS=0
-show_progress "$MSG_CONFIG_IMPORT"
+# Отключение IPv6 / Disable IPv6
+disabled_ipv6() {
+    show_progress "$MSG_DISABLE_IPV6"
+    uci set 'network.lan.ipv6=0'
+    uci set 'network.wan.ipv6=0'
+    uci set 'dhcp.lan.dhcpv6=disabled'
+    /etc/init.d/odhcpd disable
+    uci commit
+    show_success "$MSG_IPV6_DISABLED"
+}
 
 # Создание сетевого интерфейса / Create network interface
 configure_proxy() {
@@ -187,14 +256,11 @@ configure_proxy() {
     uci set network.proxy.auto="1"
     uci commit network
 }
-configure_proxy
 
 # Настройка фаервола / Configure firewall
 configure_firewall() {
     show_progress "$MSG_FIREWALL_CONFIG"
     
-    # Добавляем зону только если её не существует
-    # Add zone only if it doesn't exist
     if ! uci -q get firewall.proxy >/dev/null; then
         uci add firewall zone >/dev/null
         uci set firewall.@zone[-1].name="proxy"
@@ -208,8 +274,6 @@ configure_firewall() {
         uci add_list firewall.@zone[-1].network="singtun0"
     fi
 
-    # Добавляем forwarding только если не существует
-    # Add forwarding only if it doesn't exist
     if ! uci -q get firewall.@forwarding[-1].dest="proxy" >/dev/null; then
         uci add firewall forwarding >/dev/null
         uci set firewall.@forwarding[-1].dest="proxy"
@@ -219,14 +283,53 @@ configure_firewall() {
     uci commit firewall >/dev/null 2>&1
     show_success "$MSG_FIREWALL_APPLIED"
 }
+
+# Перезагрузка firewall / Restart firewall
+restart_firewall() {
+    show_progress "$MSG_RESTART_FIREWALL"
+    service firewall reload >/dev/null 2>&1
+}
+
+# Перезагрузка network / Restart network
+restart_network() {
+    show_progress "$MSG_RESTART_NETWORK"
+    service network restart
+}
+
+# Включение sing-box / Enable sing-box
+enable_singbox() {
+    show_progress "$MSG_START_SERVICE"
+    service sing-box enable
+    service sing-box start
+    show_success "$MSG_SERVICE_STARTED"
+}
+
+cleanup() {
+    show_progress "$MSG_CLEANUP"
+    rm -- "$0"
+    show_success "$MSG_CLEANUP_DONE"
+}
+
+complete_script() {
+    show_success "$MSG_COMPLETE"
+    cleanup
+}
+
+# ======== Основной код / Main code ========
+
+init_language
+header "$MSG_INSTALL_TITLE"
+update_pkgs
+choose_install_operation
+install_singbox
+configure_singbox_service
+disable_singbox_service
+clean_singbox_config
+disabled_ipv6
+configure_proxy
 configure_firewall
-
-show_progress "$MSG_RESTART_FIREWALL"
-service firewall reload >/dev/null 2>&1
-
-show_progress "$MSG_RESTART_NETWORK"
-service network restart
-
-show_progress "$MSG_CLEANUP"
-rm -- "$0"
-show_success "$MSG_CLEANUP_DONE"
+restart_firewall
+restart_network
+network_check
+enable_singbox
+complete_script
