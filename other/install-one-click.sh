@@ -242,7 +242,7 @@ remove_old_key() {
 }
 
 # Подключение и установка / Connect and install
-connect_and_installation() {
+connect_and_install() {
     show_progress "$MSG_CONNECTING"
 
     local install_script_name="install.sh"
@@ -290,5 +290,5 @@ update_pkgs
 input_data
 clear_router
 remove_old_key
-connect_and_installation
+connect_and_install
 complete_script

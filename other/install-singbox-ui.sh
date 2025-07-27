@@ -99,6 +99,11 @@ init_language() {
             MSG_INSTALL_OPERATION_DELETE="2. Удаление"
             MSG_INSTALL_OPERATION_REINSTALL_UPDATE="3. Переустановка/Обновление"
             MSG_INSTALL_OPERATION_CHOICE=" Ваш выбор: "
+            MSG_ALREADY_INSTALLED="Ошибка: Пакет уже установлен. Если устанавливали этим скриптом - выберите переустановку (3). Иначе выполните сброс роутера."
+            MSG_UNINSTALLING="Удаление singbox-ui..."
+            MSG_UNINSTALL_SUCCESS="Удаление завершено"
+            MSG_NOT_INSTALLED="Ошибка: Пакет не установлен. Нечего удалять."
+            MSG_INVALID_OPERATION="Ошибка: Некорректная операция"
             ;;
         *)
             MSG_INSTALL_TITLE="Starting! ($script_name)"
@@ -139,6 +144,11 @@ init_language() {
             MSG_INSTALL_OPERATION_DELETE="2. Delete"
             MSG_INSTALL_OPERATION_REINSTALL_UPDATE="3. Reinstall/Update"
             MSG_INSTALL_OPERATION_CHOICE="Your choice: "
+            MSG_ALREADY_INSTALLED="Error: Package already installed. If installed via this script - choose reinstall (3). Otherwise reset the router."
+            MSG_UNINSTALLING="Uninstalling singbox-ui..."
+            MSG_UNINSTALL_SUCCESS="Uninstall completed"
+            MSG_NOT_INSTALLED="Error: Package not installed. Nothing to remove."
+            MSG_INVALID_OPERATION="Error: Invalid operation"
             ;;
     esac
 }
@@ -386,6 +396,57 @@ get_config() {
     fi
 }
 
+# Проверка установки / Check installation
+check_installed() {
+    opkg list-installed | grep -q "luci-app-singbox-ui"
+    return $?
+}
+
+# Удаление singbox-ui / Uninstall singbox-ui
+uninstall_singbox_ui() {
+    show_progress "$MSG_UNINSTALLING"
+    opkg remove luci-app-singbox-ui
+    /etc/init.d/uhttpd restart
+    show_success "$MSG_UNINSTALL_SUCCESS"
+}
+
+# Установка / Installation
+install_operation() {
+    check_installed
+    INSTALLED=$?
+
+    case $INSTALL_OPERATION in
+    1)  
+        if [ $INSTALLED -eq 0 ]; then
+            show_error "$MSG_ALREADY_INSTALLED"
+            exit 1
+        fi
+        choose_install_version
+        install_singbox_ui
+        get_config
+        ;;
+    2)  
+        if [ $INSTALLED -ne 0 ]; then
+            show_error "$MSG_NOT_INSTALLED"
+            exit 1
+        fi
+        uninstall_singbox_ui
+        ;;
+    3)  
+        if [ $INSTALLED -eq 0 ]; then
+            uninstall_singbox_ui
+        fi
+        choose_install_version
+        install_singbox_ui
+        get_config
+        ;;
+    *)
+        show_error "$MSG_INVALID_OPERATION"
+        exit 1
+        ;;
+esac
+}
+
 # Очистка / Cleanup
 cleanup() {
     show_progress "$MSG_CLEANUP"
@@ -406,7 +467,5 @@ init_language
 header "$MSG_INSTALL_TITLE"
 update_pkgs
 choose_install_operation
-choose_install_version
-install_singbox_ui
-get_config
+install_operation
 complete_script
