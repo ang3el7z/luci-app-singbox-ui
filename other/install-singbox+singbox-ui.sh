@@ -84,6 +84,15 @@ init_language() {
         MSG_UPDATE_PKGS="Обновление пакетов и установка зависимостей..."
         MSG_DEPS_SUCCESS="Зависимости успешно установлены"
         MSG_DEPS_ERROR="Ошибка установки зависимостей"
+        MSG_INSTALL_ACTION="Выберите действие:"
+        MSG_INSTALL_SINGBOX_UI="1. Установка singbox-ui"
+        MSG_INSTALL_SINGBOX_UI_AND_SINGBOX="2. Установка singbox-ui и singbox"
+        MSG_INSTALL_ACTION_CHOICE=" Ваш выбор: "
+        MSG_INSTALL_FLOW="Выберите тип операции:"
+        MSG_INSTALL_FLOW_INSTALL="1. Установка"
+        MSG_INSTALL_FLOW_DELETE="2. Удаление"
+        MSG_INSTALL_FLOW_REINSTALL_UPDATE="3. Переустановка/Обновление"
+        MSG_INSTALL_FLOW_CHOICE=" Ваш выбор: "
         ;;
     *)
         MSG_INSTALL_TITLE="Starting installation"
@@ -100,6 +109,15 @@ init_language() {
         MSG_UPDATE_PKGS="Updating packages and installing dependencies..."
         MSG_DEPS_SUCCESS="Dependencies successfully installed"
         MSG_DEPS_ERROR="Error installing dependencies"
+        MSG_INSTALL_ACTION="Select action:"
+        MSG_INSTALL_SINGBOX_UI="1. Install singbox-ui"
+        MSG_INSTALL_SINGBOX_UI_AND_SINGBOX="2. Install singbox-ui and singbox"
+        MSG_INSTALL_ACTION_CHOICE="Your choice: "
+        MSG_INSTALL_OPERATION="Select install operation:"
+        MSG_INSTALL_OPERATION_INSTALL="1. Install"
+        MSG_INSTALL_OPERATION_DELETE="2. Delete"
+        MSG_INSTALL_OPERATION_REINSTALL_UPDATE="3. Reinstall/Update"
+        MSG_INSTALL_OPERATION_CHOICE="Your choice: "
         ;;
 esac
 }
@@ -109,6 +127,16 @@ waiting() {
     local interval="${1:-30}"
     show_progress "$(printf "$MSG_WAITING" "$interval")"
     sleep "$interval"
+}
+
+choose_install_operation() {
+    if [ -z "$INSTALL_OPERATION" ]; then
+        show_message "$MSG_INSTALL_OPERATION"
+        show_message "$MSG_INSTALL_OPERATION_INSTALL"
+        show_message "$MSG_INSTALL_OPERATION_DELETE"
+        show_message "$MSG_INSTALL_OPERATION_REINSTALL_UPDATE"
+        read_input "$MSG_INSTALL_OPERATION_CHOICE" INSTALL_OPERATION
+    fi
 }
 
 # Обновление репозиториев и установка зависимостей / Update repos and install dependencies
@@ -162,23 +190,30 @@ network_check() {
 # Установка singbox / Install singbox
 install_singbox_script() {
     show_warning "$MSG_SINGBOX_INSTALL"
-    wget -O /root/install-singbox.sh https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/install-singbox.sh && chmod 0755 /root/install-singbox.sh && LANG_CHOICE=$LANG_CHOICE sh /root/install-singbox.sh
+
+    wget -O /root/install-singbox.sh https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/install-singbox.sh && 
+    chmod 0755 /root/install-singbox.sh && LANG_CHOICE=$LANG_CHOICE && INSTALL_OPERATION=$INSTALL_OPERATION sh /root/install-singbox.sh
+
     show_warning "$MSG_SINGBOX_RETURN"
 }
 
 # Установка singbox-ui / singbox-ui installation
 install_singbox_ui_script() {
     show_warning "$MSG_SINGBOX_UI_INSTALL"
-    wget -O /root/install-singbox-ui.sh https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/install-singbox-ui.sh && chmod 0755 /root/install-singbox-ui.sh && LANG_CHOICE=$LANG_CHOICE sh /root/install-singbox-ui.sh
+
+    wget -O /root/install-singbox-ui.sh https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/install-singbox-ui.sh && 
+    chmod 0755 /root/install-singbox-ui.sh && LANG_CHOICE=$LANG_CHOICE && INSTALL_OPERATION=$INSTALL_OPERATION sh /root/install-singbox-ui.sh
+    
     show_warning "$MSG_SINGBOX_RETURN"
 }
 
+# Выбор варианта установки / Choose installation variant
 choose_action() {
     if [ -z "$ACTION_CHOICE" ]; then
-        show_message "Выберите действие / Select action [1/2]:"
-        show_message "1. Установка singbox-ui"
-        show_message "2. Установка singbox-ui и singbox"
-        read_input " Ваш выбор / Your choice [1/2]: " ACTION_CHOICE
+        show_message "$MSG_INSTALL_ACTION"
+        show_message "$MSG_INSTALL_SINGBOX_UI"
+        show_message "$MSG_INSTALL_SINGBOX_UI_AND_SINGBOX"
+        read_input "$MSG_INSTALL_ACTION_CHOICE" ACTION_CHOICE
     fi
 
     case ${ACTION_CHOICE:-2} in
