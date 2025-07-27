@@ -257,7 +257,7 @@ complete_script() {
 
 init_language
 header "$MSG_INSTALL_TITLE"
-update_pkgs
+#update_pkgs
 choose_install_operation
 choose_action
 complete_script
