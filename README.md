@@ -61,5 +61,6 @@ install one click
 ```shell
 wget -O install-one-click.sh https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/install-one-click.sh && chmod +x install-one-click.sh && ./install-one-click.sh
 ```
+
 # Thanks
 [@strayge](https://github.com/strayge)
