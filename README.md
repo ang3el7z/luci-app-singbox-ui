@@ -36,20 +36,28 @@ wget -O /root/install.sh https://raw.githubusercontent.com/ang3el7z/luci-app-sin
     - Install singbox (tun mode)
     - Install singbox (tun mode) + singbox-ui
 
-# other helps
- - ssh keygen clear
+# User helps
+ssh keygen clear
 ```shell
 ssh-keygen -R 192.168.1.1
 ```
- - connect router
+
+connect router
 ```shell
 ssh root@192.168.1.1
 ```
- - refresh openwrt (fix visibility plugin) -> `Cntrl + Shift + I`
+
+refresh openwrt (fix visibility plugin) -> `Cntrl + Shift + I`
+
+Template
  - [`openwrt template original 2.11`](https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/file/openwrt-template-original-openwrt_2.11.json)
  - [`openwrt template bot 2.11`](https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/file/openwrt-template-bot-openwrt_2.11.json)
+
+ Fix
  - [`fix low "tun mode" speed`](https://github.com/ang3el7z/luci-app-singbox-ui/issues/1)
- - install one click
+
+# My helps
+install one click
 ```shell
 wget -O install-one-click.sh https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/install-one-click.sh && chmod +x install-one-click.sh && ./install-one-click.sh
 ```
