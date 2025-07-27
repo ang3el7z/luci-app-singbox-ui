@@ -91,6 +91,11 @@ init_language() {
             MSG_RESTART_NETWORK="Restarting network..."
             MSG_START_SERVICE="Starting sing-box service"
             MSG_SERVICE_STARTED="Service started successfully"
+            MSG_INSTALL_OPERATION="Выберите тип операции:"
+            MSG_INSTALL_OPERATION_INSTALL="1. Установка"
+            MSG_INSTALL_OPERATION_DELETE="2. Удаление"
+            MSG_INSTALL_OPERATION_REINSTALL_UPDATE="3. Переустановка/Обновление"
+            MSG_INSTALL_OPERATION_CHOICE=" Ваш выбор: "
             ;;
         *)
             MSG_INSTALL_TITLE="Sing-box installation and configuration"
@@ -119,6 +124,11 @@ init_language() {
             MSG_RESTART_NETWORK="Restarting network..."
             MSG_START_SERVICE="Starting sing-box service"
             MSG_SERVICE_STARTED="Service started successfully"
+            MSG_INSTALL_OPERATION="Select install operation:"
+            MSG_INSTALL_OPERATION_INSTALL="1. Install"
+            MSG_INSTALL_OPERATION_DELETE="2. Delete"
+            MSG_INSTALL_OPERATION_REINSTALL_UPDATE="3. Reinstall/Update"
+            MSG_INSTALL_OPERATION_CHOICE="Your choice: "
             ;;
     esac
 }
@@ -139,6 +149,17 @@ update_pkgs() {
     else
         show_error "$MSG_PKGS_ERROR"
         exit 1
+    fi
+}
+
+# Выбор операции установки / Choose install operation
+choose_install_operation() {
+    if [ -z "$INSTALL_OPERATION" ]; then
+        show_message "$MSG_INSTALL_OPERATION"
+        show_message "$MSG_INSTALL_OPERATION_INSTALL"
+        show_message "$MSG_INSTALL_OPERATION_DELETE"
+        show_message "$MSG_INSTALL_OPERATION_REINSTALL_UPDATE"
+        read_input "$MSG_INSTALL_OPERATION_CHOICE" INSTALL_OPERATION
     fi
 }
 
@@ -299,6 +320,7 @@ complete_script() {
 init_language
 header "$MSG_INSTALL_TITLE"
 update_pkgs
+choose_install_operation
 install_singbox
 configure_singbox_service
 disable_singbox_service
