@@ -95,7 +95,6 @@ init_language() {
             MSG_ROUTER_AVAILABLE="Роутер доступен через %s (%d сек)"
             MSG_WAITING="Ожидание %d сек"
             MSG_ROUTER_NOT_AVAILABLE="Роутер %s не доступен после %d сек"
-            MSG_CONFIG_PROMPT="Введите URL конфигурации (если нет - нажмите Enter): "
             ;;
         *)
             MSG_INSTALL_TITLE="Install one click -> singbox+singbox-ui"
@@ -117,7 +116,6 @@ init_language() {
             MSG_ROUTER_AVAILABLE="Router available via %s (%d sec)"
             MSG_WAITING="Waiting %d sec"
             MSG_ROUTER_NOT_AVAILABLE="Router %s not available after %d sec"
-            MSG_CONFIG_PROMPT="Enter configuration URL (press Enter to skip): "
             ;;
     esac
 }
