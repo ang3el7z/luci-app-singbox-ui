@@ -173,6 +173,29 @@ install_singbox_ui_script() {
     show_warning "$MSG_SINGBOX_RETURN"
 }
 
+choose_action() {
+    if [ -z "$ACTION_CHOICE" ]; then
+        show_message "Выберите действие / Select action [1/2]:"
+        show_message "1. Установка singbox-ui"
+        show_message "2. Установка singbox-ui и singbox"
+        read_input " Ваш выбор / Your choice [1/2]: " ACTION_CHOICE
+    fi
+
+    case ${ACTION_CHOICE:-2} in
+    1)
+        install_singbox_ui_script
+        ;;
+    2)
+        install_singbox_script
+        install_singbox_ui_script
+        ;;
+    *)
+        show_error "Некорректный ввод"
+        exit 1
+        ;;
+esac
+}
+
 # Очистка файлов / Cleanup
 cleanup() {
     show_progress "$MSG_CLEANUP"
@@ -191,6 +214,5 @@ complete_script() {
 init_language
 header "$MSG_INSTALL_TITLE"
 # update_pkgs
-install_singbox_script
-install_singbox_ui_script
+choose_action
 complete_script
