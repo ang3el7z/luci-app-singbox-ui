@@ -76,7 +76,6 @@ init_language() {
             MSG_SERVICE_APPLIED="Конфигурация сервиса применена"
             MSG_SERVICE_DISABLED="Сервис временно отключен"
             MSG_CONFIG_RESET="Конфигурационный файл сброшен"
-            MSG_CONFIG_IMPORT="Импорт конфигурации sing-box"
             MSG_NETWORK_CONFIG="Создание сетевого интерфейса proxy..."
             MSG_FIREWALL_CONFIG="Конфигурация правил фаервола..."
             MSG_FIREWALL_APPLIED="Правила фаервола применены"
@@ -86,6 +85,12 @@ init_language() {
             MSG_CLEANUP_DONE="Файлы удалены!"
             MSG_WAITING="Ожидание %d сек"
             MSG_COMPLETE="Выполнено! (install-singbox.sh)"
+            MSG_DISABLE_IPV6="Disabling IPv6..."
+            MSG_IPV6_DISABLED="IPv6 disabled"
+            MSG_RESTART_FIREWALL="Restarting firewall..."
+            MSG_RESTART_NETWORK="Restarting network..."
+            MSG_START_SERVICE="Starting sing-box service"
+            MSG_SERVICE_STARTED="Service started successfully"
             ;;
         *)
             MSG_INSTALL_TITLE="Sing-box installation and configuration"
@@ -99,7 +104,6 @@ init_language() {
             MSG_SERVICE_APPLIED="Service configuration applied"
             MSG_SERVICE_DISABLED="Service temporarily disabled"
             MSG_CONFIG_RESET="Configuration file reset"
-            MSG_CONFIG_IMPORT="Importing sing-box configuration"
             MSG_NETWORK_CONFIG="Creating proxy network interface..."
             MSG_FIREWALL_CONFIG="Configuring firewall rules..."
             MSG_FIREWALL_APPLIED="Firewall rules applied"
@@ -109,6 +113,12 @@ init_language() {
             MSG_CLEANUP_DONE="Files removed!"
             MSG_WAITING="Waiting %d sec"
             MSG_COMPLETE="Done! (install-singbox.sh)"
+            MSG_DISABLE_IPV6="Disabling IPv6..."
+            MSG_IPV6_DISABLED="IPv6 disabled"
+            MSG_RESTART_FIREWALL="Restarting firewall..."
+            MSG_RESTART_NETWORK="Restarting network..."
+            MSG_START_SERVICE="Starting sing-box service"
+            MSG_SERVICE_STARTED="Service started successfully"
             ;;
     esac
 }
