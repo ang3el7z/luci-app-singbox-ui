@@ -346,6 +346,7 @@ complete_script() {
     separator
     cleanup
 }
+
 # ======== Основной код / Main code ========
 
 init_language
