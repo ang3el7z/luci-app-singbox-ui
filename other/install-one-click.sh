@@ -251,7 +251,7 @@ connect_and_install() {
     if [ -z "$password" ]; then
         ssh -t -o "StrictHostKeyChecking no" "root@$router_ip" \
              export LANG_CHOICE=$LANG_CHOICE; \
-             wget -O /root/$install_script_name https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/$install_script_name && \
+             wget -O /root/$install_script_name https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/$install_script_name && \
              chmod 0755 /root/$install_script_name && \
              sh /root/$install_script_name" || {
             show_error "$MSG_SSH_ERROR"
@@ -260,7 +260,7 @@ connect_and_install() {
     else
         sshpass -p "$password" ssh -t -o "StrictHostKeyChecking no" "root@$router_ip" \
              export LANG_CHOICE=$LANG_CHOICE; \
-             wget -O /root/$install_script_name https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/$install_script_name && \
+             wget -O /root/$install_script_name https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/$install_script_name && \
              chmod 0755 /root/$install_script_name && \
              sh /root/$install_script_name" || {
             show_error "$MSG_SSH_ERROR"
