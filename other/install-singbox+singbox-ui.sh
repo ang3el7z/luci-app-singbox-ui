@@ -19,38 +19,37 @@ CHECK="✓"
 CROSS="✗"
 INDENT="  "
 
-# Функция разделителя / Separator function
-separator() {
-    echo -e "${FG_MAIN}                -------------------------------------                ${RESET}"
-}
-
+# Заголовок / Header
 header() {
-    clear
-    separator
-    echo -e "${BG_ACCENT}${FG_MAIN}                $MSG_START_INSTALL               ${RESET}"
-    separator
+    echo -e "${BG_ACCENT}${FG_MAIN}                $1                ${RESET}"
 }
 
+# Прогресс / Progress
 show_progress() {
     echo -e "${INDENT}${ARROW} ${FG_ACCENT}$1${RESET}"
 }
 
+# Успех / Success
 show_success() {
     echo -e "${INDENT}${CHECK} ${FG_SUCCESS}$1${RESET}\n"
 }
 
+# Ошибка / Error
 show_error() {
     echo -e "${INDENT}${CROSS} ${FG_ERROR}$1${RESET}\n"
 }
 
+# Предупреждение / Warning
 show_warning() {
     echo -e "${INDENT}! ${FG_WARNING}$1${RESET}\n"
 }
 
-show_message() {
+# Сообщение / Message
+    show_message() {
     echo -e "${FG_USER_COLOR}${INDENT}${ARROW} $1${RESET}"
 }
 
+# Ввод / Input
 read_input() {
     echo -ne "${FG_USER_COLOR}${INDENT}${ARROW_CLEAR} $1${RESET} "
     if [ -n "$2" ]; then
@@ -69,77 +68,61 @@ init_language() {
         read_input " Ваш выбор / Your choice [1/2]: " LANG_CHOICE
     fi
 
-    # Установка языка по умолчанию (английский) / Default to English
     case ${LANG_CHOICE:-2} in
     1)
-        # Русские тексты / Russian texts
-        MSG_START_INSTALL="Начало установки"
+        MSG_INSTALL_TITLE="Установка и настройка singbox-ui"
         MSG_NETWORK_CHECK="Проверка доступности сети..."
         MSG_NETWORK_SUCCESS="Сеть доступна (через %s, за %s сек)"
         MSG_NETWORK_ERROR="Сеть не доступна после %s сек!"
         MSG_SINGBOX_INSTALL="Переход к установке singbox..."
         MSG_SINGBOX_RETURN="Вернулись к основному скрипту"
-        MSG_CONFIG_PROMPT="Введите URL конфигурации (Enter для ручного ввода): "
-        MSG_CONFIG_LOADING="Загрузка конфигурации с %s (Попытка %s из %s)"
-        MSG_CONFIG_SUCCESS="Конфигурация успешно загружена"
-        MSG_CONFIG_ERROR="Ошибка загрузки: %s"
-        MSG_FORMAT_ERROR="Ошибка формата конфигурации"
-        MSG_RETRY="Попробую снова..."
-        MSG_MANUAL_CONFIG="Ручная настройка конфигурации"
-        MSG_EDIT_COMPLETE="Завершили редактирование config.json? [y/N]: "
-        MSG_EDIT_SUCCESS="Успешно"
-        MSG_INVALID_INPUT="Некорректный ввод"
-        MSG_UI_INSTALL="Переход к установке singbox-ui..."
-        MSG_DISABLE_IPV6="Отключение IPv6..."
-        MSG_IPV6_DISABLED="IPv6 отключен"
-        MSG_RESTART_FIREWALL="Перезапуск firewall..."
-        MSG_RESTART_NETWORK="Перезапуск network..."
-        MSG_START_SERVICE="Включение sing-box"
-        MSG_SERVICE_STARTED="Сервис успешно запущен"
+        MSG_SINGBOX_UI_INSTALL="Переход к установке singbox-ui..."
         MSG_CLEANUP="Очистка файлов..."
         MSG_CLEANUP_DONE="Файлы удалены!"
-        MSG_INSTALL_COMPLETE="Установка завершена!"
+        MSG_COMPLETE="Выполнено! (install-singbox+singbox-ui.sh)"
         MSG_WAITING="Ожидание %d сек"
         MSG_UPDATE_PKGS="Обновление пакетов и установка зависимостей..."
         MSG_DEPS_SUCCESS="Зависимости успешно установлены"
         MSG_DEPS_ERROR="Ошибка установки зависимостей"
+        MSG_INSTALL_ACTION="Выберите действие:"
+        MSG_INSTALL_SINGBOX_UI="1. Установка singbox-ui"
+        MSG_INSTALL_SINGBOX_UI_AND_SINGBOX="2. Установка singbox-ui и singbox"
+        MSG_INSTALL_ACTION_CHOICE=" Ваш выбор: "
+        MSG_INSTALL_OPERATION="Выберите тип операции:"
+        MSG_INSTALL_OPERATION_INSTALL="1. Установка"
+        MSG_INSTALL_OPERATION_DELETE="2. Удаление"
+        MSG_INSTALL_OPERATION_REINSTALL_UPDATE="3. Переустановка/Обновление"
+        MSG_INSTALL_OPERATION_CHOICE=" Ваш выбор: "
         ;;
     *)
-        # Английские тексты / English texts
-        MSG_START_INSTALL="Starting installation"
+        MSG_INSTALL_TITLE="Starting installation"
         MSG_NETWORK_CHECK="Checking network availability..."
         MSG_NETWORK_SUCCESS="Network is available (via %s, in %s sec)"
         MSG_NETWORK_ERROR="Network is not available after %s sec!"
         MSG_SINGBOX_INSTALL="Proceeding to singbox installation..."
         MSG_SINGBOX_RETURN="Returned to main script"
-        MSG_CONFIG_PROMPT="Enter Configuration subscription URL (Enter for manual input): "
-        MSG_CONFIG_LOADING="Loading configuration from %s (Attempt %s of %s)"
-        MSG_CONFIG_SUCCESS="Configuration loaded successfully"
-        MSG_CONFIG_ERROR="Loading error: %s"
-        MSG_FORMAT_ERROR="Configuration format error"
-        MSG_RETRY="Retrying..."
-        MSG_MANUAL_CONFIG="Manual configuration"
-        MSG_EDIT_COMPLETE="Finished editing config.json? [y/N]: "
-        MSG_EDIT_SUCCESS="Success"
-        MSG_INVALID_INPUT="Invalid input"
-        MSG_UI_INSTALL="Proceeding to singbox-ui installation..."
-        MSG_DISABLE_IPV6="Disabling IPv6..."
-        MSG_IPV6_DISABLED="IPv6 disabled"
-        MSG_RESTART_FIREWALL="Restarting firewall..."
-        MSG_RESTART_NETWORK="Restarting network..."
-        MSG_START_SERVICE="Starting sing-box service"
-        MSG_SERVICE_STARTED="Service started successfully"
+        MSG_SINGBOX_UI_INSTALL="Proceeding to singbox-ui installation..."
         MSG_CLEANUP="Cleaning up files..."
         MSG_CLEANUP_DONE="Files removed!"
-        MSG_INSTALL_COMPLETE="Installation complete!"
+        MSG_COMPLETE="Done! (install-singbox+singbox-ui.sh)"
         MSG_WAITING="Waiting %d sec"
         MSG_UPDATE_PKGS="Updating packages and installing dependencies..."
         MSG_DEPS_SUCCESS="Dependencies successfully installed"
         MSG_DEPS_ERROR="Error installing dependencies"
+        MSG_INSTALL_ACTION="Select action:"
+        MSG_INSTALL_SINGBOX_UI="1. Install singbox-ui"
+        MSG_INSTALL_SINGBOX_UI_AND_SINGBOX="2. Install singbox-ui and singbox"
+        MSG_INSTALL_ACTION_CHOICE="Your choice: "
+        MSG_INSTALL_OPERATION="Select install operation:"
+        MSG_INSTALL_OPERATION_INSTALL="1. Install"
+        MSG_INSTALL_OPERATION_DELETE="2. Delete"
+        MSG_INSTALL_OPERATION_REINSTALL_UPDATE="3. Reinstall/Update"
+        MSG_INSTALL_OPERATION_CHOICE="Your choice: "
         ;;
 esac
 }
 
+# Ожидание / Waiting
 waiting() {
     local interval="${1:-30}"
     show_progress "$(printf "$MSG_WAITING" "$interval")"
@@ -149,17 +132,27 @@ waiting() {
 # Обновление репозиториев и установка зависимостей / Update repos and install dependencies
 update_pkgs() {
     show_progress "$MSG_UPDATE_PKGS"
-    opkg update && opkg install openssh-sftp-server curl jq && (opkg install nano || opkg install nano-full)
+    opkg update
     if [ $? -eq 0 ]; then
         show_success "$MSG_DEPS_SUCCESS"
-        separator
     else
         show_error "$MSG_DEPS_ERROR"
-        separator
         exit 1
     fi
 }
 
+# Выбор операции установки / Choose install operation
+choose_install_operation() {
+    if [ -z "$INSTALL_OPERATION" ]; then
+        show_message "$MSG_INSTALL_OPERATION"
+        show_message "$MSG_INSTALL_OPERATION_INSTALL"
+        show_message "$MSG_INSTALL_OPERATION_DELETE"
+        show_message "$MSG_INSTALL_OPERATION_REINSTALL_UPDATE"
+        read_input "$MSG_INSTALL_OPERATION_CHOICE" INSTALL_OPERATION
+    fi
+}
+
+# Проверка доступности сети / Network availability check
 network_check() {
     timeout=200
     interval=5
@@ -167,12 +160,13 @@ network_check() {
 
     attempts=$((timeout / interval))
     success=0
-    i=0
+    i=1
 
     show_progress "$MSG_NETWORK_CHECK"
 
+    sleep $interval
+
     while [ $i -lt $attempts ]; do
-        # Получаем текущий индекс для выбора адреса / Get current index for target selection
         num_targets=$(echo "$targets" | wc -w)
         index=$((i % num_targets))
         target=$(echo "$targets" | cut -d' ' -f$((index + 1)))
@@ -194,136 +188,68 @@ network_check() {
     fi
 }
 
-init_language
-header
-
-update_pkgs
-
 # Установка singbox / Install singbox
-separator
-show_warning "$MSG_SINGBOX_INSTALL"
-wget -O /root/install-singbox.sh https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/install-singbox.sh && chmod 0755 /root/install-singbox.sh && LANG_CHOICE=$LANG_CHOICE sh /root/install-singbox.sh
-show_warning "$MSG_SINGBOX_RETURN"
+install_singbox_script() {
+    show_warning "$MSG_SINGBOX_INSTALL"
 
-waiting 30
-network_check
+    wget -O /root/install-singbox.sh https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/install-singbox.sh && 
+    chmod 0755 /root/install-singbox.sh && LANG_CHOICE=$LANG_CHOICE && INSTALL_OPERATION=$INSTALL_OPERATION sh /root/install-singbox.sh
 
-if [ -z "$CONFIG_URL" ]; then
-read_input "${MSG_CONFIG_PROMPT}" CONFIG_URL
-fi
+    show_warning "$MSG_SINGBOX_RETURN"
+}
 
-# Добавьте в начало скрипта (перед проверкой CONFIG_URL)
-AUTO_CONFIG_SUCCESS=0  # Инициализация переменной
+# Установка singbox-ui / singbox-ui installation
+install_singbox_ui_script() {
+    show_warning "$MSG_SINGBOX_UI_INSTALL"
 
-# Проверяем, что URL не пустой / Check if URL is not empty
-if [ -n "$CONFIG_URL" ]; then
-    MAX_ATTEMPTS=3
-    ATTEMPT=1
-    SUCCESS=0
+    wget -O /root/install-singbox-ui.sh https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/install-singbox-ui.sh && 
+    chmod 0755 /root/install-singbox-ui.sh && LANG_CHOICE=$LANG_CHOICE && INSTALL_OPERATION=$INSTALL_OPERATION sh /root/install-singbox-ui.sh
 
-    # Пытаемся загрузить конфигурацию / Try to load configuration
-    while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
-        show_progress "$(printf "$MSG_CONFIG_LOADING" "$CONFIG_URL" "$ATTEMPT" "$MAX_ATTEMPTS")"
-        
-        # Улучшенная загрузка и проверка JSON / Improved JSON loading and validation
-        if RAW_JSON=$(curl -fsS "$CONFIG_URL" 2>/dev/null) && [ -n "$RAW_JSON" ]; then
-            if FORMATTED_JSON=$(echo "$RAW_JSON" | jq -e '.' 2>/dev/null); then
-                echo "$FORMATTED_JSON" > /etc/sing-box/config.json
-                show_success "$MSG_CONFIG_SUCCESS"
-                AUTO_CONFIG_SUCCESS=1
-                SUCCESS=1
-                break
-            else
-                show_error "$MSG_FORMAT_ERROR"
-            fi
-        else
-            show_error "$(printf "$MSG_CONFIG_ERROR" "${RAW_JSON:-"Unknown error"}")"
-        fi
+    show_warning "$MSG_SINGBOX_RETURN"
+}
 
-        if [ $ATTEMPT -lt $MAX_ATTEMPTS ]; then
-            show_warning "$MSG_RETRY"
-            network_check
-        fi
-        
-        ATTEMPT=$((ATTEMPT + 1))
-    done
-
-    if [ $SUCCESS -eq 0 ]; then
-        show_warning "$MSG_MANUAL_CONFIG"
-        export TERM=xterm
-        nano /etc/sing-box/config.json || {
-            show_error "Failed to open editor. Please check your terminal settings."
-            exit 1
-        }
+# Выбор варианта установки / Choose installation variant
+choose_action() {
+    if [ -z "$ACTION_CHOICE" ]; then
+        show_message "$MSG_INSTALL_ACTION"
+        show_message "$MSG_INSTALL_SINGBOX_UI"
+        show_message "$MSG_INSTALL_SINGBOX_UI_AND_SINGBOX"
+        read_input "$MSG_INSTALL_ACTION_CHOICE" ACTION_CHOICE
     fi
-else
-    show_warning "$MSG_MANUAL_CONFIG"
-    export TERM=xterm
-    nano /etc/sing-box/config.json || {
-        show_error "Failed to open editor. Please check your terminal settings."
+
+    case ${ACTION_CHOICE:-2} in
+    1)
+        install_singbox_ui_script
+        ;;
+    2)
+        install_singbox_script
+        install_singbox_ui_script
+        ;;
+    *)
+        show_error "Некорректный ввод"
         exit 1
-    }
-fi
+        ;;
+esac
+}
 
-# Проверка ручной конфигурации / Manual configuration check
-if [ "$AUTO_CONFIG_SUCCESS" -ne 1 ]; then
-    while true; do
-        separator
-        read_input "${MSG_EDIT_COMPLETE}" edit_choice
-        case "${edit_choice:-Y}" in  # По умолчанию Y если ввод пустой / Default to Y if input is empty
-            [Yy]* )
-                show_success "$MSG_EDIT_SUCCESS"
-                break
-                ;;
-            [Nn]* )
-                export TERM=xterm
-                nano /etc/sing-box/config.json || {
-                    show_error "Failed to open editor. Please check your terminal settings."
-                    continue
-                }
-                ;;
-            * )
-                show_error "$MSG_INVALID_INPUT"
-                ;;
-        esac
-    done
-fi
+# Очистка файлов / Cleanup
+cleanup() {
+    show_progress "$MSG_CLEANUP"
+    rm -- "$0"
+    show_success "$MSG_CLEANUP_DONE"
+}
 
-# Установка веб-интерфейса / Web UI installation
-separator
-show_warning "$MSG_UI_INSTALL"
-wget -O /root/install-singbox-ui.sh https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/install-singbox-ui.sh && chmod 0755 /root/install-singbox-ui.sh && LANG_CHOICE=$LANG_CHOICE sh /root/install-singbox-ui.sh
-echo "$CONFIG_URL" > "/etc/sing-box/url_config.json"
-show_warning "$MSG_SINGBOX_RETURN"
+# Завершение скрипта / Complete script
+complete_script() {
+    show_success "$MSG_COMPLETE"
+    cleanup
+}
 
-# Отключение IPv6 / Disable IPv6
-separator
-show_progress "$MSG_DISABLE_IPV6"
-uci set 'network.lan.ipv6=0'
-uci set 'network.wan.ipv6=0'
-uci set 'dhcp.lan.dhcpv6=disabled'
-/etc/init.d/odhcpd disable
-uci commit
-show_success "$MSG_IPV6_DISABLED"
+# ======== Основной код / Main code ========
 
-show_progress "$MSG_RESTART_FIREWALL"
-service firewall reload >/dev/null 2>&1
-
-show_progress "$MSG_RESTART_NETWORK"
-service network restart
-
-network_check
-
-show_progress "$MSG_START_SERVICE"
-waiting 15
-service sing-box enable
-service sing-box start
-show_success "$MSG_SERVICE_STARTED"
- 
-separator
-show_success "$MSG_INSTALL_COMPLETE"
-separator
-
-show_progress "$MSG_CLEANUP"
-rm -- "$0"
-show_success "$MSG_CLEANUP_DONE"
+init_language
+header "$MSG_INSTALL_TITLE"
+update_pkgs
+choose_install_operation
+choose_action
+complete_script

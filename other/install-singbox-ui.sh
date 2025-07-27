@@ -19,17 +19,9 @@ CHECK="✓"
 CROSS="✗"
 INDENT="  "
 
-# Функция разделителя / Separator function
-separator() {
-    echo -e "${FG_MAIN}                -------------------------------------                ${RESET}"
-}
-
 header() {
-    separator
-    echo -e "${BG_ACCENT}${FG_MAIN}                $MSG_INSTALL_TITLE                ${RESET}"
-    separator
+    echo -e "${BG_ACCENT}${FG_MAIN}                $1                ${RESET}"
 }
-
 show_progress() {
     echo -e "${INDENT}${ARROW} ${FG_ACCENT}$1${RESET}"
 }
@@ -72,15 +64,14 @@ init_language() {
             MSG_DEPS_ERROR="Ошибка установки зависимостей"
             MSG_INSTALL_UI="Начало установки singbox-ui..."
             MSG_CHOOSE_VERSION="Выберите версию singbox-ui для установки:"
-            MSG_OPTION_1="1) Latest (около 150 Кб)"
-            MSG_OPTION_2="2) Lite версия (около 6 Кб)"
+            MSG_OPTION_1="1) Latest (~150 Кб)"
+            MSG_OPTION_2="2) Lite версия (~6 Кб)"
             MSG_OPTION_3="3) Pre-release (бета, возможны баги)"
             MSG_OPTION_4="4) Runner сборка из Pull Request (тестовая)"
             MSG_INVALID_CHOICE="Некорректный выбор, выбрана версия Latest по умолчанию."
             MSG_INSTALL_COMPLETE="Установка завершена"
             MSG_CLEANUP="Очистка файлов..."
             MSG_CLEANUP_DONE="Файлы удалены!"
-            MSG_NO_RUNNER_FILES="Файлы Runner сборок не найдены."
             MSG_SELECT_RUNNER="Выберите Runner сборку для установки:"
             MSG_NO_PRE_RELEASE="Не удалось получить pre-release, используем latest."
             MSG_RUNNER_INDEX_UNAVAILABLE="Не удалось загрузить список runner сборок (index.txt)."
@@ -89,6 +80,23 @@ init_language() {
             MSG_INSTALL_LATEST="Устанавливается последняя доступная сборка (latest)..."
             MSG_DOWNLOAD_ERROR="Ошибка загрузки файла. Установка прервана."
             MSG_WAITING="Ожидание %d сек"
+            MSG_YOUR_CHOICE="Ваш выбор: "
+            MSG_COMPLETE="Выполнено! (install-singbox-ui.sh)"
+            MSG_CONFIG_PROMPT="Введите URL конфигурации (Enter для ручного ввода): "
+            MSG_CONFIG_LOADING="Загрузка конфигурации с %s (Попытка %s из %s)"
+            MSG_CONFIG_SUCCESS="Конфигурация успешно загружена"
+            MSG_CONFIG_ERROR="Ошибка загрузки: %s"
+            MSG_FORMAT_ERROR="Ошибка формата конфигурации"
+            MSG_RETRY="Попробую снова..."
+            MSG_MANUAL_CONFIG="Ручная настройка конфигурации"
+            MSG_EDIT_COMPLETE="Завершили редактирование config.json? [y/N]: "
+            MSG_EDIT_SUCCESS="Успешно"
+            MSG_INVALID_INPUT="Некорректный ввод"
+            MSG_INSTALL_OPERATION="Выберите тип операции:"
+            MSG_INSTALL_OPERATION_INSTALL="1. Установка"
+            MSG_INSTALL_OPERATION_DELETE="2. Удаление"
+            MSG_INSTALL_OPERATION_REINSTALL_UPDATE="3. Переустановка/Обновление"
+            MSG_INSTALL_OPERATION_CHOICE=" Ваш выбор: "
             ;;
         *)
             MSG_INSTALL_TITLE="Singbox-ui installation and configuration"
@@ -97,14 +105,13 @@ init_language() {
             MSG_DEPS_ERROR="Error installing dependencies"
             MSG_INSTALL_UI="Starting singbox-ui installation..."
             MSG_CHOOSE_VERSION="Select singbox-ui version to install:"
-            MSG_OPTION_1="1) Latest (about 150 KB)"
-            MSG_OPTION_2="2) Lite version (about 6 KB)"
+            MSG_OPTION_1="1) Latest (~150 KB)"
+            MSG_OPTION_2="2) Lite version (~6 KB)"
             MSG_OPTION_3="3) Pre-release (beta, may have bugs)"
             MSG_OPTION_4="4) Runner build from Pull Request (testing)"
             MSG_INSTALL_COMPLETE="Installation complete"
             MSG_CLEANUP="Cleaning up files..."
             MSG_CLEANUP_DONE="Files removed!"
-            MSG_NO_RUNNER_FILES="Runner build files not found."
             MSG_SELECT_RUNNER="Select Runner build to install:"
             MSG_NO_PRE_RELEASE="Failed to fetch pre-release, using latest."
             MSG_RUNNER_INDEX_UNAVAILABLE="Failed to load runner build list (index.txt)."
@@ -113,6 +120,23 @@ init_language() {
             MSG_INSTALL_LATEST="Installing stable version latest"
             MSG_DOWNLOAD_ERROR="Download failed. Installation aborted."
             MSG_WAITING="Waiting %d sec"
+            MSG_YOUR_CHOICE="Your choice: "
+            MSG_COMPLETE="Completed! (install-singbox-ui.sh)"
+            MSG_CONFIG_PROMPT="Enter Configuration subscription URL (Enter for manual input): "
+            MSG_CONFIG_LOADING="Loading configuration from %s (Attempt %s of %s)"
+            MSG_CONFIG_SUCCESS="Configuration loaded successfully"
+            MSG_CONFIG_ERROR="Loading error: %s"
+            MSG_FORMAT_ERROR="Configuration format error"
+            MSG_RETRY="Retrying..."
+            MSG_MANUAL_CONFIG="Manual configuration"
+            MSG_EDIT_COMPLETE="Finished editing config.json? [y/N]: "
+            MSG_EDIT_SUCCESS="Success"
+            MSG_INVALID_INPUT="Invalid input"
+            MSG_INSTALL_OPERATION="Select install operation:"
+            MSG_INSTALL_OPERATION_INSTALL="1. Install"
+            MSG_INSTALL_OPERATION_DELETE="2. Delete"
+            MSG_INSTALL_OPERATION_REINSTALL_UPDATE="3. Reinstall/Update"
+            MSG_INSTALL_OPERATION_CHOICE="Your choice: "
             ;;
     esac
 }
@@ -126,36 +150,76 @@ waiting() {
 # Обновление репозиториев и установка зависимостей / Update repos and install dependencies
 update_pkgs() {
     show_progress "$MSG_UPDATE_PKGS"
-    opkg update && opkg install curl jq
+    opkg update && opkg install curl jq && (opkg install nano || opkg install nano-full)
     if [ $? -eq 0 ]; then
         show_success "$MSG_DEPS_SUCCESS"
-        separator
     else
         show_error "$MSG_DEPS_ERROR"
-        separator
         exit 1
     fi
 }
 
-# Запрашиваем язык / Ask for language
-init_language
-header
+# Выбор операции установки / Choose install operation
+choose_install_operation() {
+    if [ -z "$INSTALL_OPERATION" ]; then
+        show_message "$MSG_INSTALL_OPERATION"
+        show_message "$MSG_INSTALL_OPERATION_INSTALL"
+        show_message "$MSG_INSTALL_OPERATION_DELETE"
+        show_message "$MSG_INSTALL_OPERATION_REINSTALL_UPDATE"
+        read_input "$MSG_INSTALL_OPERATION_CHOICE" INSTALL_OPERATION
+    fi
+}
 
-update_pkgs
+# Проверка доступности сети / Network availability check
+network_check() {
+    timeout=200
+    interval=5
+    targets="223.5.5.5 180.76.76.76 77.88.8.8 1.1.1.1 8.8.8.8 9.9.9.9 94.140.14.14"
+
+    attempts=$((timeout / interval))
+    success=0
+    i=1
+
+    show_progress "$MSG_NETWORK_CHECK"
+
+    sleep $interval
+
+    while [ $i -lt $attempts ]; do
+        num_targets=$(echo "$targets" | wc -w)
+        index=$((i % num_targets))
+        target=$(echo "$targets" | cut -d' ' -f$((index + 1)))
+
+        if ping -c 1 -W 2 "$target" >/dev/null 2>&1; then
+            success=1
+            break
+        fi
+        
+        i=$((i + 1))
+    done
+
+    if [ $success -eq 1 ]; then
+        total_time=$((i * interval))
+        show_success "$(printf "$MSG_NETWORK_SUCCESS" "$target" "$total_time")"
+    else
+        show_error "$(printf "$MSG_NETWORK_ERROR" "$timeout")" >&2
+        exit 1
+    fi
+}
 
 # Выбор версии для установки / Version selection
-show_message "$MSG_CHOOSE_VERSION"
-show_message "$MSG_OPTION_1"
-show_message "$MSG_OPTION_2"
-show_message "$MSG_OPTION_3"
-show_message "$MSG_OPTION_4"
-read_input " " VERSION_CHOICE
+choose_install_version() {
+    show_message "$MSG_CHOOSE_VERSION"
+    show_message "$MSG_OPTION_1"
+    show_message "$MSG_OPTION_2"
+    show_message "$MSG_OPTION_3"
+    show_message "$MSG_OPTION_4"
+    read_input "$MSG_YOUR_CHOICE" VERSION_CHOICE
 
-# Ссылки на файлы для каждой версии / URLs for each version
-URL_LATEST="https://github.com/ang3el7z/luci-app-singbox-ui/releases/latest/download/luci-app-singbox-ui.ipk"
-URL_LITE="https://github.com/ang3el7z/luci-app-singbox-ui/releases/download/v1.2.1/luci-app-singbox-ui.ipk"
+    # Ссылки на файлы для каждой версии / URLs for each version
+    URL_LATEST="https://github.com/ang3el7z/luci-app-singbox-ui/releases/latest/download/luci-app-singbox-ui.ipk"
+    URL_LITE="https://github.com/ang3el7z/luci-app-singbox-ui/releases/download/v1.2.1/luci-app-singbox-ui.ipk"
 
-case "$VERSION_CHOICE" in
+    case "$VERSION_CHOICE" in
     1)
         DOWNLOAD_URL="$URL_LATEST"
         ;;
@@ -206,7 +270,7 @@ case "$VERSION_CHOICE" in
             i=$((i+1))
         done
 
-        read_input " " choice
+        read_input "$MSG_YOUR_CHOICE" choice
 
         eval SELECTED_RUNNER_FILE=\$RUNNER_$choice
 
@@ -221,23 +285,126 @@ case "$VERSION_CHOICE" in
         show_error "$MSG_INVALID_CHOICE"
         DOWNLOAD_URL="$URL_LATEST"
         ;;
-esac
+    esac
+}
 
 # Установка singbox-ui / Install singbox-ui
-show_progress "$MSG_INSTALL_UI"
-wget -O /root/luci-app-singbox-ui.ipk "$DOWNLOAD_URL"
-if [ $? -ne 0 ]; then
-    show_error "$MSG_DOWNLOAD_ERROR"
-    exit 1
-fi
-chmod 0755 /root/luci-app-singbox-ui.ipk
-opkg update
-opkg install /root/luci-app-singbox-ui.ipk
-/etc/init.d/uhttpd restart
-show_success "$MSG_INSTALL_COMPLETE"
+install_singbox_ui() {
+    show_progress "$MSG_INSTALL_UI"
+    wget -O /root/luci-app-singbox-ui.ipk "$DOWNLOAD_URL"
+    if [ $? -ne 0 ]; then
+        show_error "$MSG_DOWNLOAD_ERROR"
+        exit 1
+    fi
+    chmod 0755 /root/luci-app-singbox-ui.ipk
+    opkg update
+    opkg install /root/luci-app-singbox-ui.ipk
+    /etc/init.d/uhttpd restart
+    show_success "$MSG_INSTALL_COMPLETE"
+}
 
-# Очистка временных файлов / Cleanup temporary files
-show_progress "$MSG_CLEANUP"
-rm -f /root/luci-app-singbox-ui.ipk
-rm -f -- "$0"
-show_success "$MSG_CLEANUP_DONE"
+# Получение конфигурации / Configuration download
+get_config() {
+    if [ -z "$CONFIG_URL" ]; then
+        read_input "${MSG_CONFIG_PROMPT}" CONFIG_URL
+    fi
+
+    AUTO_CONFIG_SUCCESS=0
+    # Проверяем, что URL не пустой / Check if URL is not empty
+    if [ -n "$CONFIG_URL" ]; then
+        MAX_ATTEMPTS=3
+        ATTEMPT=1
+        SUCCESS=0
+
+        # Загрузка конфигурации / Configuration download
+        while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
+            show_progress "$(printf "$MSG_CONFIG_LOADING" "$CONFIG_URL" "$ATTEMPT" "$MAX_ATTEMPTS")"
+            
+            # Проверка JSON / JSON validation
+            if RAW_JSON=$(curl -fsS "$CONFIG_URL" 2>/dev/null) && [ -n "$RAW_JSON" ]; then
+                if FORMATTED_JSON=$(echo "$RAW_JSON" | jq -e '.' 2>/dev/null); then
+                    echo "$FORMATTED_JSON" > /etc/sing-box/config.json
+                    show_success "$MSG_CONFIG_SUCCESS"
+                    AUTO_CONFIG_SUCCESS=1
+                    SUCCESS=1
+                    break
+                else
+                    show_error "$MSG_FORMAT_ERROR"
+                fi
+            else
+                show_error "$(printf "$MSG_CONFIG_ERROR" "${RAW_JSON:-"Unknown error"}")"
+            fi
+
+            if [ $ATTEMPT -lt $MAX_ATTEMPTS ]; then
+                show_progress "$MSG_RETRY"
+                network_check
+            fi
+        
+            ATTEMPT=$((ATTEMPT + 1))
+        done
+
+        if [ $SUCCESS -eq 0 ]; then
+            show_error "$MSG_MANUAL_CONFIG"
+            export TERM=xterm
+            nano /etc/sing-box/config.json || {
+                show_error "Failed to open editor. Please check your terminal settings."
+                exit 1
+            }
+        fi
+    else
+        show_error "$MSG_MANUAL_CONFIG"
+        export TERM=xterm
+        nano /etc/sing-box/config.json || {
+            show_error "Failed to open editor. Please check your terminal settings."
+            exit 1
+        }
+    fi
+
+    # Проверка ручной конфигурации / Manual configuration check
+    if [ "$AUTO_CONFIG_SUCCESS" -ne 1 ]; then
+        while true; do
+            read_input "${MSG_EDIT_COMPLETE}" edit_choice
+            case "${edit_choice:-Y}" in
+                [Yy]* )
+                    show_success "$MSG_EDIT_SUCCESS"
+                    break
+                    ;;
+                [Nn]* )
+                    export TERM=xterm
+                    nano /etc/sing-box/config.json || {
+                        show_error "Failed to open editor. Please check your terminal settings."
+                        continue
+                    }
+                    ;;
+                * )
+                    show_error "$MSG_INVALID_INPUT"
+                    ;;
+            esac
+        done
+    fi
+}
+
+# Очистка / Cleanup
+cleanup() {
+    show_progress "$MSG_CLEANUP"
+    rm -f /root/luci-app-singbox-ui.ipk
+    rm -f -- "$0"
+    show_success "$MSG_CLEANUP_DONE"
+}
+
+# Завершение скрипта / Complete script
+complete_script() {
+    show_success "$MSG_COMPLETE"
+    cleanup
+}
+
+# ======== Основной код / Main code ========
+
+init_language
+header "$MSG_INSTALL_TITLE"
+update_pkgs
+choose_install_operation
+choose_install_version
+install_singbox_ui
+get_config
+complete_script
