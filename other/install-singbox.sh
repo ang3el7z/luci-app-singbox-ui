@@ -19,16 +19,9 @@ CHECK="✓"
 CROSS="✗"
 INDENT="  "
 
-# Функция разделителя / Separator function
-separator() {
-    echo -e "${FG_MAIN}                -------------------------------------                ${RESET}"
-}
-
 # Заголовок / Header
 header() {
-    separator
     echo -e "${BG_ACCENT}${FG_MAIN}                $1                ${RESET}"
-    separator
 }
 
 # Прогресс / Progress
@@ -133,10 +126,8 @@ update_pkgs() {
     opkg update
     if [ $? -eq 0 ]; then
         show_success "$MSG_PKGS_SUCCESS"
-        separator
     else
         show_error "$MSG_PKGS_ERROR"
-        separator
         exit 1
     fi
 }
@@ -213,7 +204,6 @@ clean_singbox_config() {
 
 # Отключение IPv6 / Disable IPv6
 disabled_ipv6() {
-    separator
     show_progress "$MSG_DISABLE_IPV6"
     uci set 'network.lan.ipv6=0'
     uci set 'network.wan.ipv6=0'
@@ -265,21 +255,18 @@ configure_firewall() {
 
 # Перезагрузка firewall / Restart firewall
 restart_firewall() {
-    separator
     show_progress "$MSG_RESTART_FIREWALL"
     service firewall reload >/dev/null 2>&1
 }
 
 # Перезагрузка network / Restart network
 restart_network() {
-    separator
     show_progress "$MSG_RESTART_NETWORK"
     service network restart
 }
 
 # Включение sing-box / Enable sing-box
 enable_singbox() {
-    separator
     show_progress "$MSG_START_SERVICE"
     service sing-box enable
     service sing-box start
@@ -287,16 +274,13 @@ enable_singbox() {
 }
 
 cleanup() {
-    separator
     show_progress "$MSG_CLEANUP"
     rm -- "$0"
     show_success "$MSG_CLEANUP_DONE"
 }
 
 complete_script() {
-    separator
     show_success "$MSG_COMPLETE"
-    separator
     cleanup
 }
 
