@@ -72,23 +72,13 @@ init_language() {
 
     case ${LANG_CHOICE:-2} in
         1)
-            MSG_ACTION_TITLE="Управление sing-box"
             MSG_INSTALL_TITLE="Установка и настройка sing-box"
-            MSG_UNINSTALL_TITLE="Удаление sing-box"
-            MSG_REINSTALL_TITLE="Переустановка sing-box"
-            MSG_ACTION_PROMPT="Выберите действие:"
-            MSG_ACTION_INSTALL="1. Установить (Install)"
-            MSG_ACTION_UNINSTALL="2. Удалить (Uninstall)"
-            MSG_ACTION_REINSTALL="3. Переустановить (Reinstall)"
-            MSG_ACTION_CHOICE="Ваш выбор [1/2/3]: "
-            MSG_INVALID_CHOICE="Неверный выбор"
             MSG_UPDATE_PKGS="Обновление репозиториев..."
             MSG_PKGS_SUCCESS="Репозитории успешно обновлены"
             MSG_PKGS_ERROR="Ошибка обновления репозиториев"
             MSG_INSTALL_SINGBOX="Установка последней версии sing-box..."
             MSG_INSTALL_SUCCESS="Sing-box успешно установлен"
             MSG_INSTALL_ERROR="Ошибка установки sing-box"
-            MSG_ALREADY_INSTALLED="Sing-box уже установлен!"
             MSG_SERVICE_CONFIG="Настройка системного сервиса..."
             MSG_SERVICE_APPLIED="Конфигурация сервиса применена"
             MSG_SERVICE_DISABLED="Сервис временно отключен"
@@ -102,34 +92,16 @@ init_language() {
             MSG_CLEANUP="Очистка файлов..."
             MSG_CLEANUP_DONE="Файлы удалены!"
             MSG_WAITING="Ожидание %d сек"
-            MSG_UNINSTALL_CONFIRM="Вы уверены, что хотите удалить sing-box? [y/N] "
-            MSG_UNINSTALL_CANCELLED="Удаление отменено."
-            MSG_NOT_INSTALLED="Sing-box не установлен!"
-            MSG_UNINSTALL_SUCCESS="Sing-box успешно удален"
-            MSG_REINSTALL_START="Начало переустановки..."
-            MSG_NETWORK_EXISTS="Сетевой интерфейс proxy уже существует"
-            MSG_FIREWALL_ZONE_EXISTS="Зона фаервола proxy уже существует"
-            MSG_FIREWALL_RULE_EXISTS="Правило перенаправления уже существует"
             MSG_COMPLETE="Выполнено! (install-singbox.sh)"
             ;;
         *)
-            MSG_ACTION_TITLE="Sing-box Management"
             MSG_INSTALL_TITLE="Sing-box installation and configuration"
-            MSG_UNINSTALL_TITLE="Uninstall sing-box"
-            MSG_REINSTALL_TITLE="Reinstall sing-box"
-            MSG_ACTION_PROMPT="Select action:"
-            MSG_ACTION_INSTALL="1. Install"
-            MSG_ACTION_UNINSTALL="2. Uninstall"
-            MSG_ACTION_REINSTALL="3. Reinstall"
-            MSG_ACTION_CHOICE="Your choice [1/2/3]: "
-            MSG_INVALID_CHOICE="Invalid choice"
             MSG_UPDATE_PKGS="Updating packages and installing dependencies..."
             MSG_PKGS_SUCCESS="Packages updated successfully"
             MSG_PKGS_ERROR="Error updating packages"
             MSG_INSTALL_SINGBOX="Installing latest sing-box version..."
             MSG_INSTALL_SUCCESS="Sing-box installed successfully"
             MSG_INSTALL_ERROR="Error installing sing-box"
-            MSG_ALREADY_INSTALLED="Sing-box is already installed!"
             MSG_SERVICE_CONFIG="Configuring system service..."
             MSG_SERVICE_APPLIED="Service configuration applied"
             MSG_SERVICE_DISABLED="Service temporarily disabled"
@@ -143,15 +115,7 @@ init_language() {
             MSG_CLEANUP="Cleaning up files..."
             MSG_CLEANUP_DONE="Files removed!"
             MSG_WAITING="Waiting %d sec"
-            MSG_UNINSTALL_CONFIRM="Are you sure you want to uninstall sing-box? [y/N] "
-            MSG_UNINSTALL_CANCELLED="Uninstall cancelled."
-            MSG_NOT_INSTALLED="Sing-box is not installed!"
-            MSG_UNINSTALL_SUCCESS="Sing-box successfully removed"
-            MSG_REINSTALL_START="Starting reinstallation..."
-            MSG_NETWORK_EXISTS="Network interface proxy already exists"
-            MSG_FIREWALL_ZONE_EXISTS="Firewall zone proxy already exists"
-            MSG_FIREWALL_RULE_EXISTS="Forwarding rule already exists"
-            MSG_SCRIPT_COMPLETE="Done! (install-singbox.sh)"
+            MSG_COMPLETE="Done! (install-singbox.sh)"
             ;;
     esac
 }
@@ -213,45 +177,70 @@ network_check() {
     fi
 }
 
-# Удаление настроек фаервола / Remove firewall settings
-remove_firewall_settings() {
-    # Удаление зон / Remove zones
-    local zone_ids=$(uci show firewall | grep -E "firewall\.@zone\[[0-9]+\]\.name='?proxy'?" | cut -d'=' -f1 | awk -F. '{print $2}')
-    for zone_id in $zone_ids; do
-        uci delete firewall.$zone_id
-    done
-
-    # Удаление правил / Remove forwarding rules
-    local forward_ids=$(uci show firewall | grep -E "firewall\.@forwarding\[[0-9]+\]\.dest='?proxy'?" | cut -d'=' -f1 | awk -F. '{print $2}')
-    for forward_id in $forward_ids; do
-        uci delete firewall.$forward_id
-    done
-
-    uci commit firewall >/dev/null 2>&1
-}
-
-# Настройка сети / Network configuration
-configure_proxy() {
-    if ! uci -q get network.proxy >/dev/null; then
-        show_progress "$MSG_NETWORK_CONFIG"
-        uci set network.proxy=interface
-        uci set network.proxy.proto="none"
-        uci set network.proxy.device="singtun0"
-        uci set network.proxy.defaultroute="0"
-        uci set network.proxy.delegate="0"
-        uci set network.proxy.peerdns="0"
-        uci set network.proxy.auto="1"
-        uci commit network
+install_singbox() {
+    show_progress "$MSG_INSTALL_SINGBOX"
+    opkg install sing-box
+    if [ $? -eq 0 ]; then
+        show_success "$MSG_INSTALL_SUCCESS"
     else
-        show_error "$MSG_NETWORK_EXISTS"
+        show_error "$MSG_INSTALL_ERROR"
+        exit 1
     fi
 }
 
-# Настройка фаервола / Firewall configuration
+# Конфигурация сервиса / Service configuration
+configure_singbox_service() {
+    show_progress "$MSG_SERVICE_CONFIG"
+    uci set sing-box.main.enabled="1"
+    uci set sing-box.main.user="root"
+    uci commit sing-box
+    show_success "$MSG_SERVICE_APPLIED"
+}
+
+# Отключение сервиса / Disable service
+disable_singbox_service() {
+    show_progress "$MSG_SERVICE_DISABLED"
+    service sing-box disable
+    show_success "$MSG_SERVICE_DISABLED"
+}
+
+# Очистка конфигурации / Reset configuration
+clean_singbox_config() {
+    show_progress "$MSG_CONFIG_RESET"
+    echo '{}' > /etc/sing-box/config.json
+    show_success "$MSG_CONFIG_RESET"
+}
+
+# Отключение IPv6 / Disable IPv6
+disabled_ipv6() {
+    separator
+    show_progress "$MSG_DISABLE_IPV6"
+    uci set 'network.lan.ipv6=0'
+    uci set 'network.wan.ipv6=0'
+    uci set 'dhcp.lan.dhcpv6=disabled'
+    /etc/init.d/odhcpd disable
+    uci commit
+    show_success "$MSG_IPV6_DISABLED"
+}
+
+# Создание сетевого интерфейса / Create network interface
+configure_proxy() {
+    show_progress "$MSG_NETWORK_CONFIG"
+    uci set network.proxy=interface
+    uci set network.proxy.proto="none"
+    uci set network.proxy.device="singtun0"
+    uci set network.proxy.defaultroute="0"
+    uci set network.proxy.delegate="0"
+    uci set network.proxy.peerdns="0"
+    uci set network.proxy.auto="1"
+    uci commit network
+}
+
+# Настройка фаервола / Configure firewall
 configure_firewall() {
-    # Проверка зоны / Check zone
-    if ! uci show firewall | grep -qE "firewall\.@zone\[[0-9]+\]\.name='?proxy'?"; then
-        show_progress "$MSG_FIREWALL_CONFIG"
+    show_progress "$MSG_FIREWALL_CONFIG"
+    
+    if ! uci -q get firewall.proxy >/dev/null; then
         uci add firewall zone >/dev/null
         uci set firewall.@zone[-1].name="proxy"
         uci set firewall.@zone[-1].forward="REJECT"
@@ -262,165 +251,69 @@ configure_firewall() {
         uci set firewall.@zone[-1].device="singtun0"
         uci set firewall.@zone[-1].family="ipv4"
         uci add_list firewall.@zone[-1].network="singtun0"
-    else
-        show_error "$MSG_FIREWALL_ZONE_EXISTS"
     fi
 
-    # Проверка правил / Check forwarding rules
-    if ! uci show firewall | grep -qE "firewall\.@forwarding\[[0-9]+\]\.dest='?proxy'?"; then
+    if ! uci -q get firewall.@forwarding[-1].dest="proxy" >/dev/null; then
         uci add firewall forwarding >/dev/null
         uci set firewall.@forwarding[-1].dest="proxy"
         uci set firewall.@forwarding[-1].src="lan"
         uci set firewall.@forwarding[-1].family="ipv4"
-    else
-        show_error "$MSG_FIREWALL_RULE_EXISTS"
     fi
-    
     uci commit firewall >/dev/null 2>&1
     show_success "$MSG_FIREWALL_APPLIED"
 }
 
-# Функция установки / Install function
-do_install() {
-    header "$MSG_INSTALL_TITLE"
-    
-    # Проверка установки / Check installation
-    if opkg list-installed | grep -q "sing-box"; then
-        show_success "$MSG_ALREADY_INSTALLED"
-        return 1
-    fi
-
-    update_pkgs
-
-    # Установка / Installation
-    show_progress "$MSG_INSTALL_SINGBOX"
-    opkg install sing-box
-    if [ $? -ne 0 ]; then
-        show_error "$MSG_INSTALL_ERROR"
-        return 1
-    fi
-    show_success "$MSG_INSTALL_SUCCESS"
-
-    # Конфигурация сервиса / Service configuration
-    show_progress "$MSG_SERVICE_CONFIG"
-    uci set sing-box.main.enabled="1"
-    uci set sing-box.main.user="root"
-    uci commit sing-box
-    show_success "$MSG_SERVICE_APPLIED"
-
-    # Временное отключение / Temporary disable
-    service sing-box disable
-    show_success "$MSG_SERVICE_DISABLED"
-
-    # Сброс конфигурации / Reset config
-    echo '{}' > /etc/sing-box/config.json
-    show_success "$MSG_CONFIG_RESET"
-
-    # Настройка сети и фаервола / Network and firewall setup
-    configure_proxy
-    configure_firewall
-
-    # Перезапуск служб / Restart services
+# Перезагрузка firewall / Restart firewall
+restart_firewall() {
+    separator
     show_progress "$MSG_RESTART_FIREWALL"
     service firewall reload >/dev/null 2>&1
+}
 
+# Перезагрузка network / Restart network
+restart_network() {
+    separator
     show_progress "$MSG_RESTART_NETWORK"
     service network restart
 }
 
-# Функция удаления / Uninstall function
-do_uninstall() {
-    header "$MSG_UNINSTALL_TITLE"
-    
-    # Подтверждение / Confirmation
-    read_input "$MSG_UNINSTALL_CONFIRM" confirm
-    if [ "$confirm" != "y" ] && [ "$confirm" != "Y" ]; then
-        show_message "$MSG_UNINSTALL_CANCELLED"
-        return 1
-    fi
-
-    # Проверка установки / Check installation
-    if ! opkg list-installed | grep -q "sing-box"; then
-        show_error "$MSG_NOT_INSTALLED"
-        return 1
-    fi
-
-    # Остановка и отключение сервиса / Stop and disable service
-    [ -f "/etc/init.d/sing-box" ] && {
-        /etc/init.d/sing-box stop
-        /etc/init.d/sing-box disable
-    }
-
-    # Удаление пакета / Remove package
-    opkg remove sing-box
-    show_success "$MSG_UNINSTALL_SUCCESS"
-
-    # Удаление конфигов / Remove configs
-    uci -q delete sing-box.main
-    uci commit sing-box
-    rm -f /etc/sing-box/config.json
-
-    # Удаление сетевых настроек / Remove network settings
-    uci -q delete network.proxy
-    uci commit network
-
-    # Удаление фаервола / Remove firewall settings
-    remove_firewall_settings
-
-    # Перезапуск служб / Restart services
-    show_progress "$MSG_RESTART_FIREWALL"
-    service firewall reload >/dev/null 2>&1
-
-    show_progress "$MSG_RESTART_NETWORK"
-    service network restart
+# Включение sing-box / Enable sing-box
+enable_singbox() {
+    separator
+    show_progress "$MSG_START_SERVICE"
+    service sing-box enable
+    service sing-box start
+    show_success "$MSG_SERVICE_STARTED"
 }
 
-# Функция переустановки / Reinstall function
-do_reinstall() {
-    header "$MSG_REINSTALL_TITLE"
-    show_progress "$MSG_REINSTALL_START"
-    do_uninstall && do_install
-}
-
-# Выбор действия / Action selection
-action_choice_install() {
-    if [ -z "$ACTION_CHOICE" ]; then
-        show_message "$MSG_ACTION_PROMPT"
-        show_message "$MSG_ACTION_INSTALL"
-        show_message "$MSG_ACTION_UNINSTALL"
-        show_message "$MSG_ACTION_REINSTALL"
-        read_input "$MSG_ACTION_CHOICE" ACTION_CHOICE
-    fi
-    
-    case $ACTION_CHOICE in
-        1) do_install ;;
-        2) do_uninstall ;;
-        3) do_reinstall ;;
-        *) 
-            show_error "$MSG_INVALID_CHOICE"
-            exit 1
-            ;;
-esac
-}
-
-# Очистка / Cleanup
 cleanup() {
+    separator
     show_progress "$MSG_CLEANUP"
     rm -- "$0"
     show_success "$MSG_CLEANUP_DONE"
-    exit 1
 }
 
-# Завершение скрипта / Complete script
 complete_script() {
+    separator
     show_success "$MSG_COMPLETE"
+    separator
     cleanup
 }
 
 # ======== Основной код / Main code ========
 
 init_language
-header "$MSG_ACTION_TITLE"
-action_choice_install
+header "$MSG_INSTALL_TITLE"
+update_pkgs
+install_singbox
+configure_singbox_service
+disable_singbox_service
+clean_singbox_config
+disabled_ipv6
+configure_proxy
+configure_firewall
+restart_firewall
+restart_network
 network_check
+enable_singbox
 complete_script

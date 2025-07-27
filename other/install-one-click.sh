@@ -136,6 +136,20 @@ waiting() {
     sleep "$interval"
 }
 
+# Обновление репозиториев и установка зависимостей / Update repos and install dependencies
+update_pkgs() {
+    show_progress "$MSG_UPDATE_PKGS"
+    opkg update && opkg install openssh-sftp-server
+    if [ $? -eq 0 ]; then
+        show_success "$MSG_DEPS_SUCCESS"
+        separator
+    else
+        show_error "$MSG_DEPS_ERROR"
+        separator
+        exit 1
+    fi
+}
+
 # Ожидание связи с роутером / Waiting for router connection
 wait_for_router() {
     local timeout=300
@@ -243,7 +257,6 @@ connect_and_install() {
 
     if [ -z "$password" ]; then
         ssh -t -o "StrictHostKeyChecking no" "root@$router_ip" \
-            "export TERM=xterm; \
              export LANG_CHOICE=$LANG_CHOICE; \
              wget -O /root/install-singbox+singbox-ui.sh https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/install-singbox+singbox-ui.sh && \
              chmod 0755 /root/install-singbox+singbox-ui.sh && \
@@ -253,7 +266,6 @@ connect_and_install() {
         }
     else
         sshpass -p "$password" ssh -t -o "StrictHostKeyChecking no" "root@$router_ip" \
-            "export TERM=xterm; \
              export LANG_CHOICE=$LANG_CHOICE; \
              wget -O /root/install-singbox+singbox-ui.sh https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/install-singbox+singbox-ui.sh && \
              chmod 0755 /root/install-singbox+singbox-ui.sh && \
@@ -282,6 +294,7 @@ complete_script() {
 
 init_language
 header "$MSG_INSTALL_TITLE"
+update_pkgs
 input_data
 clear_router
 remove_old_key
