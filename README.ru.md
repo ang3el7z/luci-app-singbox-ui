@@ -28,7 +28,7 @@
 
 1. Запустите скрипт
 ```shell
-wget -O /root/install.sh https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/install.sh && chmod 0755 /root/install.sh && sh /root/install.sh
+wget -O /root/install.sh https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/install.sh && chmod 0755 /root/install.sh && sh /root/install.sh
 ```
 
 2. Выберите действие:
