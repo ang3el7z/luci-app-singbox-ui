@@ -26,10 +26,9 @@ separator() {
 
 header() {
     separator
-    echo -e "${BG_ACCENT}${FG_MAIN}                $MSG_INSTALL_TITLE                ${RESET}"
+    echo -e "${BG_ACCENT}${FG_MAIN}                $1                ${RESET}"
     separator
 }
-
 show_progress() {
     echo -e "${INDENT}${ARROW} ${FG_ACCENT}$1${RESET}"
 }
@@ -89,6 +88,8 @@ init_language() {
             MSG_INSTALL_LATEST="Устанавливается последняя доступная сборка (latest)..."
             MSG_DOWNLOAD_ERROR="Ошибка загрузки файла. Установка прервана."
             MSG_WAITING="Ожидание %d сек"
+            MSG_YOUR_CHOICE="Ваш выбор: "
+            MSG_COMPLETE="Выполнено! (install-singbox-ui.sh)"
             ;;
         *)
             MSG_INSTALL_TITLE="Singbox-ui installation and configuration"
@@ -113,6 +114,8 @@ init_language() {
             MSG_INSTALL_LATEST="Installing stable version latest"
             MSG_DOWNLOAD_ERROR="Download failed. Installation aborted."
             MSG_WAITING="Waiting %d sec"
+            MSG_YOUR_CHOICE="Your choice: "
+            MSG_COMPLETE="Completed! (install-singbox-ui.sh)"
             ;;
     esac
 }
@@ -137,25 +140,56 @@ update_pkgs() {
     fi
 }
 
-# Запрашиваем язык / Ask for language
-init_language
-header
+# Проверка доступности сети / Network availability check
+network_check() {
+    timeout=200
+    interval=5
+    targets="223.5.5.5 180.76.76.76 77.88.8.8 1.1.1.1 8.8.8.8 9.9.9.9 94.140.14.14"
 
-update_pkgs
+    attempts=$((timeout / interval))
+    success=0
+    i=1
+
+    show_progress "$MSG_NETWORK_CHECK"
+
+    sleep $interval
+
+    while [ $i -lt $attempts ]; do
+        num_targets=$(echo "$targets" | wc -w)
+        index=$((i % num_targets))
+        target=$(echo "$targets" | cut -d' ' -f$((index + 1)))
+
+        if ping -c 1 -W 2 "$target" >/dev/null 2>&1; then
+            success=1
+            break
+        fi
+        
+        i=$((i + 1))
+    done
+
+    if [ $success -eq 1 ]; then
+        total_time=$((i * interval))
+        show_success "$(printf "$MSG_NETWORK_SUCCESS" "$target" "$total_time")"
+    else
+        show_error "$(printf "$MSG_NETWORK_ERROR" "$timeout")" >&2
+        exit 1
+    fi
+}
 
 # Выбор версии для установки / Version selection
-show_message "$MSG_CHOOSE_VERSION"
-show_message "$MSG_OPTION_1"
-show_message "$MSG_OPTION_2"
-show_message "$MSG_OPTION_3"
-show_message "$MSG_OPTION_4"
-read_input " " VERSION_CHOICE
+choose_install_version() {
+    show_message "$MSG_CHOOSE_VERSION"
+    show_message "$MSG_OPTION_1"
+    show_message "$MSG_OPTION_2"
+    show_message "$MSG_OPTION_3"
+    show_message "$MSG_OPTION_4"
+    read_input "$MSG_YOUR_CHOICE" VERSION_CHOICE
 
-# Ссылки на файлы для каждой версии / URLs for each version
-URL_LATEST="https://github.com/ang3el7z/luci-app-singbox-ui/releases/latest/download/luci-app-singbox-ui.ipk"
-URL_LITE="https://github.com/ang3el7z/luci-app-singbox-ui/releases/download/v1.2.1/luci-app-singbox-ui.ipk"
+    # Ссылки на файлы для каждой версии / URLs for each version
+    URL_LATEST="https://github.com/ang3el7z/luci-app-singbox-ui/releases/latest/download/luci-app-singbox-ui.ipk"
+    URL_LITE="https://github.com/ang3el7z/luci-app-singbox-ui/releases/download/v1.2.1/luci-app-singbox-ui.ipk"
 
-case "$VERSION_CHOICE" in
+    case "$VERSION_CHOICE" in
     1)
         DOWNLOAD_URL="$URL_LATEST"
         ;;
@@ -206,7 +240,7 @@ case "$VERSION_CHOICE" in
             i=$((i+1))
         done
 
-        read_input " " choice
+        read_input "$MSG_YOUR_CHOICE" choice
 
         eval SELECTED_RUNNER_FILE=\$RUNNER_$choice
 
@@ -221,23 +255,43 @@ case "$VERSION_CHOICE" in
         show_error "$MSG_INVALID_CHOICE"
         DOWNLOAD_URL="$URL_LATEST"
         ;;
-esac
+    esac
+}
 
 # Установка singbox-ui / Install singbox-ui
-show_progress "$MSG_INSTALL_UI"
-wget -O /root/luci-app-singbox-ui.ipk "$DOWNLOAD_URL"
-if [ $? -ne 0 ]; then
-    show_error "$MSG_DOWNLOAD_ERROR"
-    exit 1
-fi
-chmod 0755 /root/luci-app-singbox-ui.ipk
-opkg update
-opkg install /root/luci-app-singbox-ui.ipk
-/etc/init.d/uhttpd restart
-show_success "$MSG_INSTALL_COMPLETE"
+install_singbox_ui() {
+    show_progress "$MSG_INSTALL_UI"
+    wget -O /root/luci-app-singbox-ui.ipk "$DOWNLOAD_URL"
+    if [ $? -ne 0 ]; then
+        show_error "$MSG_DOWNLOAD_ERROR"
+        exit 1
+    fi
+    chmod 0755 /root/luci-app-singbox-ui.ipk
+    opkg update
+    opkg install /root/luci-app-singbox-ui.ipk
+    /etc/init.d/uhttpd restart
+    show_success "$MSG_INSTALL_COMPLETE"
+}
 
-# Очистка временных файлов / Cleanup temporary files
-show_progress "$MSG_CLEANUP"
-rm -f /root/luci-app-singbox-ui.ipk
-rm -f -- "$0"
-show_success "$MSG_CLEANUP_DONE"
+# Очистка / Cleanup
+cleanup() {
+    show_progress "$MSG_CLEANUP"
+    rm -f /root/luci-app-singbox-ui.ipk
+    rm -f -- "$0"
+    show_success "$MSG_CLEANUP_DONE"
+}
+
+# Завершение скрипта / Complete script
+complete_script() {
+    show_success "$MSG_COMPLETE"
+    cleanup
+}
+
+# ======== Основной код / Main code ========
+
+init_language
+header "$MSG_INSTALL_TITLE"
+update_pkgs
+choose_install_version
+install_singbox_ui
+complete_script
