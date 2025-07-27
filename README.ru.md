@@ -36,7 +36,7 @@ wget -O /root/install.sh https://raw.githubusercontent.com/ang3el7z/luci-app-sin
     - Установка singbox (tun mode)
     - Установка singbox (tun mode) + singbox-ui
 
-# Дополнительно для пользователей
+# Подсказки для пользователей
 очистить ssh keygen 
 ```shell
 ssh-keygen -R 192.168.1.1
@@ -56,7 +56,7 @@ ssh root@192.168.1.1
 Исправления
  - [`исправление низкой скорости в "tun режиме"`](https://github.com/ang3el7z/luci-app-singbox-ui/issues/1)
 
- # Дополнительно для меня
+# Подсказки для меня
  - установить в одно нажатие
 ```shell
 wget -O install-one-click.sh https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/install-one-click.sh && chmod +x install-one-click.sh && ./install-one-click.sh
