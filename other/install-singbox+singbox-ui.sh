@@ -88,11 +88,11 @@ init_language() {
         MSG_INSTALL_SINGBOX_UI="1. Установка singbox-ui"
         MSG_INSTALL_SINGBOX_UI_AND_SINGBOX="2. Установка singbox-ui и singbox"
         MSG_INSTALL_ACTION_CHOICE=" Ваш выбор: "
-        MSG_INSTALL_FLOW="Выберите тип операции:"
-        MSG_INSTALL_FLOW_INSTALL="1. Установка"
-        MSG_INSTALL_FLOW_DELETE="2. Удаление"
-        MSG_INSTALL_FLOW_REINSTALL_UPDATE="3. Переустановка/Обновление"
-        MSG_INSTALL_FLOW_CHOICE=" Ваш выбор: "
+        MSG_INSTALL_OPERATION="Выберите тип операции:"
+        MSG_INSTALL_OPERATION_INSTALL="1. Установка"
+        MSG_INSTALL_OPERATION_DELETE="2. Удаление"
+        MSG_INSTALL_OPERATION_REINSTALL_UPDATE="3. Переустановка/Обновление"
+        MSG_INSTALL_OPERATION_CHOICE=" Ваш выбор: "
         ;;
     *)
         MSG_INSTALL_TITLE="Starting installation"
@@ -129,16 +129,6 @@ waiting() {
     sleep "$interval"
 }
 
-choose_install_operation() {
-    if [ -z "$INSTALL_OPERATION" ]; then
-        show_message "$MSG_INSTALL_OPERATION"
-        show_message "$MSG_INSTALL_OPERATION_INSTALL"
-        show_message "$MSG_INSTALL_OPERATION_DELETE"
-        show_message "$MSG_INSTALL_OPERATION_REINSTALL_UPDATE"
-        read_input "$MSG_INSTALL_OPERATION_CHOICE" INSTALL_OPERATION
-    fi
-}
-
 # Обновление репозиториев и установка зависимостей / Update repos and install dependencies
 update_pkgs() {
     show_progress "$MSG_UPDATE_PKGS"
@@ -148,6 +138,17 @@ update_pkgs() {
     else
         show_error "$MSG_DEPS_ERROR"
         exit 1
+    fi
+}
+
+# Выбор операции установки / Choose install operation
+choose_install_operation() {
+    if [ -z "$INSTALL_OPERATION" ]; then
+        show_message "$MSG_INSTALL_OPERATION"
+        show_message "$MSG_INSTALL_OPERATION_INSTALL"
+        show_message "$MSG_INSTALL_OPERATION_DELETE"
+        show_message "$MSG_INSTALL_OPERATION_REINSTALL_UPDATE"
+        read_input "$MSG_INSTALL_OPERATION_CHOICE" INSTALL_OPERATION
     fi
 }
 

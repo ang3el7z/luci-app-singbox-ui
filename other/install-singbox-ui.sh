@@ -92,6 +92,11 @@ init_language() {
             MSG_EDIT_COMPLETE="Завершили редактирование config.json? [y/N]: "
             MSG_EDIT_SUCCESS="Успешно"
             MSG_INVALID_INPUT="Некорректный ввод"
+            MSG_INSTALL_OPERATION="Выберите тип операции:"
+            MSG_INSTALL_OPERATION_INSTALL="1. Установка"
+            MSG_INSTALL_OPERATION_DELETE="2. Удаление"
+            MSG_INSTALL_OPERATION_REINSTALL_UPDATE="3. Переустановка/Обновление"
+            MSG_INSTALL_OPERATION_CHOICE=" Ваш выбор: "
             ;;
         *)
             MSG_INSTALL_TITLE="Singbox-ui installation and configuration"
@@ -127,6 +132,11 @@ init_language() {
             MSG_EDIT_COMPLETE="Finished editing config.json? [y/N]: "
             MSG_EDIT_SUCCESS="Success"
             MSG_INVALID_INPUT="Invalid input"
+            MSG_INSTALL_OPERATION="Select install operation:"
+            MSG_INSTALL_OPERATION_INSTALL="1. Install"
+            MSG_INSTALL_OPERATION_DELETE="2. Delete"
+            MSG_INSTALL_OPERATION_REINSTALL_UPDATE="3. Reinstall/Update"
+            MSG_INSTALL_OPERATION_CHOICE="Your choice: "
             ;;
     esac
 }
@@ -146,6 +156,17 @@ update_pkgs() {
     else
         show_error "$MSG_DEPS_ERROR"
         exit 1
+    fi
+}
+
+# Выбор операции установки / Choose install operation
+choose_install_operation() {
+    if [ -z "$INSTALL_OPERATION" ]; then
+        show_message "$MSG_INSTALL_OPERATION"
+        show_message "$MSG_INSTALL_OPERATION_INSTALL"
+        show_message "$MSG_INSTALL_OPERATION_DELETE"
+        show_message "$MSG_INSTALL_OPERATION_REINSTALL_UPDATE"
+        read_input "$MSG_INSTALL_OPERATION_CHOICE" INSTALL_OPERATION
     fi
 }
 
@@ -382,6 +403,7 @@ complete_script() {
 init_language
 header "$MSG_INSTALL_TITLE"
 update_pkgs
+choose_install_operation
 choose_install_version
 install_singbox_ui
 get_config
