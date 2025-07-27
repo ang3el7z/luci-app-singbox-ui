@@ -92,8 +92,6 @@ init_language() {
             MSG_COMPLETE="Выполнено! ($script_name)"
             MSG_DISABLE_IPV6="Отключение IPv6..."
             MSG_IPV6_DISABLED="IPv6 отключен"
-            MSG_RESTART_FIREWALL="Перезапуск firewall..."
-            MSG_RESTART_NETWORK="Перезапуск network..."
             MSG_START_SERVICE="Запуск сервиса sing-box"
             MSG_SERVICE_STARTED="Сервис успешно запущен"
             MSG_INSTALL_OPERATION="Выберите тип операции:"
@@ -113,6 +111,9 @@ init_language() {
             MSG_REMOVING_NETWORK_CONFIG="Удаление сетевого интерфейса proxy..."
             MSG_REMOVING_FIREWALL_RULES="Удаление правил фаервола..."
             MSG_REMOVING_CONFIGS="Удаление конфигурационных файлов..."
+            MSG_NETWORK_CHECK="Проверка доступности сети..."
+            MSG_NETWORK_SUCCESS="Сеть доступна (через %s, за %s сек)"
+            MSG_NETWORK_ERROR="Сеть не доступна после %s сек!"
             ;;
         *)
             MSG_INSTALL_TITLE="Starting! ($script_name)"
@@ -140,8 +141,6 @@ init_language() {
             MSG_COMPLETE="Done! ($script_name)"
             MSG_DISABLE_IPV6="Disabling IPv6..."
             MSG_IPV6_DISABLED="IPv6 disabled"
-            MSG_RESTART_FIREWALL="Restarting firewall..."
-            MSG_RESTART_NETWORK="Restarting network..."
             MSG_START_SERVICE="Starting sing-box service"
             MSG_SERVICE_STARTED="Service started successfully"
             MSG_INSTALL_OPERATION="Select install operation:"
@@ -161,6 +160,9 @@ init_language() {
             MSG_REMOVING_NETWORK_CONFIG="Removing proxy network interface..."
             MSG_REMOVING_FIREWALL_RULES="Removing firewall rules..."
             MSG_REMOVING_CONFIGS="Removing configuration files..."
+            MSG_NETWORK_CHECK="Checking network availability..."
+            MSG_NETWORK_SUCCESS="Network available (via %s, in %s sec)"
+            MSG_NETWORK_ERROR="Network not available after %s sec!"
             ;;
     esac
 }
@@ -209,10 +211,13 @@ network_check() {
 
     sleep $interval
 
-    while [ $i -lt $attempts ]; do
+    while [ $i -le $attempts ]; do
         num_targets=$(echo "$targets" | wc -w)
         index=$((i % num_targets))
-        target=$(echo "$targets" | cut -d' ' -f$((index + 1)))
+        if [ $index -eq 0 ]; then
+            index=$num_targets
+        fi
+        target=$(echo "$targets" | cut -d' ' -f$index)
 
         if ping -c 1 -W 2 "$target" >/dev/null 2>&1; then
             success=1
