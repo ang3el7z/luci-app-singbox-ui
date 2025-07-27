@@ -19,16 +19,9 @@ CHECK="✓"
 CROSS="✗"
 INDENT="  "
 
-# Функция разделителя / Separator function
-separator() {
-    echo -e "${FG_MAIN}                -------------------------------------                ${RESET}"
-}
-
 # Заголовок / Header
 header() {
-    separator
     echo -e "${BG_ACCENT}${FG_MAIN}                $1                ${RESET}"
-    separator
 }
 
 # Прогресс / Progress
@@ -142,10 +135,8 @@ update_pkgs() {
     opkg update && opkg install openssh-sftp-server
     if [ $? -eq 0 ]; then
         show_success "$MSG_DEPS_SUCCESS"
-        separator
     else
         show_error "$MSG_DEPS_ERROR"
-        separator
         exit 1
     fi
 }

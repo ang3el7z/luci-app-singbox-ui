@@ -19,15 +19,8 @@ CHECK="✓"
 CROSS="✗"
 INDENT="  "
 
-# Функция разделителя / Separator function
-separator() {
-    echo -e "${FG_MAIN}                -------------------------------------                ${RESET}"
-}
-
 header() {
-    separator
     echo -e "${BG_ACCENT}${FG_MAIN}                $1                ${RESET}"
-    separator
 }
 show_progress() {
     echo -e "${INDENT}${ARROW} ${FG_ACCENT}$1${RESET}"
@@ -152,10 +145,8 @@ update_pkgs() {
     opkg update && opkg install curl jq && (opkg install nano || opkg install nano-full)
     if [ $? -eq 0 ]; then
         show_success "$MSG_DEPS_SUCCESS"
-        separator
     else
         show_error "$MSG_DEPS_ERROR"
-        separator
         exit 1
     fi
 }
@@ -353,7 +344,6 @@ get_config() {
     # Проверка ручной конфигурации / Manual configuration check
     if [ "$AUTO_CONFIG_SUCCESS" -ne 1 ]; then
         while true; do
-            separator
             read_input "${MSG_EDIT_COMPLETE}" edit_choice
             case "${edit_choice:-Y}" in
                 [Yy]* )
