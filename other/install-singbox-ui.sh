@@ -49,6 +49,8 @@ read_input() {
 
 # Инициализация языка / Language initialization
 init_language() {
+    local script_name="install-singbox-ui.sh"
+    
     if [ -z "$LANG_CHOICE" ]; then
         show_message "Выберите язык / Select language [1/2]:"
         show_message "1. Русский (Russian)"
@@ -58,7 +60,7 @@ init_language() {
 
     case ${LANG_CHOICE:-2} in
         1)
-            MSG_INSTALL_TITLE="Установка и настройка singbox-ui"
+            MSG_INSTALL_TITLE="Запуск! ($script_name)"
             MSG_UPDATE_PKGS="Обновление пакетов и установка зависимостей..."
             MSG_DEPS_SUCCESS="Зависимости успешно установлены"
             MSG_DEPS_ERROR="Ошибка установки зависимостей"
@@ -81,7 +83,7 @@ init_language() {
             MSG_DOWNLOAD_ERROR="Ошибка загрузки файла. Установка прервана."
             MSG_WAITING="Ожидание %d сек"
             MSG_YOUR_CHOICE="Ваш выбор: "
-            MSG_COMPLETE="Выполнено! (install-singbox-ui.sh)"
+            MSG_COMPLETE="Выполнено! ($script_name)"
             MSG_CONFIG_PROMPT="Введите URL конфигурации (Enter для ручного ввода): "
             MSG_CONFIG_LOADING="Загрузка конфигурации с %s (Попытка %s из %s)"
             MSG_CONFIG_SUCCESS="Конфигурация успешно загружена"
@@ -99,7 +101,7 @@ init_language() {
             MSG_INSTALL_OPERATION_CHOICE=" Ваш выбор: "
             ;;
         *)
-            MSG_INSTALL_TITLE="Singbox-ui installation and configuration"
+            MSG_INSTALL_TITLE="Starting! ($script_name)"
             MSG_UPDATE_PKGS="Updating packages and installing dependencies..."
             MSG_DEPS_SUCCESS="Dependencies installed successfully"
             MSG_DEPS_ERROR="Error installing dependencies"
@@ -121,7 +123,7 @@ init_language() {
             MSG_DOWNLOAD_ERROR="Download failed. Installation aborted."
             MSG_WAITING="Waiting %d sec"
             MSG_YOUR_CHOICE="Your choice: "
-            MSG_COMPLETE="Completed! (install-singbox-ui.sh)"
+            MSG_COMPLETE="Completed! ($script_name)"
             MSG_CONFIG_PROMPT="Enter Configuration subscription URL (Enter for manual input): "
             MSG_CONFIG_LOADING="Loading configuration from %s (Attempt %s of %s)"
             MSG_CONFIG_SUCCESS="Configuration loaded successfully"

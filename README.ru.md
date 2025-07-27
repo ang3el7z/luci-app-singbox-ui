@@ -26,20 +26,15 @@
 
 # Установка
 
-## Установить singbox (tun режим) + singbox-ui
+1. Запустите скрипт
 ```shell
-wget -O /root/install-singbox+singbox-ui.sh https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/install-singbox+singbox-ui.sh && chmod 0755 /root/install-singbox+singbox-ui.sh && sh /root/install-singbox+singbox-ui.sh
+wget -O /root/install.sh https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/install.sh && chmod 0755 /root/install.sh && sh /root/install.sh
 ```
 
-## Установить singbox-ui
-```shell
-wget -O /root/install-singbox-ui.sh https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/install-singbox-ui.sh && chmod 0755 /root/install-singbox-ui.sh && sh /root/install-singbox-ui.sh
-```
-
-## Установить singbox (tun режим)
-```shell
-wget -O /root/install-singbox.sh https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/install-singbox.sh && chmod 0755 /root/install-singbox.sh && sh /root/install-singbox.sh
-```
+2. Выберите действие:
+    - Установка singbox-ui
+    - Установка singbox (tun mode)
+    - Установка singbox (tun mode) + singbox-ui
 
 # Дополнительно
  - очистить ssh keygen 
