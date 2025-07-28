@@ -567,6 +567,7 @@ perform_operation() {
         if [ $INSTALLED -eq 0 ]; then
             uninstall
         fi
+        update_pkgs
         install
         ;;
     *)

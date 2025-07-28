@@ -564,6 +564,7 @@ perform_operation() {
             if check_installed; then
                 uninstall
             fi
+            update_pkgs
             install
             ;;
         *)
