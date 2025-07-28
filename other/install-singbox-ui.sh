@@ -545,36 +545,33 @@ uninstall() {
 
 # Выполнение операций / Perform operations
 perform_operation() {
-    check_installed
-    INSTALLED=$?
-
     case $INSTALL_OPERATION in
-    1)  
-        if [ $INSTALLED -eq 0 ]; then
-            show_error "$MSG_ALREADY_INSTALLED"
-            exit 1
-        fi
-        install
-        ;;
-    2)  
-        if [ $INSTALLED -ne 0 ]; then
-            show_error "$MSG_NOT_INSTALLED"
-            exit 1
-        fi
-        uninstall
-        ;;
-    3)  
-        if [ $INSTALLED -eq 0 ]; then
+        1)  
+            if check_installed; then
+                show_error "$MSG_ALREADY_INSTALLED"
+                exit 1
+            fi
+            install
+            ;;
+        2)  
+            if ! check_installed; then
+                show_error "$MSG_NOT_INSTALLED"
+                exit 1
+            fi
             uninstall
-        fi
-        update_pkgs
-        install
         ;;
-    *)
-        show_error "$MSG_INVALID_OPERATION"
-        exit 1
-        ;;
-esac
+        3)  
+            if check_installed; then
+                uninstall
+            fi
+            update_pkgs
+            install
+            ;;
+        *)
+            show_error "$MSG_INVALID_OPERATION"
+            exit 1
+            ;;
+    esac
 }
 
 # Очистка / Cleanup
