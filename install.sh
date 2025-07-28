@@ -293,7 +293,7 @@ choose_install_operation() {
 
 # Проверка доступности сети / Network availability check
 network_check() {
-    timeout=200
+    timeout=1000
     interval=5
     targets="223.5.5.5 180.76.76.76 77.88.8.8 1.1.1.1 8.8.8.8 9.9.9.9 94.140.14.14"
 
@@ -329,6 +329,7 @@ network_check() {
         exit 1
     fi
 }
+
 # Установка singbox / Install singbox
 install_singbox_script() {
     show_warning "$MSG_SINGBOX_INSTALL"
