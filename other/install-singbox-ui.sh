@@ -300,27 +300,21 @@ choose_install_operation() {
     fi
 }
 
-# Проверка доступности сети / Network availability check
 network_check() {
-    timeout=1000
+    timeout=500
     interval=5
     targets="223.5.5.5 180.76.76.76 77.88.8.8 1.1.1.1 8.8.8.8 9.9.9.9 94.140.14.14"
 
     attempts=$((timeout / interval))
     success=0
-    i=1
+    i=0
 
     show_progress "$MSG_NETWORK_CHECK"
 
-    sleep $interval
-
-    while [ $i -le $attempts ]; do
+    while [ $i -lt $attempts ]; do
         num_targets=$(echo "$targets" | wc -w)
         index=$((i % num_targets))
-        if [ $index -eq 0 ]; then
-            index=$num_targets
-        fi
-        target=$(echo "$targets" | cut -d' ' -f$index)
+        target=$(echo "$targets" | cut -d' ' -f$((index + 1)))
 
         if ping -c 1 -W 2 "$target" >/dev/null 2>&1; then
             success=1
