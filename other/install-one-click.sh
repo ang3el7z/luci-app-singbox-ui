@@ -154,20 +154,18 @@ separator() {
     fi
 }
 
-
 # Запуск шагов с разделителями / Run steps with separators
 run_steps_with_separator() {
     for step in "$@"; do
         if [[ "$step" == "::"* ]]; then
             local text="${step:2}"
-            echo
+            separator
             separator "$text"
-            echo
+            separator
         else
-            echo
+            $step
             separator
             echo
-            $step
         fi
     done
 }
