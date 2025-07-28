@@ -250,7 +250,7 @@ update_pkgs() {
 
 # Ожидание связи с роутером / Waiting for router connection
 wait_for_router() {
-    local timeout=300
+    local timeout=1000
     local interval=5
     local attempts=$((timeout/interval))
     
@@ -270,7 +270,7 @@ wait_for_router() {
 
 # Проверка доступности сети / Network availability check
 network_check() {
-    timeout=200
+    timeout=1000
     interval=5
     targets="223.5.5.5 180.76.76.76 77.88.8.8 1.1.1.1 8.8.8.8 9.9.9.9 94.140.14.14"
 
