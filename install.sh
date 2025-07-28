@@ -1,4 +1,5 @@
 #!/bin/sh
+BRANCH="${BRANCH:-main}"
 
 # Цветовая палитра / Color palette
 BG_DARK='\033[48;5;236m'
@@ -12,17 +13,12 @@ RESET='\033[0m'
 FG_USER_COLOR='\033[38;5;117m'
 
 # Символы оформления / Decorations
-SEP_CHAR="◈"
+SEP_CHAR="-"
 ARROW="▸"
 ARROW_CLEAR=">"
 CHECK="✓"
 CROSS="✗"
 INDENT="  "
-
-# Заголовок / Header
-header() {
-    echo -e "${BG_ACCENT}${FG_MAIN}                $1                ${RESET}"
-}
 
 # Прогресс / Progress
 show_progress() {
@@ -45,8 +41,120 @@ show_warning() {
 }
 
 # Сообщение / Message
-    show_message() {
+show_message() {
     echo -e "${FG_USER_COLOR}${INDENT}${ARROW} $1${RESET}"
+}
+
+# Разделитель / Separator
+separator() {
+    local text="$1"
+
+    get_terminal_width() {
+        local w
+        w=$(tput cols 2>/dev/null)
+        if [ -n "$w" ]; then
+            echo "$w"
+            return
+        fi
+        if [ -n "$COLUMNS" ]; then
+            echo "$COLUMNS"
+            return
+        fi
+        w=$(stty size 2>/dev/null | awk '{print $2}')
+        if [ -n "$w" ]; then
+            echo "$w"
+            return
+        fi
+        echo 100
+    }
+
+    local width
+    width=$(get_terminal_width)
+
+    SEP_CHAR=${SEP_CHAR:-"o"}
+    FG_ACCENT=${FG_ACCENT:-"\033[38;5;85m"}
+    RESET=${RESET:-"\033[0m"}
+
+    if [ -z "$text" ]; then
+        local line=$(printf "%${width}s" " " | tr ' ' "${SEP_CHAR}")
+        echo -e "${FG_ACCENT}${line}${RESET}"
+        return
+    fi
+
+    local clean_text
+    clean_text=$(echo -n "$text" | sed 's/\x1b\[[0-9;]*m//g')
+
+    local text_area=$((width / 2))
+    local side_width=$((width / 4))
+
+    if [ ${#clean_text} -le "$text_area" ]; then
+        local padding_needed=$((text_area - ${#clean_text}))
+        local left_padding=$((padding_needed / 2))
+        local right_padding=$((padding_needed - left_padding))
+
+        local side_part=$(printf "%${side_width}s" " " | tr ' ' "${SEP_CHAR}")
+        local left_text_pad=$(printf "%${left_padding}s" " ")
+        local right_text_pad=$(printf "%${right_padding}s" " ")
+
+        echo -e "${FG_ACCENT}${side_part}${RESET}${left_text_pad}${text}${right_text_pad}${FG_ACCENT}${side_part}${RESET}"
+    else
+        local remaining_text="$clean_text"
+        local side_part=$(printf "%${side_width}s" " " | tr ' ' "${SEP_CHAR}")
+
+        while [ ${#remaining_text} -gt 0 ]; do
+            local line_text=""
+            local line_length=0
+
+            if [ ${#remaining_text} -le "$text_area" ]; then
+                line_text="$remaining_text"
+                line_length=${#remaining_text}
+                remaining_text=""
+            else
+                local cut_pos="$text_area"
+                local i=$((text_area - 1))
+                while [ $i -gt $((text_area / 2)) ]; do
+                    local char=$(echo "$remaining_text" | cut -c$i)
+                    if [ "$char" = " " ]; then
+                        cut_pos=$i
+                        break
+                    fi
+                    i=$((i - 1))
+                done
+
+                line_text=$(echo "$remaining_text" | cut -c1-$cut_pos)
+                line_length=${#line_text}
+                remaining_text=$(echo "$remaining_text" | cut -c$((cut_pos + 1))-)
+                remaining_text=$(echo "$remaining_text" | sed 's/^[[:space:]]*//')
+            fi
+
+            local padding_needed=$((text_area - line_length))
+            local left_padding=$((padding_needed / 2))
+            local right_padding=$((padding_needed - left_padding))
+
+            local left_text_pad=$(printf "%${left_padding}s" " ")
+            local right_text_pad=$(printf "%${right_padding}s" " ")
+
+            echo -e "${FG_ACCENT}${side_part}${RESET}${left_text_pad}${line_text}${right_text_pad}${FG_ACCENT}${side_part}${RESET}"
+        done
+    fi
+}
+
+
+# Запуск шагов с разделителями / Run steps with separators
+run_steps_with_separator() {
+    for step in "$@"; do
+        if [[ "$step" == "::"* ]]; then
+            local text="${step:2}"
+            echo
+            separator "$text"
+            echo
+        else
+            echo
+            separator
+            echo
+            $step
+        fi
+    done
 }
 
 # Ввод / Input
@@ -87,15 +195,16 @@ init_language() {
         MSG_DEPS_SUCCESS="Зависимости успешно установлены"
         MSG_DEPS_ERROR="Ошибка установки зависимостей"
         MSG_INSTALL_ACTION="Выберите действие:"
-        MSG_INSTALL_SINGBOX_UI="1. Установка singbox-ui"
-        MSG_INSTALL_SINGBOX="2. Установка singbox"
-        MSG_INSTALL_SINGBOX_UI_AND_SINGBOX="3. Установка singbox-ui и singbox"
+        MSG_INSTALL_SINGBOX_UI="1. Singbox-ui"
+        MSG_INSTALL_SINGBOX="2. Singbox"
+        MSG_INSTALL_SINGBOX_UI_AND_SINGBOX="3. Singbox and singbox-ui"
         MSG_INSTALL_ACTION_CHOICE=" Ваш выбор: "
         MSG_INSTALL_OPERATION="Выберите тип операции:"
         MSG_INSTALL_OPERATION_INSTALL="1. Установка"
         MSG_INSTALL_OPERATION_DELETE="2. Удаление"
         MSG_INSTALL_OPERATION_REINSTALL_UPDATE="3. Переустановка/Обновление"
-        MSG_INSTALL_OPERATION_CHOICE=" Ваш выбор: "
+        MSG_INSTALL_OPERATION_CHOICE="Ваш выбор: "
+        MSG_INSTALL_SFTP_SERVER="Установить openssh-sftp-server? y/n (n - по умолчанию): "
         ;;
     *)
         MSG_INSTALL_TITLE="Starting! ($script_name)"
@@ -113,15 +222,16 @@ init_language() {
         MSG_DEPS_SUCCESS="Dependencies successfully installed"
         MSG_DEPS_ERROR="Error installing dependencies"
         MSG_INSTALL_ACTION="Select action:"
-        MSG_INSTALL_SINGBOX_UI="1. Install singbox-ui"
-        MSG_INSTALL_SINGBOX="2. Install singbox"
-        MSG_INSTALL_SINGBOX_UI_AND_SINGBOX="3. Install singbox-ui and singbox"
+        MSG_INSTALL_SINGBOX_UI="1. Singbox-ui"
+        MSG_INSTALL_SINGBOX="2. Singbox"
+        MSG_INSTALL_SINGBOX_UI_AND_SINGBOX="3. Singbox and singbox-ui"
         MSG_INSTALL_ACTION_CHOICE="Your choice: "
         MSG_INSTALL_OPERATION="Select install operation:"
         MSG_INSTALL_OPERATION_INSTALL="1. Install"
         MSG_INSTALL_OPERATION_DELETE="2. Delete"
         MSG_INSTALL_OPERATION_REINSTALL_UPDATE="3. Reinstall/Update"
         MSG_INSTALL_OPERATION_CHOICE="Your choice: "
+        MSG_INSTALL_SFTP_SERVER="Install openssh-sftp-server? y/n (n - by default): "
         ;;
 esac
 }
@@ -136,13 +246,33 @@ waiting() {
 # Обновление репозиториев и установка зависимостей / Update repos and install dependencies
 update_pkgs() {
     show_progress "$MSG_UPDATE_PKGS"
-    opkg update
-    if [ $? -eq 0 ]; then
-        show_success "$MSG_DEPS_SUCCESS"
-    else
+    read_input "$MSG_INSTALL_SFTP_SERVER" SFTP_SERVER
+    if [ -z "$SFTP_SERVER" ]; then
+        SFTP_SERVER="n"
+    fi
+    
+    case $SFTP_SERVER in
+    y)
+        if opkg update && opkg install openssh-sftp-server; then
+            show_success "$MSG_DEPS_SUCCESS"
+        else
+            show_error "$MSG_DEPS_ERROR"
+            exit 1
+        fi
+        ;;
+    n)
+        if opkg update; then
+            show_success "$MSG_DEPS_SUCCESS"
+        else
+            show_error "$MSG_DEPS_ERROR"
+            exit 1
+        fi
+        ;;
+    *)
         show_error "$MSG_DEPS_ERROR"
         exit 1
-    fi
+        ;;
+    esac
 }
 
 # Выбор операции установки / Choose install operation
@@ -198,8 +328,9 @@ network_check() {
 install_singbox_script() {
     show_warning "$MSG_SINGBOX_INSTALL"
 
-    wget -O /root/install-singbox.sh https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/install-singbox.sh && 
-    chmod 0755 /root/install-singbox.sh && LANG_CHOICE=$LANG_CHOICE && INSTALL_OPERATION=$INSTALL_OPERATION sh /root/install-singbox.sh
+    wget -O /root/install-singbox.sh https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/$BRANCH/other/install-singbox.sh &&
+    chmod 0755 /root/install-singbox.sh &&
+    LANG_CHOICE="$LANG_CHOICE" INSTALL_OPERATION="$INSTALL_OPERATION" sh /root/install-singbox.sh
 
     show_warning "$MSG_SINGBOX_RETURN"
 }
@@ -208,8 +339,9 @@ install_singbox_script() {
 install_singbox_ui_script() {
     show_warning "$MSG_SINGBOX_UI_INSTALL"
 
-    wget -O /root/install-singbox-ui.sh https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/install-singbox-ui.sh && 
-    chmod 0755 /root/install-singbox-ui.sh && LANG_CHOICE=$LANG_CHOICE && INSTALL_OPERATION=$INSTALL_OPERATION sh /root/install-singbox-ui.sh
+    wget -O /root/install-singbox-ui.sh https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/$BRANCH/other/install-singbox-ui.sh &&
+    chmod 0755 /root/install-singbox-ui.sh &&
+    LANG_CHOICE="$LANG_CHOICE" INSTALL_OPERATION="$INSTALL_OPERATION" sh /root/install-singbox-ui.sh
 
     show_warning "$MSG_SINGBOX_RETURN"
 }
@@ -232,6 +364,14 @@ choose_action() {
         install_singbox_script
         ;;
     3)
+#  * print_dependents_warning: Package sing-box is depended upon by packages:
+#  * print_dependents_warning:    luci-app-singbox-ui
+#  * print_dependents_warning: These might cease to work if package sing-box is removed.
+
+#  * print_dependents_warning: Force removal of this package with --force-depends.
+#  * print_dependents_warning: Force removal of this package and its dependents
+#  * print_dependents_warning: with --force-removal-of-dependent-packages.
+#  ✗ Ошибка удаления sing-box
         install_singbox_script
         install_singbox_ui_script
         ;;
@@ -256,10 +396,11 @@ complete_script() {
 }
 
 # ======== Основной код / Main code ========
-
-init_language
-header "$MSG_INSTALL_TITLE"
-#update_pkgs
-choose_install_operation
-choose_action
-complete_script
+run_steps_with_separator \
+    "::${BRANCH}" \
+    init_language \
+    "::$(eval echo \$MSG_INSTALL_TITLE)" \
+    update_pkgs \
+    choose_install_operation \
+    choose_action \
+    complete_script
