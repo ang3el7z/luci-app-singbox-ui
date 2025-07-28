@@ -299,7 +299,7 @@ network_check() {
 
     attempts=$((timeout / interval))
     success=0
-    i=0
+    i=1
 
     show_progress "$MSG_NETWORK_CHECK"
 
