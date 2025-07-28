@@ -276,9 +276,10 @@ network_check() {
 
     attempts=$((timeout / interval))
     success=0
-    i=1
+    i=2
 
     show_progress "$MSG_NETWORK_CHECK"
+    sleep "$interval"
 
     while [ $i -lt $attempts ]; do
         num_targets=$(echo "$targets" | wc -w)
@@ -289,7 +290,8 @@ network_check() {
             success=1
             break
         fi
-        
+
+        sleep "$interval"
         i=$((i + 1))
     done
 
