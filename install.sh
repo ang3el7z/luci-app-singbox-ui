@@ -391,6 +391,7 @@ complete_script() {
 }
 
 # ======== Основной код / Main code ========
+
 run_steps_with_separator \
     "::${BRANCH}" \
     init_language
