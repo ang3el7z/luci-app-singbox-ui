@@ -32,9 +32,9 @@ wget -O /root/install.sh https://raw.githubusercontent.com/ang3el7z/luci-app-sin
 ```
 
 2. Выберите действие:
-    - Установка singbox-ui
-    - Установка singbox (tun mode)
-    - Установка singbox (tun mode) + singbox-ui
+    - Singbox-ui
+    - Singbox (tun mode)
+    - Singbox (tun mode) + singbox-ui
 
 3. Выберите операцию:
     - Установка
