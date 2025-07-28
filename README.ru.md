@@ -26,34 +26,37 @@
 
 # Установка
 
-## Установить singbox (tun режим) + singbox-ui
+1. Запустите скрипт
 ```shell
-wget -O /root/install-singbox+singbox-ui.sh https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/install-singbox+singbox-ui.sh && chmod 0755 /root/install-singbox+singbox-ui.sh && sh /root/install-singbox+singbox-ui.sh
+wget -O /root/install.sh https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/install.sh && chmod 0755 /root/install.sh && BRANCH="main" sh /root/install.sh
 ```
 
-## Установить singbox-ui
-```shell
-wget -O /root/install-singbox-ui.sh https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/install-singbox-ui.sh && chmod 0755 /root/install-singbox-ui.sh && sh /root/install-singbox-ui.sh
-```
+2. Выберите действие:
+    - Установка singbox-ui
+    - Установка singbox (tun mode)
+    - Установка singbox (tun mode) + singbox-ui
 
-## Установить singbox (tun режим)
-```shell
-wget -O /root/install-singbox.sh https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/install-singbox.sh && chmod 0755 /root/install-singbox.sh && sh /root/install-singbox.sh
-```
-
-# Дополнительно
- - очистить ssh keygen 
+# Подсказки для пользователей
+очистить ssh keygen 
 ```shell
 ssh-keygen -R 192.168.1.1
 ```
- - подключение к роутеру
+
+подключение к роутеру
 ```shell
 ssh root@192.168.1.1
 ```
- - обновить openwrt (исправления видиммости плагина) -> `Cntrl + Shift + I`
+
+обновить openwrt (исправления видиммости плагина) -> `Cntrl + Shift + I`
+
+Шаблоны
  - [`openwrt template original 2.11`](https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/file/openwrt-template-original-openwrt_2.11.json)
  - [`openwrt template bot 2.11`](https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/file/openwrt-template-bot-openwrt_2.11.json)
+
+Исправления
  - [`исправление низкой скорости в "tun режиме"`](https://github.com/ang3el7z/luci-app-singbox-ui/issues/1)
+
+# Подсказки для меня
  - установить в одно нажатие
 ```shell
 wget -O install-one-click.sh https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/install-one-click.sh && chmod +x install-one-click.sh && ./install-one-click.sh

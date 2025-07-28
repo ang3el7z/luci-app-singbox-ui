@@ -26,35 +26,38 @@ Web interface for Sing-Box on OpenWrt 23/24
 
 # Installation
 
-## Install singbox (tun mode) + singbox-ui
+1. Run script
 ```shell
-wget -O /root/install-singbox+singbox-ui.sh https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/install-singbox+singbox-ui.sh && chmod 0755 /root/install-singbox+singbox-ui.sh && sh /root/install-singbox+singbox-ui.sh
+wget -O /root/install.sh https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/install.sh && chmod 0755 /root/install.sh && BRANCH="main" sh /root/install.sh
 ```
 
-## Install singbox-ui
-```shell
-wget -O /root/install-singbox-ui.sh https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/install-singbox-ui.sh && chmod 0755 /root/install-singbox-ui.sh && sh /root/install-singbox-ui.sh
-```
+2. Choose action:
+    - Install singbox-ui
+    - Install singbox (tun mode)
+    - Install singbox (tun mode) + singbox-ui
 
-## Install singbox (tun mode)
-```shell
-wget -O /root/install-singbox.sh https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/install-singbox.sh && chmod 0755 /root/install-singbox.sh && sh /root/install-singbox.sh
-```
-
-# other helps
- - ssh keygen clear
+# User helps
+ssh keygen clear
 ```shell
 ssh-keygen -R 192.168.1.1
 ```
- - connect router
+
+connect router
 ```shell
 ssh root@192.168.1.1
 ```
- - refresh openwrt (fix visibility plugin) -> `Cntrl + Shift + I`
+
+refresh openwrt (fix visibility plugin) -> `Cntrl + Shift + I`
+
+Template
  - [`openwrt template original 2.11`](https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/file/openwrt-template-original-openwrt_2.11.json)
  - [`openwrt template bot 2.11`](https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/file/openwrt-template-bot-openwrt_2.11.json)
+
+ Fix
  - [`fix low "tun mode" speed`](https://github.com/ang3el7z/luci-app-singbox-ui/issues/1)
- - install one click
+
+# My helps
+install one click
 ```shell
 wget -O install-one-click.sh https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/install-one-click.sh && chmod +x install-one-click.sh && ./install-one-click.sh
 ```
