@@ -8,3 +8,4 @@ luci-app-singbox-ui-pr-41-fix-deps-20250726-1941.ipk
 luci-app-singbox-ui-pr-45-add-new-scripts-20250727-2116.ipk
 luci-app-singbox-ui-pr-47-edit-scripts-install-20250728-0438.ipk
 luci-app-singbox-ui-pr-48-fix-reload-singbox-20250728-1110.ipk
+luci-app-singbox-ui-pr-49-update-readme-20250728-1122.ipk
