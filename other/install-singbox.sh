@@ -506,10 +506,10 @@ check_installed() {
 # Удаление конфигураций / Remove configurations
 remove_configs() {
     show_progress "$MSG_REMOVING_CONFIGS"
-    [ -f /etc/sing-box/config.json ] && rm -f /etc/sing-box/config.json
     uci -q delete sing-box
     uci commit sing-box
-    [ ! -s /etc/config/sing-box ] && rm -f /etc/config/sing-box
+    [ -f /etc/sing-box/config.json ] && rm -f /etc/sing-box/config.json
+    [ -f /etc/config/sing-box ] && rm -f /etc/config/sing-box
 }
 
 # Установка / Install
