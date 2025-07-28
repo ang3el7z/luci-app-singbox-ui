@@ -454,6 +454,7 @@ get_config() {
             if RAW_JSON=$(curl -fsS "$CONFIG_URL" 2>/dev/null) && [ -n "$RAW_JSON" ]; then
                 if FORMATTED_JSON=$(echo "$RAW_JSON" | jq -e '.' 2>/dev/null); then
                     echo "$FORMATTED_JSON" > /etc/sing-box/config.json
+                    echo "$CONFIG_URL" > "/etc/sing-box/url_config.json"
                     show_success "$MSG_CONFIG_SUCCESS"
                     AUTO_CONFIG_SUCCESS=1
                     SUCCESS=1
