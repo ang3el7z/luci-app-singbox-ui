@@ -244,11 +244,17 @@ waiting() {
 # Обновление репозиториев и установка зависимостей / Update repos and install dependencies
 update_pkgs() {
     show_progress "$MSG_UPDATE_PKGS"
-    read_input "$MSG_INSTALL_SFTP_SERVER" SFTP_SERVER
-    if [ -z "$SFTP_SERVER" ]; then
+
+    if opkg list-installed | grep -q "^openssh-sftp-server "; then
+        echo "$MSG_SFTP_ALREADY_INSTALLED"
         SFTP_SERVER="n"
+    else
+        read_input "$MSG_INSTALL_SFTP_SERVER" SFTP_SERVER
+        if [ -z "$SFTP_SERVER" ]; then
+            SFTP_SERVER="n"
+        fi
     fi
-    
+
     case $SFTP_SERVER in
     y)
         if opkg update && opkg install openssh-sftp-server; then
@@ -272,6 +278,7 @@ update_pkgs() {
         ;;
     esac
 }
+
 
 # Выбор операции установки / Choose install operation
 choose_install_operation() {
