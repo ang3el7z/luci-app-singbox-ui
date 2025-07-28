@@ -360,7 +360,7 @@ uninstall_singbox() {
     show_progress "$MSG_UNINSTALL_SINGBOX"
     service sing-box stop 2>/dev/null
     service sing-box disable 2>/dev/null
-    opkg remove sing-box
+    opkg remove sing-box --force-depends
     if [ $? -eq 0 ]; then
         show_success "$MSG_UNINSTALL_SINGBOX_SUCCESS"
     else

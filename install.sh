@@ -364,14 +364,6 @@ choose_action() {
         install_singbox_script
         ;;
     3)
-#  * print_dependents_warning: Package sing-box is depended upon by packages:
-#  * print_dependents_warning:    luci-app-singbox-ui
-#  * print_dependents_warning: These might cease to work if package sing-box is removed.
-
-#  * print_dependents_warning: Force removal of this package with --force-depends.
-#  * print_dependents_warning: Force removal of this package and its dependents
-#  * print_dependents_warning: with --force-removal-of-dependent-packages.
-#  ✗ Ошибка удаления sing-box
         install_singbox_script
         install_singbox_ui_script
         ;;
