@@ -219,6 +219,10 @@ init_language() {
             MSG_NETWORK_CHECK="Проверка доступности сети..."
             MSG_NETWORK_SUCCESS="Сеть доступна (через %s, за %s сек)"
             MSG_NETWORK_ERROR="Сеть не доступна после %s сек!"
+            MSG_MODE="Выберите режим установки:"
+            MSG_TUN="1. TUN"
+            MSG_TPROXY="2. TPROXY"
+            MSG_MODE_CHOICE="Ваш выбор: "
             ;;
         *)
             MSG_INSTALL_TITLE="Starting! ($script_name)"
@@ -268,6 +272,10 @@ init_language() {
             MSG_NETWORK_CHECK="Checking network availability..."
             MSG_NETWORK_SUCCESS="Network available (via %s, in %s sec)"
             MSG_NETWORK_ERROR="Network not available after %s sec!"
+            MSG_MODE="Select mode:"
+            MSG_TUN="1. TUN"
+            MSG_TPROXY="2. TPROXY"
+            MSG_MODE_CHOICE="Your choice: "
             ;;
     esac
 }
@@ -509,10 +517,18 @@ remove_configs() {
     [ -f /etc/config/sing-box ] && rm -f /etc/config/sing-box
 }
 
-# Установка / Install
-install() {
-    show_progress "$MSG_INSTALLING"
-    install_singbox
+# Выбор операции установки / Choose install operation
+choose_mode() {
+    if [ -z "$MODE" ]; then
+        show_message "$MSG_MODE"
+        show_message "$MSG_TUN"
+        show_message "$MSG_TPROXY"
+        read_input "$MSG_MODE_CHOICE" MODE
+    fi
+}
+
+# Установка tun mode / Install tun mode
+installed_tun_mode() {
     configure_singbox_service
     disable_singbox_service
     clean_singbox_config
@@ -523,6 +539,63 @@ install() {
     restart_network
     network_check
     enable_singbox
+}
+
+# Удаление tun mode / Uninstall tun mode
+uninstalled_tun_mode() {
+    remove_configure_proxy
+    remove_firewall_rules
+    restart_firewall
+    restart_network
+}
+
+# Установка tproxy mode / Install tproxy mode
+installed_tproxy_mode() {
+   TODO реализовать
+}
+
+# Удаление tproxy mode / Uninstall tproxy mode
+uninstalled_tproxy_mode() {
+    TODO реализовать
+}
+
+# Выбор режима установки / Choose install mode
+perform_install_mode() {
+    case $INSTALL_MODE in
+        1)
+            installed_tun_mode
+            ;;
+        2)
+            installed_tproxy_mode
+            ;;
+        *)
+            show_error "$MSG_INVALID_MODE"
+            exit 1
+            ;;
+    esac
+}
+
+# Выбор режима установки / Choose install mode
+perform_uninstall_mode() {
+    case $INSTALL_MODE in
+        1)
+            uninstalled_tun_mode
+            ;;
+        2)
+            uninstalled_tproxy_mode
+            ;;
+        *)
+            show_error "$MSG_INVALID_MODE"
+            exit 1
+            ;;
+    esac
+}
+
+# Установка / Install
+install() {
+    show_progress "$MSG_INSTALLING"
+    install_singbox
+    perform_install_mode
     show_success "$MSG_INSTALL_SUCCESS"
 }
 
@@ -530,13 +603,7 @@ install() {
 uninstall() {
     show_progress "$MSG_UNINSTALLING"
     uninstall_singbox
-    remove_configure_proxy
-    remove_firewall_rules
-    restore_ipv6
-    remove_configs
-    restart_firewall
-    restart_network
-    network_check
+    perform_uninstall_mode
     show_success "$MSG_UNINSTALL_SUCCESS"
 }
 

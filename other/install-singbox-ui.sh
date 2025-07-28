@@ -385,7 +385,6 @@ choose_install_version() {
             show_error "$MSG_RUNNER_INDEX_UNAVAILABLE"
             show_progress "$MSG_INSTALL_LATEST"
             DOWNLOAD_URL="$URL_LATEST"
-            break
         fi
 
         RUNNER_FILES=$(cat /tmp/index.txt)
@@ -394,7 +393,6 @@ choose_install_version() {
             show_error "$MSG_RUNNER_LIST_EMPTY"
             show_progress "$MSG_INSTALL_LATEST"
             DOWNLOAD_URL="$URL_LATEST"
-            break
         fi
 
         i=1
@@ -404,9 +402,9 @@ choose_install_version() {
             i=$((i+1))
         done
 
-        read_input "$MSG_YOUR_CHOICE" choice
+        read_input "$MSG_YOUR_CHOICE" CHOICE
 
-        eval SELECTED_RUNNER_FILE=\$RUNNER_$choice
+        eval SELECTED_RUNNER_FILE=\$RUNNER_"$CHOICE"
 
         if [ -z "$SELECTED_RUNNER_FILE" ]; then
             show_error "$MSG_INVALID_CHOICE"
