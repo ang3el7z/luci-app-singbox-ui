@@ -36,6 +36,11 @@ wget -O /root/install.sh https://raw.githubusercontent.com/ang3el7z/luci-app-sin
     - Установка singbox (tun mode)
     - Установка singbox (tun mode) + singbox-ui
 
+3. Выберите операцию:
+    - Установка
+    - Удаление
+    - Переустановка/Обновление
+
 # Подсказки для пользователей
 очистить ssh keygen 
 ```shell
