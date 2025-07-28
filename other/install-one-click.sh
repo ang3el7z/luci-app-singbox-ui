@@ -396,8 +396,10 @@ complete_script() {
 # ======== Основной код / Main code ========
 
 run_steps_with_separator \
-    init_language \
-    "::$(eval echo \$MSG_INSTALL_TITLE)" \
+    init_language
+
+run_steps_with_separator \
+    "::$MSG_INSTALL_TITLE" \
     update_pkgs \
     input_data \
     clear_router \
