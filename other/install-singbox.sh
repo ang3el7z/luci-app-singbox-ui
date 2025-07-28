@@ -506,9 +506,10 @@ check_installed() {
 # Удаление конфигураций / Remove configurations
 remove_configs() {
     show_progress "$MSG_REMOVING_CONFIGS"
-    rm -f /etc/sing-box/config.json
+    [ -f /etc/sing-box/config.json ] && rm -f /etc/sing-box/config.json
     uci -q delete sing-box
     uci commit sing-box
+    [ ! -s /etc/config/sing-box ] && rm -f /etc/config/sing-box
 }
 
 # Установка / Install
@@ -535,9 +536,10 @@ uninstall() {
     remove_configure_proxy
     remove_firewall_rules
     restore_ipv6
-    # remove_configs
+    remove_configs
     restart_firewall
     restart_network
+    network_check
     show_success "$MSG_UNINSTALL_SUCCESS"
 }
 
