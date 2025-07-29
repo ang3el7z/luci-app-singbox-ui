@@ -1,11 +1,7 @@
 #!/bin/bash
 
 # Цветовая палитра / Color palette
-BG_DARK='\033[48;5;236m'
-BG_ACCENT='\033[48;5;24m'
-FG_MAIN='\033[38;5;252m'
 FG_ACCENT='\033[38;5;85m'
-FG_WARNING='\033[38;5;214m'
 FG_SUCCESS='\033[38;5;41m'
 FG_ERROR='\033[38;5;203m'
 RESET='\033[0m'
@@ -157,16 +153,19 @@ separator() {
 # Запуск шагов с разделителями / Run steps with separators
 run_steps_with_separator() {
     for step in "$@"; do
-        if [[ "$step" == "::"* ]]; then
-            local text="${step:2}"
-            separator
-            separator "$text"
-            separator
-        else
-            $step
-            separator
-            echo
-        fi
+        case "$step" in
+            ::*)
+                text="${step#::}"
+                separator
+                separator "$text"
+                separator
+                ;;
+            *)
+                $step
+                separator
+                printf "\n"
+                ;;
+        esac
     done
 }
 
@@ -239,8 +238,7 @@ waiting() {
 # Обновление репозиториев и установка зависимостей / Update repos and install dependencies
 update_pkgs() {
     show_progress "$MSG_UPDATE_PKGS"
-    opkg update && opkg install openssh-sftp-server
-    if [ $? -eq 0 ]; then
+    if opkg update && opkg install openssh-sftp-server; then
         show_success "$MSG_DEPS_SUCCESS"
     else
         show_error "$MSG_DEPS_ERROR"
@@ -270,21 +268,21 @@ wait_for_router() {
 
 # Проверка доступности сети / Network availability check
 network_check() {
-    timeout=500
-    interval=5
-    targets="223.5.5.5 180.76.76.76 77.88.8.8 1.1.1.1 8.8.8.8 9.9.9.9 94.140.14.14"
+    local timeout=500
+    local interval=5
+    local targets="223.5.5.5 180.76.76.76 77.88.8.8 1.1.1.1 8.8.8.8 9.9.9.9 94.140.14.14"
 
-    attempts=$((timeout / interval))
-    success=0
-    i=2
+    local attempts=$((timeout / interval))
+    local success=0
+    local i=2
 
     show_progress "$MSG_NETWORK_CHECK"
     sleep "$interval"
 
     while [ $i -lt $attempts ]; do
-        num_targets=$(echo "$targets" | wc -w)
-        index=$((i % num_targets))
-        target=$(echo "$targets" | cut -d' ' -f$((index + 1)))
+        local num_targets=$(echo "$targets" | wc -w)
+        local index=$((i % num_targets))
+        local target=$(echo "$targets" | cut -d' ' -f$((index + 1)))
 
         if ping -c 1 -W 2 "$target" >/dev/null 2>&1; then
             success=1
@@ -296,13 +294,14 @@ network_check() {
     done
 
     if [ $success -eq 1 ]; then
-        total_time=$((i * interval))
+        local total_time=$((i * interval))
         show_success "$(printf "$MSG_NETWORK_SUCCESS" "$target" "$total_time")"
     else
         show_error "$(printf "$MSG_NETWORK_ERROR" "$timeout")" >&2
         exit 1
     fi
 }
+
 
 # Сброс роутера / Reset router
 reset_router() {
@@ -336,7 +335,7 @@ clear_router() {
     case "$RESET_CHOICE" in
       [Yy])
         if reset_router; then
-            waiting && wait_for_router && network_check
+            waiting 60 && wait_for_router && network_check
         else
             exit 1
         fi
@@ -375,7 +374,6 @@ connect_and_install() {
         }
     fi
 }
-
 
 # Очистка / Cleanup
 cleanup() {

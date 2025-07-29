@@ -1,11 +1,7 @@
 #!/bin/sh
 
 # Цветовая палитра (приглушенные тона) / Color palette (muted tones)
-BG_DARK='\033[48;5;236m'
-BG_ACCENT='\033[48;5;24m'
-FG_MAIN='\033[38;5;252m'
 FG_ACCENT='\033[38;5;85m'
-FG_WARNING='\033[38;5;214m'
 FG_SUCCESS='\033[38;5;41m'
 FG_ERROR='\033[38;5;203m'
 RESET='\033[0m'
@@ -146,16 +142,19 @@ separator() {
 # Запуск шагов с разделителями / Run steps with separators
 run_steps_with_separator() {
     for step in "$@"; do
-        if [[ "$step" == "::"* ]]; then
-            local text="${step:2}"
-            separator
-            separator "$text"
-            separator
-        else
-            $step
-            separator
-            echo
-        fi
+        case "$step" in
+            ::*)
+                text="${step#::}"
+                separator
+                separator "$text"
+                separator
+                ;;
+            *)
+                $step
+                separator
+                printf "\n"
+                ;;
+        esac
     done
 }
 
@@ -284,8 +283,7 @@ waiting() {
 # Обновление репозиториев и установка зависимостей / Update repos and install dependencies
 update_pkgs() {
     show_progress "$MSG_UPDATE_PKGS"
-    opkg update && opkg install curl jq && (opkg install nano || opkg install nano-full)
-    if [ $? -eq 0 ]; then
+    if opkg update && opkg install curl jq && (opkg install nano || opkg install nano-full); then
         show_success "$MSG_DEPS_SUCCESS"
     else
         show_error "$MSG_DEPS_ERROR"
@@ -306,21 +304,21 @@ choose_install_operation() {
 
 # Проверка доступности сети / Network availability check
 network_check() {
-    timeout=500
-    interval=5
-    targets="223.5.5.5 180.76.76.76 77.88.8.8 1.1.1.1 8.8.8.8 9.9.9.9 94.140.14.14"
+    local timeout=500
+    local interval=5
+    local targets="223.5.5.5 180.76.76.76 77.88.8.8 1.1.1.1 8.8.8.8 9.9.9.9 94.140.14.14"
 
-    attempts=$((timeout / interval))
-    success=0
-    i=2
+    local attempts=$((timeout / interval))
+    local success=0
+    local i=2
 
     show_progress "$MSG_NETWORK_CHECK"
     sleep "$interval"
 
     while [ $i -lt $attempts ]; do
-        num_targets=$(echo "$targets" | wc -w)
-        index=$((i % num_targets))
-        target=$(echo "$targets" | cut -d' ' -f$((index + 1)))
+        local num_targets=$(echo "$targets" | wc -w)
+        local index=$((i % num_targets))
+        local target=$(echo "$targets" | cut -d' ' -f$((index + 1)))
 
         if ping -c 1 -W 2 "$target" >/dev/null 2>&1; then
             success=1
@@ -332,7 +330,7 @@ network_check() {
     done
 
     if [ $success -eq 1 ]; then
-        total_time=$((i * interval))
+        local total_time=$((i * interval))
         show_success "$(printf "$MSG_NETWORK_SUCCESS" "$target" "$total_time")"
     else
         show_error "$(printf "$MSG_NETWORK_ERROR" "$timeout")" >&2
@@ -350,15 +348,15 @@ choose_install_version() {
     read_input "$MSG_YOUR_CHOICE" VERSION_CHOICE
 
     # Ссылки на файлы для каждой версии / URLs for each version
-    URL_LATEST="https://github.com/ang3el7z/luci-app-singbox-ui/releases/latest/download/luci-app-singbox-ui.ipk"
-    URL_LITE="https://github.com/ang3el7z/luci-app-singbox-ui/releases/download/v1.2.1/luci-app-singbox-ui.ipk"
+    local url_latest="https://github.com/ang3el7z/luci-app-singbox-ui/releases/latest/download/luci-app-singbox-ui.ipk"
+    local url_lite="https://github.com/ang3el7z/luci-app-singbox-ui/releases/download/v1.2.1/luci-app-singbox-ui.ipk"
 
     case "$VERSION_CHOICE" in
     1)
-        DOWNLOAD_URL="$URL_LATEST"
+        DOWNLOAD_URL="$url_latest"
         ;;
     2)
-        DOWNLOAD_URL="$URL_LITE"
+        DOWNLOAD_URL="$url_lite"
         ;;
     3)
         # Получаем ссылку на последнюю pre-release сборку / Fetch latest pre-release build  
@@ -370,33 +368,35 @@ choose_install_version() {
 
         if [ -z "$DOWNLOAD_URL" ]; then
             show_error "$MSG_NO_PRE_RELEASE"
-            DOWNLOAD_URL="$URL_LATEST"
+            DOWNLOAD_URL="$url_latest"
         fi
         ;;
     4)
-        RUNNER_BASE_URL="https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/artifacts"
-        INDEX_URL="$RUNNER_BASE_URL/index.txt"
+        local runner_base_url="https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/artifacts"
+        local index_url="$runner_base_url/index.txt"
 
         show_progress "$MSG_SELECT_RUNNER"
 
         # Получаем список runner сборок с проверкой / Get list of runner builds with validation
-        http_code=$(curl -s -o /tmp/index.txt -w "%{http_code}" "$INDEX_URL")
+        local http_code=$(curl -s -o /tmp/index.txt -w "%{http_code}" "$index_url")
         if [ "$http_code" != "200" ]; then
             show_error "$MSG_RUNNER_INDEX_UNAVAILABLE"
             show_progress "$MSG_INSTALL_LATEST"
-            DOWNLOAD_URL="$URL_LATEST"
+            DOWNLOAD_URL="$url_latest"
+            return
         fi
 
-        RUNNER_FILES=$(cat /tmp/index.txt)
+        local runner_files=$(cat /tmp/index.txt)
 
-        if [ -z "$RUNNER_FILES" ]; then
+        if [ -z "$runner_files" ]; then
             show_error "$MSG_RUNNER_LIST_EMPTY"
             show_progress "$MSG_INSTALL_LATEST"
-            DOWNLOAD_URL="$URL_LATEST"
+            DOWNLOAD_URL="$url_latest"
+            return
         fi
 
-        i=1
-        for file in $RUNNER_FILES; do
+        local i=1
+        for file in $runner_files; do
             show_message "  [$i] $file"
             eval RUNNER_$i="'$file'"
             i=$((i+1))
@@ -404,18 +404,18 @@ choose_install_version() {
 
         read_input "$MSG_YOUR_CHOICE" CHOICE
 
-        eval SELECTED_RUNNER_FILE=\$RUNNER_"$CHOICE"
+        eval selected_runner_file=\$RUNNER_"$CHOICE"
 
-        if [ -z "$SELECTED_RUNNER_FILE" ]; then
+        if [ -z "$selected_runner_file" ]; then
             show_error "$MSG_INVALID_CHOICE"
-            DOWNLOAD_URL="$URL_LATEST"
+            DOWNLOAD_URL="$url_latest"
         else
-            DOWNLOAD_URL="$RUNNER_BASE_URL/$SELECTED_RUNNER_FILE"
+            DOWNLOAD_URL="$runner_base_url/$selected_runner_file"
         fi
         ;;
     *)
         show_error "$MSG_INVALID_CHOICE"
-        DOWNLOAD_URL="$URL_LATEST"
+        DOWNLOAD_URL="$url_latest"
         ;;
     esac
 }
@@ -423,8 +423,7 @@ choose_install_version() {
 # Установка singbox-ui / Install singbox-ui
 install_singbox_ui() {
     show_progress "$MSG_INSTALL_UI"
-    wget -O /root/luci-app-singbox-ui.ipk "$DOWNLOAD_URL"
-    if [ $? -ne 0 ]; then
+    if ! wget -O /root/luci-app-singbox-ui.ipk "$DOWNLOAD_URL"; then
         show_error "$MSG_DOWNLOAD_ERROR"
         exit 1
     fi
@@ -441,16 +440,16 @@ get_config() {
         read_input "${MSG_CONFIG_PROMPT}" CONFIG_URL
     fi
 
-    AUTO_CONFIG_SUCCESS=0
+    local is_auto_config=0
     # Проверяем, что URL не пустой / Check if URL is not empty
     if [ -n "$CONFIG_URL" ]; then
-        MAX_ATTEMPTS=3
-        ATTEMPT=1
-        SUCCESS=0
+        local max_attempts=3
+        local attempt=1
+        local success=0
 
         # Загрузка конфигурации / Configuration download
-        while [ $ATTEMPT -le $MAX_ATTEMPTS ]; do
-            show_progress "$(printf "$MSG_CONFIG_LOADING" "$CONFIG_URL" "$ATTEMPT" "$MAX_ATTEMPTS")"
+        while [ $attempt -le $max_attempts ]; do
+            show_progress "$(printf "$MSG_CONFIG_LOADING" "$CONFIG_URL" "$attempt" "$max_attempts")"
             
             # Проверка JSON / JSON validation
             if RAW_JSON=$(curl -fsS "$CONFIG_URL" 2>/dev/null) && [ -n "$RAW_JSON" ]; then
@@ -458,8 +457,8 @@ get_config() {
                     echo "$FORMATTED_JSON" > /etc/sing-box/config.json
                     echo "$CONFIG_URL" > "/etc/sing-box/url_config.json"
                     show_success "$MSG_CONFIG_SUCCESS"
-                    AUTO_CONFIG_SUCCESS=1
-                    SUCCESS=1
+                    is_auto_config=1
+                    success=1
                     break
                 else
                     show_error "$MSG_FORMAT_ERROR"
@@ -468,15 +467,15 @@ get_config() {
                 show_error "$(printf "$MSG_CONFIG_ERROR" "${RAW_JSON:-"Unknown error"}")"
             fi
 
-            if [ $ATTEMPT -lt $MAX_ATTEMPTS ]; then
+            if [ $attempt -lt $max_attempts ]; then
                 show_progress "$MSG_RETRY"
                 network_check
             fi
         
-            ATTEMPT=$((ATTEMPT + 1))
+            attempt=$((attempt + 1))
         done
 
-        if [ $SUCCESS -eq 0 ]; then
+        if [ $success -eq 0 ]; then
             show_error "$MSG_MANUAL_CONFIG"
             export TERM=xterm
             nano /etc/sing-box/config.json || {
@@ -494,7 +493,7 @@ get_config() {
     fi
 
     # Проверка ручной конфигурации / Manual configuration check
-    if [ "$AUTO_CONFIG_SUCCESS" -ne 1 ]; then
+    if [ "$is_auto_config" -ne 1 ]; then
         while true; do
             read_input "${MSG_EDIT_COMPLETE}" edit_choice
             case "${edit_choice:-Y}" in
