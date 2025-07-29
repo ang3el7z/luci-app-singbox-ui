@@ -638,12 +638,14 @@ perform_operation() {
     esac
 }
 
+# Очистка / Cleanup
 cleanup() {
     show_progress "$MSG_CLEANUP"
     rm -- "$0"
     show_success "$MSG_CLEANUP_DONE"
 }
 
+# Завершение скрипта / Complete script
 complete_script() {
     show_success "$MSG_COMPLETE"
     cleanup
