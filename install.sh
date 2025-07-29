@@ -2,9 +2,6 @@
 BRANCH="${BRANCH:-main}"
 
 # Цветовая палитра / Color palette
-BG_DARK='\033[48;5;236m'
-BG_ACCENT='\033[48;5;24m'
-FG_MAIN='\033[38;5;252m'
 FG_ACCENT='\033[38;5;85m'
 FG_WARNING='\033[38;5;214m'
 FG_SUCCESS='\033[38;5;41m'
@@ -142,16 +139,19 @@ separator() {
 # Запуск шагов с разделителями / Run steps with separators
 run_steps_with_separator() {
     for step in "$@"; do
-        if [[ "$step" == "::"* ]]; then
-            local text="${step:2}"
-            separator
-            separator "$text"
-            separator
-        else
-            $step
-            separator
-            echo
-        fi
+        case "$step" in
+            ::*)
+                text="${step#::}"
+                separator
+                separator "$text"
+                separator
+                ;;
+            *)
+                $step
+                separator
+                printf "\n"
+                ;;
+        esac
     done
 }
 
@@ -203,6 +203,7 @@ init_language() {
         MSG_INSTALL_OPERATION_REINSTALL_UPDATE="3. Переустановка/Обновление"
         MSG_INSTALL_OPERATION_CHOICE="Ваш выбор: "
         MSG_INSTALL_SFTP_SERVER="Установить openssh-sftp-server? y/n (n - по умолчанию): "
+        MSG_INVALID_INPUT="Некорректный ввод"
         ;;
     *)
         MSG_INSTALL_TITLE="Starting! ($script_name)"
@@ -230,6 +231,7 @@ init_language() {
         MSG_INSTALL_OPERATION_REINSTALL_UPDATE="3. Reinstall/Update"
         MSG_INSTALL_OPERATION_CHOICE="Your choice: "
         MSG_INSTALL_SFTP_SERVER="Install openssh-sftp-server? y/n (n - by default): "
+        MSG_INVALID_INPUT="Invalid input"
         ;;
 esac
 }
@@ -293,21 +295,21 @@ choose_install_operation() {
 
 # Проверка доступности сети / Network availability check
 network_check() {
-    timeout=500
-    interval=5
-    targets="223.5.5.5 180.76.76.76 77.88.8.8 1.1.1.1 8.8.8.8 9.9.9.9 94.140.14.14"
+    local timeout=500
+    local interval=5
+    local targets="223.5.5.5 180.76.76.76 77.88.8.8 1.1.1.1 8.8.8.8 9.9.9.9 94.140.14.14"
 
-    attempts=$((timeout / interval))
-    success=0
-    i=2
+    local attempts=$((timeout / interval))
+    local success=0
+    local i=2
 
     show_progress "$MSG_NETWORK_CHECK"
     sleep "$interval"
 
     while [ $i -lt $attempts ]; do
-        num_targets=$(echo "$targets" | wc -w)
-        index=$((i % num_targets))
-        target=$(echo "$targets" | cut -d' ' -f$((index + 1)))
+        local num_targets=$(echo "$targets" | wc -w)
+        local index=$((i % num_targets))
+        local target=$(echo "$targets" | cut -d' ' -f$((index + 1)))
 
         if ping -c 1 -W 2 "$target" >/dev/null 2>&1; then
             success=1
@@ -319,7 +321,7 @@ network_check() {
     done
 
     if [ $success -eq 1 ]; then
-        total_time=$((i * interval))
+        local total_time=$((i * interval))
         show_success "$(printf "$MSG_NETWORK_SUCCESS" "$target" "$total_time")"
     else
         show_error "$(printf "$MSG_NETWORK_ERROR" "$timeout")" >&2
@@ -359,22 +361,22 @@ choose_action() {
         read_input "$MSG_INSTALL_ACTION_CHOICE" ACTION_CHOICE
     fi
 
-    case ${ACTION_CHOICE:-2} in
-    1)
-        install_singbox_ui_script
-        ;;
-    2)
-        install_singbox_script
-        ;;
-    3)
-        install_singbox_script
-        install_singbox_ui_script
-        ;;
-    *)
-        show_error "Некорректный ввод"
-        exit 1
-        ;;
-esac
+    case "${ACTION_CHOICE:-2}" in
+        1)
+            install_singbox_ui_script
+            ;;
+        2)
+            install_singbox_script
+            ;;
+        3)
+            install_singbox_script
+            install_singbox_ui_script
+            ;;
+        *)
+            show_error "$MSG_INVALID_INPUT"
+            exit 1
+            ;;
+    esac
 }
 
 # Очистка файлов / Cleanup

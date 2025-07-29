@@ -1,11 +1,7 @@
 #!/bin/sh
 
 # Цветовая палитра / Color palette
-BG_DARK='\033[48;5;236m'
-BG_ACCENT='\033[48;5;24m'
-FG_MAIN='\033[38;5;252m'
 FG_ACCENT='\033[38;5;85m'
-FG_WARNING='\033[38;5;214m'
 FG_SUCCESS='\033[38;5;41m'
 FG_ERROR='\033[38;5;203m'
 RESET='\033[0m'
@@ -146,16 +142,19 @@ separator() {
 # Запуск шагов с разделителями / Run steps with separators
 run_steps_with_separator() {
     for step in "$@"; do
-        if [[ "$step" == "::"* ]]; then
-            local text="${step:2}"
-            separator
-            separator "$text"
-            separator
-        else
-            $step
-            separator
-            echo
-        fi
+        case "$step" in
+            ::*)
+                text="${step#::}"
+                separator
+                separator "$text"
+                separator
+                ;;
+            *)
+                $step
+                separator
+                printf "\n"
+                ;;
+        esac
     done
 }
 
@@ -199,11 +198,11 @@ init_language() {
             MSG_IPV6_DISABLED="IPv6 отключен"
             MSG_START_SERVICE="Запуск сервиса sing-box"
             MSG_SERVICE_STARTED="Сервис успешно запущен"
-            MSG_INSTALL_OPERATION="Выберите тип операции:"
-            MSG_INSTALL_OPERATION_INSTALL="1. Установка"
-            MSG_INSTALL_OPERATION_DELETE="2. Удаление"
-            MSG_INSTALL_OPERATION_REINSTALL_UPDATE="3. Переустановка/Обновление"
-            MSG_INSTALL_OPERATION_CHOICE=" Ваш выбор: "
+            MSG_OPERATION="Выберите тип операции:"
+            MSG_INSTALL="1. Установка"
+            MSG_DELETE="2. Удаление"
+            MSG_REINSTALL_UPDATE="3. Переустановка/Обновление"
+            MSG_CHOICE=" Ваш выбор: "
             MSG_ALREADY_INSTALLED="Ошибка: Пакет уже установлен. Для переустановки выберите опцию 3"
             MSG_INSTALLING="Установка..."
             MSG_INSTALL_SUCCESS="Установка завершена"
@@ -252,11 +251,11 @@ init_language() {
             MSG_IPV6_DISABLED="IPv6 disabled"
             MSG_START_SERVICE="Starting sing-box service"
             MSG_SERVICE_STARTED="Service started successfully"
-            MSG_INSTALL_OPERATION="Select install operation:"
-            MSG_INSTALL_OPERATION_INSTALL="1. Install"
-            MSG_INSTALL_OPERATION_DELETE="2. Delete"
-            MSG_INSTALL_OPERATION_REINSTALL_UPDATE="3. Reinstall/Update"
-            MSG_INSTALL_OPERATION_CHOICE="Your choice: "
+            MSG_OPERATION="Select install operation:"
+            MSG_INSTALL="1. Install"
+            MSG_DELETE="2. Delete"
+            MSG_REINSTALL_UPDATE="3. Reinstall/Update"
+            MSG_CHOICE="Your choice: "
             MSG_ALREADY_INSTALLED="Error: Package already installed. For reinstall choose option 3"
             MSG_INSTALLING="Installing..."
             MSG_INSTALL_SUCCESS="Install completed"
@@ -290,43 +289,42 @@ waiting() {
 # Обновление репозиториев / Update repos
 update_pkgs() {
     show_progress "$MSG_UPDATE_PKGS"
-    opkg update
-    if [ $? -eq 0 ]; then
-        show_success "$MSG_PKGS_SUCCESS"
+    if opkg update; then
+      show_success "$MSG_PKGS_SUCCESS"
     else
-        show_error "$MSG_PKGS_ERROR"
-        exit 1
+      show_error "$MSG_PKGS_ERROR"
+      exit 1
     fi
 }
 
 # Выбор операции установки / Choose install operation
 choose_install_operation() {
-    if [ -z "$INSTALL_OPERATION" ]; then
-        show_message "$MSG_INSTALL_OPERATION"
-        show_message "$MSG_INSTALL_OPERATION_INSTALL"
-        show_message "$MSG_INSTALL_OPERATION_DELETE"
-        show_message "$MSG_INSTALL_OPERATION_REINSTALL_UPDATE"
-        read_input "$MSG_INSTALL_OPERATION_CHOICE" INSTALL_OPERATION
+    if [ -z "$OPERATION" ]; then
+        show_message "$MSG_OPERATION"
+        show_message "$MSG_INSTALL"
+        show_message "$MSG_DELETE"
+        show_message "$MSG_REINSTALL_UPDATE"
+        read_input "$MSG_CHOICE" OPERATION
     fi
 }
 
 # Проверка доступности сети / Network availability check
 network_check() {
-    timeout=500
-    interval=5
-    targets="223.5.5.5 180.76.76.76 77.88.8.8 1.1.1.1 8.8.8.8 9.9.9.9 94.140.14.14"
+    local timeout=500
+    local interval=5
+    local targets="223.5.5.5 180.76.76.76 77.88.8.8 1.1.1.1 8.8.8.8 9.9.9.9 94.140.14.14"
 
-    attempts=$((timeout / interval))
-    success=0
-    i=2
+    local attempts=$((timeout / interval))
+    local success=0
+    local i=2
 
     show_progress "$MSG_NETWORK_CHECK"
     sleep "$interval"
 
     while [ $i -lt $attempts ]; do
-        num_targets=$(echo "$targets" | wc -w)
-        index=$((i % num_targets))
-        target=$(echo "$targets" | cut -d' ' -f$((index + 1)))
+        local num_targets=$(echo "$targets" | wc -w)
+        local index=$((i % num_targets))
+        local target=$(echo "$targets" | cut -d' ' -f$((index + 1)))
 
         if ping -c 1 -W 2 "$target" >/dev/null 2>&1; then
             success=1
@@ -338,7 +336,7 @@ network_check() {
     done
 
     if [ $success -eq 1 ]; then
-        total_time=$((i * interval))
+        local total_time=$((i * interval))
         show_success "$(printf "$MSG_NETWORK_SUCCESS" "$target" "$total_time")"
     else
         show_error "$(printf "$MSG_NETWORK_ERROR" "$timeout")" >&2
@@ -349,8 +347,7 @@ network_check() {
 # Установка sing-box / Install sing-box
 install_singbox() {
     show_progress "$MSG_INSTALL_SINGBOX"
-    opkg install sing-box
-    if [ $? -eq 0 ]; then
+    if opkg install sing-box; then
         show_success "$MSG_INSTALL_SINGBOX_SUCCESS"
     else
         show_error "$MSG_INSTALL_SINGBOX_ERROR"
@@ -363,8 +360,7 @@ uninstall_singbox() {
     show_progress "$MSG_UNINSTALL_SINGBOX"
     service sing-box stop 2>/dev/null
     service sing-box disable 2>/dev/null
-    opkg remove sing-box --force-depends
-    if [ $? -eq 0 ]; then
+    if opkg remove sing-box --force-depends; then
         show_success "$MSG_UNINSTALL_SINGBOX_SUCCESS"
     else
         show_error "$MSG_UNINSTALL_SINGBOX_ERROR"
@@ -517,7 +513,7 @@ remove_configs() {
     [ -f /etc/config/sing-box ] && rm -f /etc/config/sing-box
 }
 
-# Выбор операции установки / Choose install operation
+# Выбор режима / Choose mode
 choose_mode() {
     if [ -z "$MODE" ]; then
         show_message "$MSG_MODE"
@@ -609,7 +605,7 @@ uninstall() {
 
 # Выполнение операций / Perform operations
 perform_operation() {
-    case $INSTALL_OPERATION in
+    case $OPERATION in
         1)  
             if check_installed; then
                 show_error "$MSG_ALREADY_INSTALLED"
