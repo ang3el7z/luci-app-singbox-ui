@@ -222,6 +222,10 @@ init_language() {
             MSG_TUN="1. TUN"
             MSG_TPROXY="2. TPROXY"
             MSG_MODE_CHOICE="Ваш выбор: "
+            MSG_INSTALLING_TPROXY_MODE="Установка TPROXY режима..."
+            MSG_UNINSTALLING_TPROXY_MODE="Удаление TPROXY режима..."
+            MSG_INSTALLING_TUN_MODE="Установка TUN режима..."
+            MSG_UNINSTALLING_TUN_MODE="Удаление TUN режима..."
             ;;
         *)
             MSG_INSTALL_TITLE="Starting! ($script_name)"
@@ -275,6 +279,10 @@ init_language() {
             MSG_TUN="1. TUN"
             MSG_TPROXY="2. TPROXY"
             MSG_MODE_CHOICE="Your choice: "
+            MSG_INSTALLING_TPROXY_MODE="Installing TPROXY mode..."
+            MSG_UNINSTALLING_TPROXY_MODE="Uninstalling TPROXY mode..."
+            MSG_INSTALLING_TUN_MODE="Installing TUN mode..."
+            MSG_UNINSTALLING_TUN_MODE="Uninstalling TUN mode..."
             ;;
     esac
 }
@@ -505,7 +513,7 @@ check_installed() {
 }
 
 # Удаление конфигураций / Remove configurations
-remove_configs() {
+remove_singbox_data() {
     show_progress "$MSG_REMOVING_CONFIGS"
     uci -q delete sing-box
     uci commit sing-box
@@ -525,10 +533,10 @@ choose_mode() {
 
 # Установка tun mode / Install tun mode
 installed_tun_mode() {
+    show_progress "$MSG_INSTALLING_TUN_MODE"
     configure_singbox_service
     disable_singbox_service
     clean_singbox_config
-    disabled_ipv6
     configure_proxy
     configure_firewall
     restart_firewall
@@ -539,25 +547,59 @@ installed_tun_mode() {
 
 # Удаление tun mode / Uninstall tun mode
 uninstalled_tun_mode() {
+    show_progress "$MSG_UNINSTALLING_TUN_MODE"
     remove_configure_proxy
     remove_firewall_rules
     restart_firewall
     restart_network
+    network_check
 }
 
 # Установка tproxy mode / Install tproxy mode
 installed_tproxy_mode() {
-   TODO реализовать
+    show_progress "$MSG_INSTALLING_TPROXY_MODE"
+
+    ip route add local default dev lo table 100
+    ip rule add fwmark 0x1 lookup 100
+
+    iptables -t mangle -N SINGBOX 2>/dev/null || true
+    iptables -t nat   -N SINGBOX_NAT 2>/dev/null || true
+
+    iptables -t mangle -A SINGBOX -d 127.0.0.0/8 -j RETURN
+    iptables -t mangle -A SINGBOX -d 10.0.0.0/8    -j RETURN
+    iptables -t mangle -A SINGBOX -d 192.168.0.0/16 -j RETURN
+
+    iptables -t mangle -A SINGBOX -p udp -j TPROXY \
+      --on-port 2080 --tproxy-mark 0x1/0x1
+
+    iptables -t nat -A SINGBOX_NAT -p tcp -j REDIRECT --to-port 2080
+
+    iptables -t mangle -I PREROUTING -j SINGBOX
+    iptables -t nat   -I PREROUTING -j SINGBOX_NAT
+
+    iptables -t mangle -I OUTPUT -j SINGBOX
 }
 
 # Удаление tproxy mode / Uninstall tproxy mode
 uninstalled_tproxy_mode() {
-    TODO реализовать
+    show_progress "$MSG_UNINSTALLING_TPROXY_MODE"
+
+    iptables -t mangle -D PREROUTING -j SINGBOX 2>/dev/null || true
+    iptables -t nat   -D PREROUTING -j SINGBOX_NAT 2>/dev/null || true
+    iptables -t mangle -D OUTPUT -j SINGBOX 2>/dev/null || true
+
+    iptables -t mangle -F SINGBOX 2>/dev/null || true
+    iptables -t nat   -F SINGBOX_NAT 2>/dev/null || true
+    iptables -t mangle -X SINGBOX 2>/dev/null || true
+    iptables -t nat   -X SINGBOX_NAT 2>/dev/null || true
+
+    ip rule del fwmark 0x1 lookup 100 2>/dev/null || true
+    ip route flush table 100 2>/dev/null || true
 }
 
 # Выбор режима установки / Choose install mode
 perform_install_mode() {
-    case $INSTALL_MODE in
+    case $MODE in
         1)
             installed_tun_mode
             ;;
@@ -573,7 +615,7 @@ perform_install_mode() {
 
 # Выбор режима установки / Choose install mode
 perform_uninstall_mode() {
-    case $INSTALL_MODE in
+    case $MODE in
         1)
             uninstalled_tun_mode
             ;;
@@ -592,6 +634,7 @@ install() {
     show_progress "$MSG_INSTALLING"
     install_singbox
     perform_install_mode
+    disabled_ipv6
     show_success "$MSG_INSTALL_SUCCESS"
 }
 
@@ -600,6 +643,8 @@ uninstall() {
     show_progress "$MSG_UNINSTALLING"
     uninstall_singbox
     perform_uninstall_mode
+    remove_singbox_data
+    restore_ipv6
     show_success "$MSG_UNINSTALL_SUCCESS"
 }
 
