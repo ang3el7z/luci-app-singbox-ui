@@ -542,8 +542,6 @@ install_nft_rule() {
     nft_rule_file="/etc/nftables.d/singbox.nft"
 
     cat << 'EOF' > "$nft_rule_file"
-flush ruleset
-
 define RESERVED_IP = {
     10.0.0.0/8,
     100.64.0.0/10,
