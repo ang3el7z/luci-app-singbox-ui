@@ -205,11 +205,11 @@ init_language() {
             MSG_EDIT_COMPLETE="Завершили редактирование config.json? [y/N]: "
             MSG_EDIT_SUCCESS="Успешно"
             MSG_INVALID_INPUT="Некорректный ввод"
-            MSG_INSTALL_OPERATION="Выберите тип операции:"
-            MSG_INSTALL_OPERATION_INSTALL="1. Установка"
-            MSG_INSTALL_OPERATION_DELETE="2. Удаление"
-            MSG_INSTALL_OPERATION_REINSTALL_UPDATE="3. Переустановка/Обновление"
-            MSG_INSTALL_OPERATION_CHOICE=" Ваш выбор: "
+            MSG_OPERATION="Выберите тип операции:"
+            MSG_OPERATION_INSTALL="1. Установка"
+            MSG_OPERATION_DELETE="2. Удаление"
+            MSG_OPERATION_REINSTALL_UPDATE="3. Переустановка/Обновление"
+            MSG_OPERATION_CHOICE=" Ваш выбор: "
             MSG_ALREADY_INSTALLED="Ошибка: Пакет уже установлен. Если устанавливали этим скриптом - выберите переустановку (3). Иначе выполните сброс роутера."
             MSG_UNINSTALLING="Удаление singbox-ui..."
             MSG_UNINSTALL_SUCCESS="Удаление завершено"
@@ -255,11 +255,11 @@ init_language() {
             MSG_EDIT_COMPLETE="Finished editing config.json? [y/N]: "
             MSG_EDIT_SUCCESS="Success"
             MSG_INVALID_INPUT="Invalid input"
-            MSG_INSTALL_OPERATION="Select install operation:"
-            MSG_INSTALL_OPERATION_INSTALL="1. Install"
-            MSG_INSTALL_OPERATION_DELETE="2. Delete"
-            MSG_INSTALL_OPERATION_REINSTALL_UPDATE="3. Reinstall/Update"
-            MSG_INSTALL_OPERATION_CHOICE="Your choice: "
+            MSG_OPERATION="Select install operation:"
+            MSG_OPERATION_INSTALL="1. Install"
+            MSG_OPERATION_DELETE="2. Delete"
+            MSG_OPERATION_REINSTALL_UPDATE="3. Reinstall/Update"
+            MSG_OPERATION_CHOICE="Your choice: "
             MSG_ALREADY_INSTALLED="Error: Package already installed. If installed via this script - choose reinstall (3). Otherwise reset the router."
             MSG_UNINSTALLING="Uninstalling singbox-ui..."
             MSG_UNINSTALL_SUCCESS="Uninstall completed"
@@ -293,12 +293,12 @@ update_pkgs() {
 
 # Выбор операции установки / Choose install operation
 choose_install_operation() {
-    if [ -z "$INSTALL_OPERATION" ]; then
-        show_message "$MSG_INSTALL_OPERATION"
-        show_message "$MSG_INSTALL_OPERATION_INSTALL"
-        show_message "$MSG_INSTALL_OPERATION_DELETE"
-        show_message "$MSG_INSTALL_OPERATION_REINSTALL_UPDATE"
-        read_input "$MSG_INSTALL_OPERATION_CHOICE" INSTALL_OPERATION
+    if [ -z "$OPERATION" ]; then
+        show_message "$MSG_OPERATION"
+        show_message "$MSG_OPERATION_INSTALL"
+        show_message "$MSG_OPERATION_DELETE"
+        show_message "$MSG_OPERATION_REINSTALL_UPDATE"
+        read_input "$MSG_OPERATION_CHOICE" OPERATION
     fi
 }
 
@@ -552,7 +552,7 @@ uninstall() {
 
 # Выполнение операций / Perform operations
 perform_operation() {
-    case $INSTALL_OPERATION in
+    case $OPERATION in
         1)  
             if check_installed; then
                 show_error "$MSG_ALREADY_INSTALLED"
