@@ -197,11 +197,11 @@ init_language() {
         MSG_INSTALL_SINGBOX="2. Singbox"
         MSG_INSTALL_SINGBOX_UI_AND_SINGBOX="3. Singbox and singbox-ui"
         MSG_INSTALL_ACTION_CHOICE=" Ваш выбор: "
-        MSG_INSTALL_OPERATION="Выберите тип операции:"
-        MSG_INSTALL_OPERATION_INSTALL="1. Установка"
-        MSG_INSTALL_OPERATION_DELETE="2. Удаление"
-        MSG_INSTALL_OPERATION_REINSTALL_UPDATE="3. Переустановка/Обновление"
-        MSG_INSTALL_OPERATION_CHOICE="Ваш выбор: "
+        MSG_OPERATION="Выберите тип операции:"
+        MSG_OPERATION_INSTALL="1. Установка"
+        MSG_OPERATION_DELETE="2. Удаление"
+        MSG_OPERATION_REINSTALL_UPDATE="3. Переустановка/Обновление"
+        MSG_OPERATION_CHOICE="Ваш выбор: "
         MSG_INSTALL_SFTP_SERVER="Установить openssh-sftp-server? y/n (n - по умолчанию): "
         MSG_INVALID_INPUT="Некорректный ввод"
         ;;
@@ -225,11 +225,11 @@ init_language() {
         MSG_INSTALL_SINGBOX="2. Singbox"
         MSG_INSTALL_SINGBOX_UI_AND_SINGBOX="3. Singbox and singbox-ui"
         MSG_INSTALL_ACTION_CHOICE="Your choice: "
-        MSG_INSTALL_OPERATION="Select install operation:"
-        MSG_INSTALL_OPERATION_INSTALL="1. Install"
-        MSG_INSTALL_OPERATION_DELETE="2. Delete"
-        MSG_INSTALL_OPERATION_REINSTALL_UPDATE="3. Reinstall/Update"
-        MSG_INSTALL_OPERATION_CHOICE="Your choice: "
+        MSG_OPERATION="Select install operation:"
+        MSG_OPERATION_INSTALL="1. Install"
+        MSG_OPERATION_DELETE="2. Delete"
+        MSG_OPERATION_REINSTALL_UPDATE="3. Reinstall/Update"
+        MSG_OPERATION_CHOICE="Your choice: "
         MSG_INSTALL_SFTP_SERVER="Install openssh-sftp-server? y/n (n - by default): "
         MSG_INVALID_INPUT="Invalid input"
         ;;
@@ -284,12 +284,12 @@ update_pkgs() {
 
 # Выбор операции установки / Choose install operation
 choose_install_operation() {
-    if [ -z "$INSTALL_OPERATION" ]; then
-        show_message "$MSG_INSTALL_OPERATION"
-        show_message "$MSG_INSTALL_OPERATION_INSTALL"
-        show_message "$MSG_INSTALL_OPERATION_DELETE"
-        show_message "$MSG_INSTALL_OPERATION_REINSTALL_UPDATE"
-        read_input "$MSG_INSTALL_OPERATION_CHOICE" INSTALL_OPERATION
+    if [ -z "$OPERATION" ]; then
+        show_message "$MSG_OPERATION"
+        show_message "$MSG_OPERATION_INSTALL"
+        show_message "$MSG_OPERATION_DELETE"
+        show_message "$MSG_OPERATION_REINSTALL_UPDATE"
+        read_input "$MSG_OPERATION_CHOICE" OPERATION
     fi
 }
 
@@ -335,7 +335,7 @@ install_singbox_script() {
 
     wget -O /root/install-singbox.sh https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/$BRANCH/other/install-singbox.sh &&
     chmod 0755 /root/install-singbox.sh &&
-    LANG_CHOICE="$LANG_CHOICE" INSTALL_OPERATION="$INSTALL_OPERATION" sh /root/install-singbox.sh
+    LANG_CHOICE="$LANG_CHOICE" OPERATION="$OPERATION" sh /root/install-singbox.sh
 
     show_warning "$MSG_SINGBOX_RETURN"
 }
@@ -346,7 +346,7 @@ install_singbox_ui_script() {
 
     wget -O /root/install-singbox-ui.sh https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/$BRANCH/other/install-singbox-ui.sh &&
     chmod 0755 /root/install-singbox-ui.sh &&
-    LANG_CHOICE="$LANG_CHOICE" INSTALL_OPERATION="$INSTALL_OPERATION" sh /root/install-singbox-ui.sh
+    LANG_CHOICE="$LANG_CHOICE" OPERATION="$OPERATION" sh /root/install-singbox-ui.sh
 
     show_warning "$MSG_SINGBOX_RETURN"
 }
