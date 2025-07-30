@@ -162,14 +162,14 @@ run_steps_with_separator() {
 init_language() {
     local script_name="install-singbox-ui.sh"
     
-    if [ -z "$LANG_CHOICE" ]; then
+    if [ -z "$LANG" ]; then
         show_message "Выберите язык / Select language [1/2]:"
         show_message "1. Русский (Russian)"
         show_message "2. English (Английский)"
-        read_input " Ваш выбор / Your choice [1/2]: " LANG_CHOICE
+        read_input " Ваш выбор / Your choice [1/2]: " LANG
     fi
 
-    case ${LANG_CHOICE:-2} in
+    case ${LANG:-2} in
         1)
             MSG_INSTALL_TITLE="Запуск! ($script_name)"
             MSG_UPDATE_PKGS="Обновление пакетов и установка зависимостей..."

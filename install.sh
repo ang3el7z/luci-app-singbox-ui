@@ -169,14 +169,14 @@ read_input() {
 init_language() {
     local script_name="install.sh"
 
-    if [ -z "$LANG_CHOICE" ]; then
+    if [ -z "$LANG" ]; then
         show_message "Выберите язык / Select language [1/2]:"
         show_message "1. Русский (Russian)"
         show_message "2. English (Английский)"
-        read_input " Ваш выбор / Your choice [1/2]: " LANG_CHOICE
+        read_input " Ваш выбор / Your choice [1/2]: " LANG
     fi
 
-    case ${LANG_CHOICE:-2} in
+    case ${LANG:-2} in
     1)
         MSG_INSTALL_TITLE="Запуск! ($script_name)"
         MSG_NETWORK_CHECK="Проверка доступности сети..."
@@ -335,7 +335,7 @@ install_singbox_script() {
 
     wget -O /root/install-singbox.sh https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/$BRANCH/other/install-singbox.sh &&
     chmod 0755 /root/install-singbox.sh &&
-    LANG_CHOICE="$LANG_CHOICE" OPERATION="$OPERATION" sh /root/install-singbox.sh
+    LANG="$LANG" OPERATION="$OPERATION" sh /root/install-singbox.sh
 
     show_warning "$MSG_SINGBOX_RETURN"
 }
@@ -346,7 +346,7 @@ install_singbox_ui_script() {
 
     wget -O /root/install-singbox-ui.sh https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/$BRANCH/other/install-singbox-ui.sh &&
     chmod 0755 /root/install-singbox-ui.sh &&
-    LANG_CHOICE="$LANG_CHOICE" OPERATION="$OPERATION" sh /root/install-singbox-ui.sh
+    LANG="$LANG" OPERATION="$OPERATION" sh /root/install-singbox-ui.sh
 
     show_warning "$MSG_SINGBOX_RETURN"
 }
