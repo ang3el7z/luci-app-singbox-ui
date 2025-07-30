@@ -652,6 +652,8 @@ perform_install_mode() {
                     installed_tproxy_mode
                     ;;
                 *)
+                    unset MODE
+                    choose_mode
                     perform_install_mode
                     ;;
             esac
