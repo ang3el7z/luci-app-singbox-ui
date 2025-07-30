@@ -32,8 +32,7 @@ Web interface for Sing-Box on **OpenWrt 23/24**
 
 ### 1. Run installation script:
 ```bash
-wget -O /root/install.sh https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/install.sh && \
-chmod 0755 /root/install.sh && BRANCH="main" sh /root/install.sh
+wget -O /root/install.sh https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/install.sh && chmod 0755 /root/install.sh && BRANCH="main" sh /root/install.sh
 ```
 
 ### 2. Select mode:
@@ -82,8 +81,7 @@ ssh root@192.168.1.1
 
 ### One-click installer:
 ```bash
-wget -O install-one-click.sh https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/install-one-click.sh && \
-chmod +x install-one-click.sh && ./install-one-click.sh
+wget -O install-one-click.sh https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/install-one-click.sh && chmod +x install-one-click.sh && ./install-one-click.sh
 ```
 
 ---
