@@ -173,14 +173,14 @@ run_steps_with_separator() {
 init_language() {
     local script_name="install-one-click.sh"
 
-    if [ -z "$LANG_CHOICE" ]; then
+    if [ -z "$LANG" ]; then
         show_message "Выберите язык / Select language [1/2]:"
         show_message "1. Русский (Russian)"
         show_message "2. English (Английский)"
-        read_input " Ваш выбор / Your choice [1/2]: " LANG_CHOICE
+        read_input " Ваш выбор / Your choice [1/2]: " LANG
     fi
     
-    case ${LANG_CHOICE:-1} in
+    case ${LANG:-1} in
         1)
             MSG_INSTALL_TITLE="Запуск! ($script_name)"
             MSG_ROUTER_IP="Введите адрес роутера (по умолчанию 192.168.1.1, нажмите Enter): "
@@ -355,7 +355,7 @@ connect_and_install() {
 
     local install_script_name="install.sh"
     local remote_cmd="
-        export LANG_CHOICE=$LANG_CHOICE
+        export LANG=$LANG
         export BRANCH=$BRANCH
         wget -O /root/$install_script_name https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/$BRANCH/$install_script_name
         chmod 0755 /root/$install_script_name
