@@ -188,6 +188,7 @@ init_language() {
         MSG_CLEANUP="Очистка файлов..."
         MSG_CLEANUP_DONE="Файлы удалены!"
         MSG_COMPLETE="Выполнено! ($script_name)"
+        MSG_FINISHED="Все инструкции выполнены!"
         MSG_WAITING="Ожидание %d сек"
         MSG_UPDATE_PKGS="Обновление пакетов и установка зависимостей..."
         MSG_DEPS_SUCCESS="Зависимости успешно установлены"
@@ -216,6 +217,7 @@ init_language() {
         MSG_CLEANUP="Cleaning up files..."
         MSG_CLEANUP_DONE="Files removed!"
         MSG_COMPLETE="Done! ($script_name)"
+        MSG_FINISHED="All instructions completed!"
         MSG_WAITING="Waiting %d sec"
         MSG_UPDATE_PKGS="Updating packages and installing dependencies..."
         MSG_DEPS_SUCCESS="Dependencies successfully installed"
@@ -389,6 +391,7 @@ cleanup() {
 # Завершение скрипта / Complete script
 complete_script() {
     show_success "$MSG_COMPLETE"
+    separator "$MSG_FINISHED"
     cleanup
 }
 
