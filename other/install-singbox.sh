@@ -297,7 +297,7 @@ waiting() {
 # Обновление репозиториев / Update repos
 update_pkgs() {
     show_progress "$MSG_UPDATE_PKGS"
-    if opkg update; then
+    if opkg update && opkg install nftables; then
       show_success "$MSG_PKGS_SUCCESS"
     else
       show_error "$MSG_PKGS_ERROR"
@@ -519,6 +519,55 @@ remove_singbox_data() {
     uci commit sing-box
     [ -f /etc/sing-box/config.json ] && rm -f /etc/sing-box/config.json
     [ -f /etc/config/sing-box ] && rm -f /etc/config/sing-box
+
+    [ -f /etc/config/sing-box ] && rm -f /etc/config/sing-box
+}
+
+# Установка правил nft / Install nft rules
+install_nft_rule() {
+    nft_rule_file="/etc/nftables.d/singbox.nft"
+
+    cat << 'EOF' > "$nft_rule_file"
+flush ruleset
+
+define RESERVED_IP = {
+    10.0.0.0/8,
+    100.64.0.0/10,
+    127.0.0.0/8,
+    169.254.0.0/16,
+    172.16.0.0/12,
+    192.0.0.0/24,
+    224.0.0.0/4,
+    240.0.0.0/4,
+    255.255.255.255/32
+}
+
+table ip singbox {
+    chain prerouting {
+        type filter hook prerouting priority mangle; policy accept;
+        ip daddr $RESERVED_IP return
+        ip saddr $RESERVED_IP return
+        ip protocol tcp tproxy to 127.0.0.1:2080 meta mark set 1
+        ip protocol udp tproxy to 127.0.0.1:2080 meta mark set 1
+    }
+    chain output {
+        type route hook output priority mangle; policy accept;
+        ip daddr $RESERVED_IP return
+        ip saddr $RESERVED_IP return
+        meta mark 2 return
+        ip protocol tcp meta mark set 1
+        ip protocol udp meta mark set 1
+    }
+}
+EOF
+
+    chmod 644 "$nft_rule_file"
+    nft -f "$nft_rule_file"
+}
+
+# Удаление правил nft / Remove nft rules
+uninstall_nft_rule() {
+    nft delete table ip singbox
 }
 
 # Выбор режима / Choose mode
@@ -544,9 +593,6 @@ definition_mode() {
 # Установка tun mode / Install tun mode
 installed_tun_mode() {
     show_progress "$MSG_INSTALLING_TUN_MODE"
-    configure_singbox_service
-    disable_singbox_service
-    clean_singbox_config
     configure_proxy
     configure_firewall
     restart_firewall
@@ -568,43 +614,13 @@ uninstalled_tun_mode() {
 # Установка tproxy mode / Install tproxy mode
 installed_tproxy_mode() {
     show_progress "$MSG_INSTALLING_TPROXY_MODE"
-
-    ip route add local default dev lo table 100
-    ip rule add fwmark 0x1 lookup 100
-
-    iptables -t mangle -N SINGBOX 2>/dev/null || true
-    iptables -t nat   -N SINGBOX_NAT 2>/dev/null || true
-
-    iptables -t mangle -A SINGBOX -d 127.0.0.0/8 -j RETURN
-    iptables -t mangle -A SINGBOX -d 10.0.0.0/8    -j RETURN
-    iptables -t mangle -A SINGBOX -d 192.168.0.0/16 -j RETURN
-
-    iptables -t mangle -A SINGBOX -p udp -j TPROXY \
-      --on-port 2080 --tproxy-mark 0x1/0x1
-
-    iptables -t nat -A SINGBOX_NAT -p tcp -j REDIRECT --to-port 2080
-
-    iptables -t mangle -I PREROUTING -j SINGBOX
-    iptables -t nat   -I PREROUTING -j SINGBOX_NAT
-
-    iptables -t mangle -I OUTPUT -j SINGBOX
+    install_nft_rule
 }
 
 # Удаление tproxy mode / Uninstall tproxy mode
 uninstalled_tproxy_mode() {
     show_progress "$MSG_UNINSTALLING_TPROXY_MODE"
-
-    iptables -t mangle -D PREROUTING -j SINGBOX 2>/dev/null || true
-    iptables -t nat   -D PREROUTING -j SINGBOX_NAT 2>/dev/null || true
-    iptables -t mangle -D OUTPUT -j SINGBOX 2>/dev/null || true
-
-    iptables -t mangle -F SINGBOX 2>/dev/null || true
-    iptables -t nat   -F SINGBOX_NAT 2>/dev/null || true
-    iptables -t mangle -X SINGBOX 2>/dev/null || true
-    iptables -t nat   -X SINGBOX_NAT 2>/dev/null || true
-
-    ip rule del fwmark 0x1 lookup 100 2>/dev/null || true
-    ip route flush table 100 2>/dev/null || true
+    uninstall_nft_rule
 }
 
 # Выбор режима установки / Choose install mode
@@ -644,6 +660,9 @@ install() {
     show_progress "$MSG_INSTALLING"
     choose_mode
     install_singbox
+    configure_singbox_service
+    disable_singbox_service
+    clean_singbox_config
     perform_install_mode
     disabled_ipv6
     show_success "$MSG_INSTALL_SUCCESS"
