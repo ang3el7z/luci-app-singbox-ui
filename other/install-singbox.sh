@@ -228,7 +228,9 @@ init_language() {
             MSG_UNINSTALLING_TUN_MODE="Удаление TUN режима..."
             MSG_UNINSTALL_EXISTING_FILES="Удаление существующих файлов sing-box..."
             MSG_INVALID_MODE="Ошибка: Некорректный режим"
-            MSG_INVALID_MODE_FOUND="Ошибка: Не найден режим установки."
+            MSG_INVALID_MODE_FOUND="Ошибка: Не найден режим для удаления."
+            MSG_MODE_FOUND_TPROXY="Найден TPROXY режим"
+            MSG_MODE_FOUND_TUN="Найден TUN режим"
             ;;
         *)
             MSG_INSTALL_TITLE="Starting! ($script_name)"
@@ -288,7 +290,9 @@ init_language() {
             MSG_UNINSTALLING_TUN_MODE="Uninstalling TUN mode..."
             MSG_UNINSTALL_EXISTING_FILES="Uninstalling existing sing-box files..."
             MSG_INVALID_MODE="Error: Invalid mode"
-            MSG_INVALID_MODE_FOUND="Error: Mode not found"
+            MSG_INVALID_MODE_FOUND="Error: Mode not found for removal."
+            MSG_MODE_FOUND_TPROXY="TPROXY mode found"
+            MSG_MODE_FOUND_TUN="TUN mode found"
             ;;
     esac
 }
@@ -592,11 +596,13 @@ choose_mode() {
 
 definition_mode() {
     if [ -f /etc/nftables.d/singbox.nft ]; then
+        show_progress "$MSG_MODE_FOUND_TPROXY"
         MODE=2
     elif uci -q get network.proxy.device | grep -q "singtun0"; then
+        show_progress "$MSG_MODE_FOUND_TUN"
         MODE=1
     else
-       show_error "$MSG_INVALID_MODE_FOUND"
+        show_error "$MSG_INVALID_MODE_FOUND"
     fi
 }
 
