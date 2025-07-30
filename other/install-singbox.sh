@@ -589,7 +589,6 @@ definition_mode() {
     fi
 }
 
-
 # Установка tun mode / Install tun mode
 installed_tun_mode() {
     show_progress "$MSG_INSTALLING_TUN_MODE"
