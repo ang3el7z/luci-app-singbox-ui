@@ -231,6 +231,7 @@ init_language() {
             MSG_INVALID_MODE_FOUND="Ошибка: Не найден режим для удаления."
             MSG_MODE_FOUND_TPROXY="Найден TPROXY режим"
             MSG_MODE_FOUND_TUN="Найден TUN режим"
+            MSG_MODE_TPROXY_IN_DEVELOPMENT="Режим TPROXY в разработке (для тестирования), продолжить? (Y/n)"
             ;;
         *)
             MSG_INSTALL_TITLE="Starting! ($script_name)"
@@ -293,6 +294,7 @@ init_language() {
             MSG_INVALID_MODE_FOUND="Error: Mode not found for removal."
             MSG_MODE_FOUND_TPROXY="TPROXY mode found"
             MSG_MODE_FOUND_TUN="TUN mode found"
+            MSG_MODE_TPROXY_IN_DEVELOPMENT="TPROXY mode in development (for testing), continue? (Y/n)"
             ;;
     esac
 }
@@ -644,7 +646,15 @@ perform_install_mode() {
             installed_tun_mode
             ;;
         2)
-            installed_tproxy_mode
+            read_input "$MSG_MODE_TPROXY_IN_DEVELOPMENT" MODE_DEVELOPMENT
+            case $MODE_DEVELOPMENTE in
+                [Yy])
+                    installed_tproxy_mode
+                    ;;
+                *)
+                    perform_install_mode
+                    ;;
+            esac
             ;;
         *)
             show_error "$MSG_INVALID_MODE"
