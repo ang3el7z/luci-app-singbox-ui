@@ -167,7 +167,7 @@ read_input() {
 
 # Инициализация языка / Language initialization
 init_language() {
-    local script_name="install.sh"
+    local script_name="install-singbox+singbox-ui.sh"
 
     if [ -z "$LANG" ]; then
         show_message "Выберите язык / Select language [1/2]:"
