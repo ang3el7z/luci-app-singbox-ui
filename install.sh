@@ -208,7 +208,7 @@ waiting() {
 # Установка / Install
 install() {
     show_warning "$MSG_INSTALL"
-    wget -O /root/install-singbox+singbox-ui.sh https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/$BRANCH/other/install-singbox+singbox-ui.sh &&
+    wget -O /root/install-singbox+singbox-ui.sh https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/$BRANCH/other/scripts/install-singbox+singbox-ui.sh &&
     chmod 0755 /root/install-singbox+singbox-ui.sh &&
     LANG="$LANG" BRANCH="$BRANCH" sh /root/install-singbox+singbox-ui.sh
 }
