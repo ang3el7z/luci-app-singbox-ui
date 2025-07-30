@@ -391,7 +391,6 @@ cleanup() {
 # Завершение скрипта / Complete script
 complete_script() {
     show_success "$MSG_COMPLETE"
-    separator "$MSG_FINISHED"
     cleanup
 }
 
@@ -406,4 +405,5 @@ run_steps_with_separator \
     update_pkgs \
     choose_install_operation \
     choose_action \
-    complete_script
+    complete_script \
+     "::$MSG_FINISHED"
