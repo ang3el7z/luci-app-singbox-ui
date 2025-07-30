@@ -683,6 +683,7 @@ uninstall() {
     definition_mode
     uninstall_singbox
     perform_uninstall_mode
+    unset MODE
     remove_singbox_data
     uninstall_existing_files
     restore_ipv6
