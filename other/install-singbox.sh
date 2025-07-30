@@ -531,6 +531,16 @@ choose_mode() {
     fi
 }
 
+definition_mode() {
+    if [ -z "$MODE" ]; then
+        show_message "$MSG_MODE"
+        show_message "$MSG_TUN"
+        show_message "$MSG_TPROXY"
+        read_input "$MSG_MODE_CHOICE" MODE
+    fi
+}
+
+
 # Установка tun mode / Install tun mode
 installed_tun_mode() {
     show_progress "$MSG_INSTALLING_TUN_MODE"
@@ -632,6 +642,7 @@ perform_uninstall_mode() {
 # Установка / Install
 install() {
     show_progress "$MSG_INSTALLING"
+    choose_mode
     install_singbox
     perform_install_mode
     disabled_ipv6
@@ -641,6 +652,7 @@ install() {
 # Удаление / Uninstall
 uninstall() {
     show_progress "$MSG_UNINSTALLING"
+    definition_mode
     uninstall_singbox
     perform_uninstall_mode
     remove_singbox_data
