@@ -579,7 +579,7 @@ EOF
 
 # Удаление правил nft / Remove nft rules
 uninstall_nft_rule() {
-    nft delete table ip singbox
+    nft delete table ip singbox 2>/dev/null
 }
 
 # Выбор режима / Choose mode
