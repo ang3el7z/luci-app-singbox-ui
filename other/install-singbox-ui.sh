@@ -522,7 +522,7 @@ uninstall_existing_files(){
     [ -f /etc/config/singbox-ui.old ] && rm -f /etc/config/singbox-ui.old
 }
 
-# Reload sing-box / Reload sing-box
+# Обновление конфигурации sing-box / Reload configuration for sing-box
 reload_singbox() {
     show_progress "$MSG_RELOAD_SERVICE"
     service sing-box reload
