@@ -226,6 +226,7 @@ init_language() {
             MSG_UNINSTALLING_TPROXY_MODE="Удаление TPROXY режима..."
             MSG_INSTALLING_TUN_MODE="Установка TUN режима..."
             MSG_UNINSTALLING_TUN_MODE="Удаление TUN режима..."
+            MSG_UNINSTALL_EXISTING_FILES="Удаление существующих файлов sing-box..."
             ;;
         *)
             MSG_INSTALL_TITLE="Starting! ($script_name)"
@@ -283,6 +284,7 @@ init_language() {
             MSG_UNINSTALLING_TPROXY_MODE="Uninstalling TPROXY mode..."
             MSG_INSTALLING_TUN_MODE="Installing TUN mode..."
             MSG_UNINSTALLING_TUN_MODE="Uninstalling TUN mode..."
+            MSG_UNINSTALL_EXISTING_FILES="Uninstalling existing sing-box files..."
             ;;
     esac
 }
@@ -519,8 +521,12 @@ remove_singbox_data() {
     uci commit sing-box
     [ -f /etc/sing-box/config.json ] && rm -f /etc/sing-box/config.json
     [ -f /etc/config/sing-box ] && rm -f /etc/config/sing-box
+}
 
-    [ -f /etc/config/sing-box ] && rm -f /etc/config/sing-box
+# Удаление существующих файлов / Remove existing files
+uninstall_existing_files(){
+    show_progress "$MSG_UNINSTALL_EXISTING_FILES"
+    [ -f /etc/config/sing-box.old ] && rm -f /etc/config/sing-box.old
 }
 
 # Установка правил nft / Install nft rules
@@ -674,6 +680,7 @@ uninstall() {
     uninstall_singbox
     perform_uninstall_mode
     remove_singbox_data
+    uninstall_existing_files
     restore_ipv6
     show_success "$MSG_UNINSTALL_SUCCESS"
 }
