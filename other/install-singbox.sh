@@ -561,7 +561,7 @@ table ip singbox {
 }
 EOF
 
-    chmod 644 "$nft_rule_file"
+    chmod +x "$nft_rule_file"
     nft -f "$nft_rule_file"
 }
 
