@@ -218,8 +218,8 @@ init_language() {
             MSG_NETWORK_CHECK="Проверка доступности сети..."
             MSG_NETWORK_SUCCESS="Сеть доступна (через %s, за %s сек)"
             MSG_NETWORK_ERROR="Сеть не доступна после %s сек!"
-            MSG_RELOAD_SERVICE="Reloading sing-box..."
-            MSG_SERVICE_RELOADED="Service reloaded"
+            MSG_RELOAD_SERVICE="Обновить конфигурацию sing-box..."
+            MSG_SERVICE_RELOADED="Конфигурация sing-box обновлена"
             ;;
         *)
             MSG_INSTALL_TITLE="Starting! ($script_name)"
@@ -268,8 +268,8 @@ init_language() {
             MSG_NETWORK_CHECK="Checking network availability..."
             MSG_NETWORK_SUCCESS="Network available (via %s, in %s sec)"
             MSG_NETWORK_ERROR="Network not available after %s sec!"
-            MSG_RELOAD_SERVICE="Reloading sing-box..."
-            MSG_SERVICE_RELOADED="Service reloaded"
+            MSG_RELOAD_SERVICE="Reload configuration sing-box..."
+            MSG_SERVICE_RELOADED="Configuration sing-box reloaded"
             ;;
     esac
 }
@@ -516,6 +516,12 @@ get_config() {
     fi
 }
 
+# Удаление существующих файлов / Remove existing files
+uninstall_existing_files(){
+    show_progress "$MSG_UNINSTALL_EXISTING_FILES"
+    [ -f /etc/config/singbox-ui.old ] && rm -f /etc/config/singbox-ui.old
+}
+
 # Reload sing-box / Reload sing-box
 reload_singbox() {
     show_progress "$MSG_RELOAD_SERVICE"
@@ -548,6 +554,7 @@ install() {
 # Удаление / Uninstall
 uninstall() {
     uninstall_singbox_ui
+    uninstall_existing_files
 }
 
 # Выполнение операций / Perform operations
