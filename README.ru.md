@@ -82,7 +82,7 @@ ssh root@192.168.1.1
 
 ### Установка в одно нажатие:
 ```bash
-wget -O install-one-click.sh https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/install-one-click.sh && chmod +x install-one-click.sh && ./install-one-click.sh
+wget -O install-one-click.sh https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/scripts/install-one-click.sh && chmod +x install-one-click.sh && ./install-one-click.sh
 ```
 
 ---
