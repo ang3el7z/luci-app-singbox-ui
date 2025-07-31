@@ -1,11 +1,7 @@
 #!/bin/bash
 
 # Цветовая палитра / Color palette
-BG_DARK='\033[48;5;236m'
-BG_ACCENT='\033[48;5;24m'
-FG_MAIN='\033[38;5;252m'
 FG_ACCENT='\033[38;5;85m'
-FG_WARNING='\033[38;5;214m'
 FG_SUCCESS='\033[38;5;41m'
 FG_ERROR='\033[38;5;203m'
 RESET='\033[0m'
@@ -157,16 +153,19 @@ separator() {
 # Запуск шагов с разделителями / Run steps with separators
 run_steps_with_separator() {
     for step in "$@"; do
-        if [[ "$step" == "::"* ]]; then
-            local text="${step:2}"
-            separator
-            separator "$text"
-            separator
-        else
-            $step
-            separator
-            echo
-        fi
+        case "$step" in
+            ::*)
+                text="${step#::}"
+                separator
+                separator "$text"
+                separator
+                ;;
+            *)
+                $step
+                separator
+                printf "\n"
+                ;;
+        esac
     done
 }
 
@@ -174,14 +173,14 @@ run_steps_with_separator() {
 init_language() {
     local script_name="install-one-click.sh"
 
-    if [ -z "$LANG_CHOICE" ]; then
+    if [ -z "$LANG" ]; then
         show_message "Выберите язык / Select language [1/2]:"
         show_message "1. Русский (Russian)"
         show_message "2. English (Английский)"
-        read_input " Ваш выбор / Your choice [1/2]: " LANG_CHOICE
+        read_input " Ваш выбор / Your choice [1/2]: " LANG
     fi
     
-    case ${LANG_CHOICE:-1} in
+    case ${LANG:-1} in
         1)
             MSG_INSTALL_TITLE="Запуск! ($script_name)"
             MSG_ROUTER_IP="Введите адрес роутера (по умолчанию 192.168.1.1, нажмите Enter): "
@@ -207,7 +206,7 @@ init_language() {
         *)
             MSG_INSTALL_TITLE="Starting! ($script_name)"
             MSG_ROUTER_IP="Enter router address (default 192.168.1.1, press Enter): "
-            MSG_ROUTER_PASS="Enter root password (if no password - press Enter): "
+            MSG_ROUTER_PASS="Enter root PASSWORD (if no PASSWORD - press Enter): "
             MSG_RESET_ROUTER="Reset router settings before installation? [y/N]: "
             MSG_RESETTING="Resetting router settings..."
             MSG_REMOVE_KEY="Removing old host key for"
@@ -224,7 +223,7 @@ init_language() {
             MSG_ROUTER_AVAILABLE="Router available via %s (%d sec)"
             MSG_WAITING="Waiting %d sec"
             MSG_ROUTER_NOT_AVAILABLE="Router %s not available after %d sec"
-            MSG_BRANCH="Enter branch (default main, press Enter): "
+            MSG_BRANCH="Enter BRANCH (default main, press Enter): "
             ;;
     esac
 }
@@ -239,8 +238,7 @@ waiting() {
 # Обновление репозиториев и установка зависимостей / Update repos and install dependencies
 update_pkgs() {
     show_progress "$MSG_UPDATE_PKGS"
-    opkg update && opkg install openssh-sftp-server
-    if [ $? -eq 0 ]; then
+    if opkg update && opkg install openssh-sftp-server; then
         show_success "$MSG_DEPS_SUCCESS"
     else
         show_error "$MSG_DEPS_ERROR"
@@ -257,34 +255,34 @@ wait_for_router() {
     show_progress "$MSG_WAITING_ROUTER"
     
     for ((i=1; i<=attempts; i++)); do
-        if ping -c 1 -W 2 "$router_ip" >/dev/null 2>&1; then
-            show_success "$(printf "$MSG_ROUTER_AVAILABLE" "$router_ip" "$((i*interval))")"
+        if ping -c 1 -W 2 "$ROUTER_IP" >/dev/null 2>&1; then
+            show_success "$(printf "$MSG_ROUTER_AVAILABLE" "$ROUTER_IP" "$((i*interval))")"
             return 0
         fi
         sleep $interval
     done
     
-    show_error "$(printf "$MSG_ROUTER_NOT_AVAILABLE" "$router_ip" "$timeout")"
+    show_error "$(printf "$MSG_ROUTER_NOT_AVAILABLE" "$ROUTER_IP" "$timeout")"
     return 1
 }
 
 # Проверка доступности сети / Network availability check
 network_check() {
-    timeout=500
-    interval=5
-    targets="223.5.5.5 180.76.76.76 77.88.8.8 1.1.1.1 8.8.8.8 9.9.9.9 94.140.14.14"
+    local timeout=500
+    local interval=5
+    local targets="223.5.5.5 180.76.76.76 77.88.8.8 1.1.1.1 8.8.8.8 9.9.9.9 94.140.14.14"
 
-    attempts=$((timeout / interval))
-    success=0
-    i=2
+    local attempts=$((timeout / interval))
+    local success=0
+    local i=2
 
     show_progress "$MSG_NETWORK_CHECK"
     sleep "$interval"
 
     while [ $i -lt $attempts ]; do
-        num_targets=$(echo "$targets" | wc -w)
-        index=$((i % num_targets))
-        target=$(echo "$targets" | cut -d' ' -f$((index + 1)))
+        local num_targets=$(echo "$targets" | wc -w)
+        local index=$((i % num_targets))
+        local target=$(echo "$targets" | cut -d' ' -f$((index + 1)))
 
         if ping -c 1 -W 2 "$target" >/dev/null 2>&1; then
             success=1
@@ -296,7 +294,7 @@ network_check() {
     done
 
     if [ $success -eq 1 ]; then
-        total_time=$((i * interval))
+        local total_time=$((i * interval))
         show_success "$(printf "$MSG_NETWORK_SUCCESS" "$target" "$total_time")"
     else
         show_error "$(printf "$MSG_NETWORK_ERROR" "$timeout")" >&2
@@ -304,16 +302,17 @@ network_check() {
     fi
 }
 
+
 # Сброс роутера / Reset router
 reset_router() {
     show_progress "$MSG_RESETTING"
-    if [ -z "$password" ]; then
-        if ! ssh -o "StrictHostKeyChecking no" "root@$router_ip" "firstboot -y && reboot now"; then
+    if [ -z "$PASSWORD" ]; then
+        if ! ssh -o "StrictHostKeyChecking no" "root@$ROUTER_IP" "firstboot -y && reboot now"; then
             show_error "$MSG_SSH_ERROR"
             return 1
         fi
     else
-        if ! sshpass -p "$password" ssh -o "StrictHostKeyChecking no" "root@$router_ip" "firstboot -y && reboot now"; then
+        if ! sshpass -p "$PASSWORD" ssh -o "StrictHostKeyChecking no" "root@$ROUTER_IP" "firstboot -y && reboot now"; then
             show_error "$MSG_SSH_ERROR"
             return 1
         fi
@@ -324,28 +323,30 @@ reset_router() {
 
 # Запрос данных / Input data
 input_data() {
-    read_input "${MSG_ROUTER_IP}" router_ip
-    router_ip="${router_ip:-192.168.1.1}"
-    read_input_secret "${MSG_ROUTER_PASS}" password
-    read_input "${MSG_BRANCH}" branch
+    read_input "${MSG_ROUTER_IP}" ROUTER_IP
+    ROUTER_IP="${ROUTER_IP:-192.168.1.1}"
+    read_input_secret "${MSG_ROUTER_PASS}" PASSWORD
+    read_input "${MSG_BRANCH}" BRANCH
 }
 
 # Запрос на сброс роутера / Ask for router reset
 clear_router() {
-    read_input "$MSG_RESET_ROUTER" reset_choice
-    if [[ "$reset_choice" =~ ^[Yy]$ ]]; then
+    read_input "$MSG_RESET_ROUTER" RESET_CHOICE
+    case "$RESET_CHOICE" in
+      [Yy])
         if reset_router; then
-            waiting && wait_for_router && network_check
+            waiting 60 && wait_for_router && network_check
         else
             exit 1
         fi
-    fi
+        ;;
+    esac
 }
 
 # Удаление старого ключа / Remove old key
 remove_old_key() {
-    show_progress "${MSG_REMOVE_KEY} ${router_ip}"
-    ssh-keygen -R "$router_ip" 2>/dev/null
+    show_progress "${MSG_REMOVE_KEY} ${ROUTER_IP}"
+    ssh-keygen -R "$ROUTER_IP" 2>/dev/null
 }
 
 # Подключение и установка / Connect and install
@@ -353,22 +354,21 @@ connect_and_install() {
     show_progress "$MSG_CONNECTING"
 
     local install_script_name="install.sh"
+    local remote_cmd="
+        export LANG=$LANG
+        export BRANCH=$BRANCH
+        wget -O /root/$install_script_name https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/$BRANCH/$install_script_name
+        chmod 0755 /root/$install_script_name
+        sh /root/$install_script_name
+    "
 
-    if [ -z "$password" ]; then
-        ssh -t -o "StrictHostKeyChecking no" "root@$router_ip" \
-             export LANG_CHOICE=$LANG_CHOICE; \
-             wget -O /root/$install_script_name https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/$install_script_name && \
-             chmod 0755 /root/$install_script_name && \
-             sh /root/$install_script_name" || {
+    if [ -z "$PASSWORD" ]; then
+        ssh -t -o "StrictHostKeyChecking no" "root@$ROUTER_IP" "$remote_cmd" || {
             show_error "$MSG_SSH_ERROR"
             exit 1
         }
     else
-        sshpass -p "$password" ssh -t -o "StrictHostKeyChecking no" "root@$router_ip" \
-             export LANG_CHOICE=$LANG_CHOICE; \
-             wget -O /root/$install_script_name https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/$install_script_name && \
-             chmod 0755 /root/$install_script_name && \
-             sh /root/$install_script_name" || {
+        sshpass -p "$PASSWORD" ssh -t -o "StrictHostKeyChecking no" "root@$ROUTER_IP" "$remote_cmd" || {
             show_error "$MSG_SSH_ERROR"
             exit 1
         }

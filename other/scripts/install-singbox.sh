@@ -1,11 +1,7 @@
 #!/bin/sh
 
 # Цветовая палитра / Color palette
-BG_DARK='\033[48;5;236m'
-BG_ACCENT='\033[48;5;24m'
-FG_MAIN='\033[38;5;252m'
 FG_ACCENT='\033[38;5;85m'
-FG_WARNING='\033[38;5;214m'
 FG_SUCCESS='\033[38;5;41m'
 FG_ERROR='\033[38;5;203m'
 RESET='\033[0m'
@@ -146,16 +142,19 @@ separator() {
 # Запуск шагов с разделителями / Run steps with separators
 run_steps_with_separator() {
     for step in "$@"; do
-        if [[ "$step" == "::"* ]]; then
-            local text="${step:2}"
-            separator
-            separator "$text"
-            separator
-        else
-            $step
-            separator
-            echo
-        fi
+        case "$step" in
+            ::*)
+                text="${step#::}"
+                separator
+                separator "$text"
+                separator
+                ;;
+            *)
+                $step
+                separator
+                printf "\n"
+                ;;
+        esac
     done
 }
 
@@ -163,14 +162,14 @@ run_steps_with_separator() {
 init_language() {
     local script_name="install-singbox.sh"
 
-    if [ -z "$LANG_CHOICE" ]; then
+    if [ -z "$LANG" ]; then
         show_message "Выберите язык / Select language [1/2]:"
         show_message "1. Русский (Russian)"
         show_message "2. English (Английский)"
-        read_input " Ваш выбор / Your choice [1/2]: " LANG_CHOICE
+        read_input " Ваш выбор / Your choice [1/2]: " LANG
     fi
 
-    case ${LANG_CHOICE:-2} in
+    case ${LANG:-2} in
         1)
             MSG_INSTALL_TITLE="Запуск! ($script_name)"
             MSG_UPDATE_PKGS="Обновление репозиториев..."
@@ -199,11 +198,11 @@ init_language() {
             MSG_IPV6_DISABLED="IPv6 отключен"
             MSG_START_SERVICE="Запуск сервиса sing-box"
             MSG_SERVICE_STARTED="Сервис успешно запущен"
-            MSG_INSTALL_OPERATION="Выберите тип операции:"
-            MSG_INSTALL_OPERATION_INSTALL="1. Установка"
-            MSG_INSTALL_OPERATION_DELETE="2. Удаление"
-            MSG_INSTALL_OPERATION_REINSTALL_UPDATE="3. Переустановка/Обновление"
-            MSG_INSTALL_OPERATION_CHOICE=" Ваш выбор: "
+            MSG_OPERATION="Выберите тип операции:"
+            MSG_INSTALL="1. Установка"
+            MSG_DELETE="2. Удаление"
+            MSG_REINSTALL_UPDATE="3. Переустановка/Обновление"
+            MSG_CHOICE=" Ваш выбор: "
             MSG_ALREADY_INSTALLED="Ошибка: Пакет уже установлен. Для переустановки выберите опцию 3"
             MSG_INSTALLING="Установка..."
             MSG_INSTALL_SUCCESS="Установка завершена"
@@ -219,6 +218,20 @@ init_language() {
             MSG_NETWORK_CHECK="Проверка доступности сети..."
             MSG_NETWORK_SUCCESS="Сеть доступна (через %s, за %s сек)"
             MSG_NETWORK_ERROR="Сеть не доступна после %s сек!"
+            MSG_MODE="Выберите режим установки:"
+            MSG_TUN="1. TUN"
+            MSG_TPROXY="2. TPROXY"
+            MSG_MODE_CHOICE="Ваш выбор: "
+            MSG_INSTALLING_TPROXY_MODE="Установка TPROXY режима..."
+            MSG_UNINSTALLING_TPROXY_MODE="Удаление TPROXY режима..."
+            MSG_INSTALLING_TUN_MODE="Установка TUN режима..."
+            MSG_UNINSTALLING_TUN_MODE="Удаление TUN режима..."
+            MSG_UNINSTALL_EXISTING_FILES="Удаление существующих файлов sing-box..."
+            MSG_INVALID_MODE="Ошибка: Некорректный режим"
+            MSG_INVALID_MODE_FOUND="Ошибка: Не найден режим для удаления."
+            MSG_MODE_FOUND_TPROXY="Найден TPROXY режим"
+            MSG_MODE_FOUND_TUN="Найден TUN режим"
+            MSG_MODE_TPROXY_IN_DEVELOPMENT="Режим TPROXY в разработке (для тестирования), продолжить? (Y/n)"
             ;;
         *)
             MSG_INSTALL_TITLE="Starting! ($script_name)"
@@ -248,11 +261,11 @@ init_language() {
             MSG_IPV6_DISABLED="IPv6 disabled"
             MSG_START_SERVICE="Starting sing-box service"
             MSG_SERVICE_STARTED="Service started successfully"
-            MSG_INSTALL_OPERATION="Select install operation:"
-            MSG_INSTALL_OPERATION_INSTALL="1. Install"
-            MSG_INSTALL_OPERATION_DELETE="2. Delete"
-            MSG_INSTALL_OPERATION_REINSTALL_UPDATE="3. Reinstall/Update"
-            MSG_INSTALL_OPERATION_CHOICE="Your choice: "
+            MSG_OPERATION="Select install operation:"
+            MSG_INSTALL="1. Install"
+            MSG_DELETE="2. Delete"
+            MSG_REINSTALL_UPDATE="3. Reinstall/Update"
+            MSG_CHOICE="Your choice: "
             MSG_ALREADY_INSTALLED="Error: Package already installed. For reinstall choose option 3"
             MSG_INSTALLING="Installing..."
             MSG_INSTALL_SUCCESS="Install completed"
@@ -268,6 +281,20 @@ init_language() {
             MSG_NETWORK_CHECK="Checking network availability..."
             MSG_NETWORK_SUCCESS="Network available (via %s, in %s sec)"
             MSG_NETWORK_ERROR="Network not available after %s sec!"
+            MSG_MODE="Select mode:"
+            MSG_TUN="1. TUN"
+            MSG_TPROXY="2. TPROXY"
+            MSG_MODE_CHOICE="Your choice: "
+            MSG_INSTALLING_TPROXY_MODE="Installing TPROXY mode..."
+            MSG_UNINSTALLING_TPROXY_MODE="Uninstalling TPROXY mode..."
+            MSG_INSTALLING_TUN_MODE="Installing TUN mode..."
+            MSG_UNINSTALLING_TUN_MODE="Uninstalling TUN mode..."
+            MSG_UNINSTALL_EXISTING_FILES="Uninstalling existing sing-box files..."
+            MSG_INVALID_MODE="Error: Invalid mode"
+            MSG_INVALID_MODE_FOUND="Error: Mode not found for removal."
+            MSG_MODE_FOUND_TPROXY="TPROXY mode found"
+            MSG_MODE_FOUND_TUN="TUN mode found"
+            MSG_MODE_TPROXY_IN_DEVELOPMENT="TPROXY mode in development (for testing), continue? (Y/n)"
             ;;
     esac
 }
@@ -282,43 +309,42 @@ waiting() {
 # Обновление репозиториев / Update repos
 update_pkgs() {
     show_progress "$MSG_UPDATE_PKGS"
-    opkg update
-    if [ $? -eq 0 ]; then
-        show_success "$MSG_PKGS_SUCCESS"
+    if opkg update && opkg install nftables; then
+      show_success "$MSG_PKGS_SUCCESS"
     else
-        show_error "$MSG_PKGS_ERROR"
-        exit 1
+      show_error "$MSG_PKGS_ERROR"
+      exit 1
     fi
 }
 
 # Выбор операции установки / Choose install operation
 choose_install_operation() {
-    if [ -z "$INSTALL_OPERATION" ]; then
-        show_message "$MSG_INSTALL_OPERATION"
-        show_message "$MSG_INSTALL_OPERATION_INSTALL"
-        show_message "$MSG_INSTALL_OPERATION_DELETE"
-        show_message "$MSG_INSTALL_OPERATION_REINSTALL_UPDATE"
-        read_input "$MSG_INSTALL_OPERATION_CHOICE" INSTALL_OPERATION
+    if [ -z "$OPERATION" ]; then
+        show_message "$MSG_OPERATION"
+        show_message "$MSG_INSTALL"
+        show_message "$MSG_DELETE"
+        show_message "$MSG_REINSTALL_UPDATE"
+        read_input "$MSG_CHOICE" OPERATION
     fi
 }
 
 # Проверка доступности сети / Network availability check
 network_check() {
-    timeout=500
-    interval=5
-    targets="223.5.5.5 180.76.76.76 77.88.8.8 1.1.1.1 8.8.8.8 9.9.9.9 94.140.14.14"
+    local timeout=500
+    local interval=5
+    local targets="223.5.5.5 180.76.76.76 77.88.8.8 1.1.1.1 8.8.8.8 9.9.9.9 94.140.14.14"
 
-    attempts=$((timeout / interval))
-    success=0
-    i=2
+    local attempts=$((timeout / interval))
+    local success=0
+    local i=2
 
     show_progress "$MSG_NETWORK_CHECK"
     sleep "$interval"
 
     while [ $i -lt $attempts ]; do
-        num_targets=$(echo "$targets" | wc -w)
-        index=$((i % num_targets))
-        target=$(echo "$targets" | cut -d' ' -f$((index + 1)))
+        local num_targets=$(echo "$targets" | wc -w)
+        local index=$((i % num_targets))
+        local target=$(echo "$targets" | cut -d' ' -f$((index + 1)))
 
         if ping -c 1 -W 2 "$target" >/dev/null 2>&1; then
             success=1
@@ -330,7 +356,7 @@ network_check() {
     done
 
     if [ $success -eq 1 ]; then
-        total_time=$((i * interval))
+        local total_time=$((i * interval))
         show_success "$(printf "$MSG_NETWORK_SUCCESS" "$target" "$total_time")"
     else
         show_error "$(printf "$MSG_NETWORK_ERROR" "$timeout")" >&2
@@ -341,8 +367,7 @@ network_check() {
 # Установка sing-box / Install sing-box
 install_singbox() {
     show_progress "$MSG_INSTALL_SINGBOX"
-    opkg install sing-box
-    if [ $? -eq 0 ]; then
+    if opkg install sing-box; then
         show_success "$MSG_INSTALL_SINGBOX_SUCCESS"
     else
         show_error "$MSG_INSTALL_SINGBOX_ERROR"
@@ -355,8 +380,7 @@ uninstall_singbox() {
     show_progress "$MSG_UNINSTALL_SINGBOX"
     service sing-box stop 2>/dev/null
     service sing-box disable 2>/dev/null
-    opkg remove sing-box --force-depends
-    if [ $? -eq 0 ]; then
+    if opkg remove sing-box --force-depends; then
         show_success "$MSG_UNINSTALL_SINGBOX_SUCCESS"
     else
         show_error "$MSG_UNINSTALL_SINGBOX_ERROR"
@@ -501,7 +525,7 @@ check_installed() {
 }
 
 # Удаление конфигураций / Remove configurations
-remove_configs() {
+remove_singbox_data() {
     show_progress "$MSG_REMOVING_CONFIGS"
     uci -q delete sing-box
     uci commit sing-box
@@ -509,40 +533,182 @@ remove_configs() {
     [ -f /etc/config/sing-box ] && rm -f /etc/config/sing-box
 }
 
-# Установка / Install
-install() {
-    show_progress "$MSG_INSTALLING"
-    install_singbox
-    configure_singbox_service
-    disable_singbox_service
-    clean_singbox_config
-    disabled_ipv6
+# Удаление существующих файлов / Remove existing files
+uninstall_existing_files(){
+    show_progress "$MSG_UNINSTALL_EXISTING_FILES"
+    [ -f /etc/config/sing-box.old ] && rm -f /etc/config/sing-box.old
+}
+
+# Установка правил nft / Install nft rules
+install_nft_rule() {
+    nft_rule_file="/etc/nftables.d/singbox.nft"
+
+    cat << 'EOF' > "$nft_rule_file"
+define RESERVED_IP = {
+    10.0.0.0/8,
+    100.64.0.0/10,
+    127.0.0.0/8,
+    169.254.0.0/16,
+    172.16.0.0/12,
+    192.0.0.0/24,
+    224.0.0.0/4,
+    240.0.0.0/4,
+    255.255.255.255/32
+}
+
+table ip singbox {
+    chain prerouting {
+        type filter hook prerouting priority mangle; policy accept;
+        ip daddr $RESERVED_IP return
+        ip saddr $RESERVED_IP return
+        ip protocol tcp tproxy to 127.0.0.1:2080 meta mark set 1
+        ip protocol udp tproxy to 127.0.0.1:2080 meta mark set 1
+    }
+    chain output {
+        type route hook output priority mangle; policy accept;
+        ip daddr $RESERVED_IP return
+        ip saddr $RESERVED_IP return
+        meta mark 2 return
+        ip protocol tcp meta mark set 1
+        ip protocol udp meta mark set 1
+    }
+}
+EOF
+
+    chmod +x "$nft_rule_file"
+    nft -f "$nft_rule_file"
+}
+
+# Удаление правил nft / Remove nft rules
+uninstall_nft_rule() {
+    nft delete table ip singbox 2>/dev/null
+}
+
+# Выбор режима / Choose mode
+choose_mode() {
+    if [ -z "$MODE" ]; then
+        show_message "$MSG_MODE"
+        show_message "$MSG_TUN"
+        show_message "$MSG_TPROXY"
+        read_input "$MSG_MODE_CHOICE" MODE
+    fi
+}
+
+definition_mode() {
+    if [ -f /etc/nftables.d/singbox.nft ]; then
+        show_progress "$MSG_MODE_FOUND_TPROXY"
+        MODE=2
+    elif uci -q get network.proxy.device | grep -q "singtun0"; then
+        show_progress "$MSG_MODE_FOUND_TUN"
+        MODE=1
+    else
+        show_error "$MSG_INVALID_MODE_FOUND"
+    fi
+}
+
+# Установка tun mode / Install tun mode
+installed_tun_mode() {
+    show_progress "$MSG_INSTALLING_TUN_MODE"
     configure_proxy
     configure_firewall
     restart_firewall
     restart_network
     network_check
     enable_singbox
+}
+
+# Удаление tun mode / Uninstall tun mode
+uninstalled_tun_mode() {
+    show_progress "$MSG_UNINSTALLING_TUN_MODE"
+    remove_configure_proxy
+    remove_firewall_rules
+    restart_firewall
+    restart_network
+    network_check
+}
+
+# Установка tproxy mode / Install tproxy mode
+installed_tproxy_mode() {
+    show_progress "$MSG_INSTALLING_TPROXY_MODE"
+    install_nft_rule
+}
+
+# Удаление tproxy mode / Uninstall tproxy mode
+uninstalled_tproxy_mode() {
+    show_progress "$MSG_UNINSTALLING_TPROXY_MODE"
+    uninstall_nft_rule
+}
+
+# Выбор режима установки / Choose install mode
+perform_install_mode() {
+    case $MODE in
+        1)
+            installed_tun_mode
+            ;;
+        2)
+            read_input "$MSG_MODE_TPROXY_IN_DEVELOPMENT" MODE_DEVELOPMENT
+            case $MODE_DEVELOPMENTE in
+                [Yy])
+                    installed_tproxy_mode
+                    ;;
+                *)
+                    unset MODE
+                    choose_mode
+                    perform_install_mode
+                    ;;
+            esac
+            ;;
+        *)
+            show_error "$MSG_INVALID_MODE"
+            exit 1
+            ;;
+    esac
+}
+
+# Выбор режима установки / Choose install mode
+perform_uninstall_mode() {
+    case $MODE in
+        1)
+            uninstalled_tun_mode
+            ;;
+        2)
+            uninstalled_tproxy_mode
+            ;;
+        *)
+            show_error "$MSG_INVALID_MODE"
+            ;;
+    esac
+}
+
+# Установка / Install
+install() {
+    show_progress "$MSG_INSTALLING"
+    choose_mode
+    install_singbox
+    configure_singbox_service
+    disable_singbox_service
+    clean_singbox_config
+    perform_install_mode
+    disabled_ipv6
     show_success "$MSG_INSTALL_SUCCESS"
 }
 
 # Удаление / Uninstall
 uninstall() {
     show_progress "$MSG_UNINSTALLING"
+    definition_mode
     uninstall_singbox
-    remove_configure_proxy
-    remove_firewall_rules
+    perform_uninstall_mode
+    unset MODE
+    remove_singbox_data
+    uninstall_existing_files
     restore_ipv6
-    remove_configs
-    restart_firewall
-    restart_network
-    network_check
     show_success "$MSG_UNINSTALL_SUCCESS"
 }
 
 # Выполнение операций / Perform operations
 perform_operation() {
-    case $INSTALL_OPERATION in
+    case $OPERATION in
         1)  
             if check_installed; then
                 show_error "$MSG_ALREADY_INSTALLED"
@@ -571,12 +737,14 @@ perform_operation() {
     esac
 }
 
+# Очистка / Cleanup
 cleanup() {
     show_progress "$MSG_CLEANUP"
     rm -- "$0"
     show_success "$MSG_CLEANUP_DONE"
 }
 
+# Завершение скрипта / Complete script
 complete_script() {
     show_success "$MSG_COMPLETE"
     cleanup
