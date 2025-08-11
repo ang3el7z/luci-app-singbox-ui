@@ -79,7 +79,26 @@ jobs:
 
       - name: Remove old .ipk files (> 7 days)
         run: |
-          find artifacts/ -type f -name "*.ipk" -mtime +7 -print -delete
+          for file in artifacts/*.ipk; do
+            if [ -f "$file" ]; then
+              basename=$(basename "$file")
+              date_part="${basename##*-}"
+              date_part="${date_part%.ipk}"
+              if [[ $date_part =~ ^[0-9]{8}-[0-9]{4}$ ]]; then
+                ymd=${date_part:0:8}
+                hm=${date_part:9:4}
+                h=${hm:0:2}
+                m=${hm:2:2}
+                file_date=$(date -d "${ymd:0:4}-${ymd:4:2}-${ymd:6:2} ${h}:${m}:00" +%s)
+                now=$(date +%s)
+                diff=$(( (now - file_date) / 86400 ))
+                if (( diff > 7 )); then
+                  echo "Deleting old file: $file"
+                  rm "$file"
+                fi
+              fi
+            fi
+          done
 
       - name: Update index.txt
         run: |
