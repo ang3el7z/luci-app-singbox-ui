@@ -77,7 +77,7 @@ jobs:
           mkdir -p artifacts
           cp ./new-ipk/*.ipk ./artifacts/
 
-      - name: Remove old .ipk files (> 7 days old)
+      - name: Remove old .ipk files (> 7 days)
         run: |
           echo "Current directory: $(pwd)"
           echo "Listing artifacts directory:"
