@@ -1,24 +1,24 @@
 #!/bin/sh
 
-UCI_OPTION="autoupdater_service_state"
-AUTOUNUPDATER_SERVICE_NAME="singbox-ui-autoupdater-service"
+UCI_OPTION_STATE="autoupdater_service_state"
+AUTOUPDATER_SERVICE_NAME="singbox-ui-autoupdater-service"
 TARGET_FILE="/etc/sing-box/config.json"
-INTERVAL=3600 # 1 час
+INTERVAL=3600 # 1 час / 1 hour
 
-# Проверяем флаг UCI
+# Проверяем флаг UCI / Check UCI flag
 check_uci() {
-  ENABLED=$(uci get singbox-ui.main.$UCI_OPTION 2>/dev/null || echo 0)
+  ENABLED=$(uci get singbox-ui.main.$UCI_OPTION_STATE 2>/dev/null || echo 0)
   if [ "$ENABLED" != "1" ]; then
-    logger -t $AUTOUNUPDATER_SERVICE_NAME "Autoupdater disabled via UCI config, stopping service"
-    /etc/init.d/$AUTOUNUPDATER_SERVICE_NAME stop
+    logger -t $AUTOUPDATER_SERVICE_NAME "Autoupdater disabled via UCI config, stopping service"
+    /etc/init.d/$AUTOUPDATER_SERVICE_NAME stop
     exit 0
   fi
 }
 
-# Проверяем, работает ли singbox
+# Проверяем, работает ли singbox / Check if singbox is running
 check_singbox() {
   while ! pgrep singbox >/dev/null 2>&1; do
-    logger -t $AUTOUNUPDATER_SERVICE_NAME "Singbox not running, waiting..."
+    logger -t $AUTOUPDATER_SERVICE_NAME "Singbox not running, waiting..."
     sleep 30 # подождать 30 секунд
   done
 }
@@ -27,24 +27,24 @@ update_config() {
   /usr/bin/singbox-ui/singbox-ui-updater /etc/sing-box/url_config.json $TARGET_FILE
 }
 
+# ======== Основной код / Main code ========
 
-
-logger -t $AUTOUNUPDATER_SERVICE_NAME "Starting service"
+logger -t $AUTOUPDATER_SERVICE_NAME "Starting service"
 check_uci
 check_singbox
  
 while true; do
-  logger -t $AUTOUNUPDATER_SERVICE_NAME "Running updater"
-  RESULT=$(update_config)
+  logger -t $AUTOUPDATER_SERVICE_NAME "Running updater"
+  update_config
   CODE=$?
 
 if [ "$CODE" = 0 ]; then
-  logger -t $AUTOUNUPDATER_SERVICE_NAME "Config updated, reloading singbox"
+  logger -t $AUTOUPDATER_SERVICE_NAME "Config updated, reloading singbox"
   /etc/init.d/sing-box reload
 elif [ "$CODE" = 2 ]; then
-  logger -t $AUTOUNUPDATER_SERVICE_NAME "No changes in config"
+  logger -t $AUTOUPDATER_SERVICE_NAME "No changes in config"
 else
-  logger -t $AUTOUNUPDATER_SERVICE_NAME "Updater failed"
+  logger -t $AUTOUPDATER_SERVICE_NAME "Updater failed"
 fi
 
 sleep $INTERVAL

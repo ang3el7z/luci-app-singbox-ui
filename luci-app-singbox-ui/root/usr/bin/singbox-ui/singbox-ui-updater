@@ -1,7 +1,8 @@
 #!/bin/sh
 set -e
 
-logger -t singbox-ui-updater "Starting update with args: $@"
+ARGS="$*"
+logger -t singbox-ui-updater "Starting update with args: $ARGS"
 
 [ $# -eq 2 ] || {
     echo "Usage: $0 <url-file> <target-file>"
