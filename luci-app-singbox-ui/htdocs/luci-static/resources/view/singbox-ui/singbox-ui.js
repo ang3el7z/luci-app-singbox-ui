@@ -76,7 +76,6 @@ async function execServiceLifecycle(name, action) {
       break;
   }
 
-  // Статус после выполнения
   try {
     const { stdout } = await fs.exec(path, ['status']);
     console.log(`[${name}] Final status: ${stdout.trim()}`);
@@ -87,19 +86,21 @@ async function execServiceLifecycle(name, action) {
 
 async function isValidConfigFile(content) {
   const tmpPath = '/tmp/singbox-config.json';
+  let result = false;
+
   try {
     await fs.write(tmpPath, content);
   } catch (e) {
     notify('error', 'Failed to write temp config: ' + e.message);
     return false;
   }
-  var result = false;
+
   try {
-    const r = await fs.exec("/usr/bin/sing-box", ["check", "-c", tmpPath]);
-    if (r.code === 0) {
+    const checkConfig = await fs.exec("/usr/bin/sing-box", ["check", "-c", tmpPath]);
+    if (checkConfig.code === 0) {
       result = true;
     } else {
-      var errorMsg = r.stderr.trim();
+      let errorMsg = checkConfig.stderr.trim();
       if (errorMsg.includes(tmpPath)) {
         errorMsg = errorMsg.substring(errorMsg.indexOf(tmpPath) + tmpPath.length + 1).trim();
       }
@@ -108,11 +109,13 @@ async function isValidConfigFile(content) {
   } catch (e) {
     notify('error', 'Error: ' + e.message);
   }
+
   try {
     await fs.remove(tmpPath);
   } catch (e) {
     notify('error', 'Failed to remove temp config: ' + e.message);
   }
+
   return result;
 }
 
@@ -151,6 +154,10 @@ async function setUciOption(option, mode, value = null) {
       notify('error', `Failed to set UCI option "${option}": ${e.message || e.toString()}`);
     }
   }
+}
+
+function reloadPage(delay = 1000) {
+  setTimeout(() => location.reload(), delay);
 }
 
 // === Controls =============================================================
@@ -250,7 +257,7 @@ async function createServiceButton(section, singboxManagmentTab, singboxStatus) 
       } catch (e) {
         notify('error', 'Operation failed: ' + e.message);
       } finally {
-        setTimeout(() => location.reload(), 700);
+        reloadPage();
       }
     };
   
@@ -285,7 +292,7 @@ async function createServiceButton(section, singboxManagmentTab, singboxStatus) 
         } catch (e) {
           notify('error', 'Restart failed: ' + e.message);
         } finally {
-          setTimeout(() => location.reload(), 500);
+          reloadPage()
         }
       };
     }
@@ -316,7 +323,6 @@ async function createToggleAutoupdaterServiceButton(section, serviceManagementTa
         await setUciOption('autoupdater_service_state', 'write', false);
         notify('info', 'Autoupdater service stopped');
       } else {
-        // При старте — выключаем health-autoupdater
         await execServiceLifecycle('singbox-ui-health-autoupdater-service', 'stop');
         await setUciOption('health_autoupdater_service_state', 'write', false);
 
@@ -328,7 +334,7 @@ async function createToggleAutoupdaterServiceButton(section, serviceManagementTa
     } catch (e) {
       notify('error', 'Toggle failed: ' + e.message);
     } finally {
-      setTimeout(() => location.reload(), 500);
+      reloadPage()
     }
   };
 }
@@ -358,7 +364,6 @@ async function createToggleHealthAutoupdaterServiceButton(section, serviceManage
         await setUciOption('health_autoupdater_service_state', 'write', false);
         notify('info', 'Health Autoupdater service stopped');
       } else {
-         // При старте — выключаем autoupdater
         await execServiceLifecycle('singbox-ui-autoupdater-service', 'stop');
         await setUciOption('autoupdater_service_state', 'write', false);
  
@@ -370,7 +375,7 @@ async function createToggleHealthAutoupdaterServiceButton(section, serviceManage
     } catch (e) {
       notify('error', 'Toggle failed: ' + e.message);
     } finally {
-      setTimeout(() => location.reload(), 500);
+      reloadPage()
     }
   };
 }
@@ -399,7 +404,7 @@ async function createToggleMemdocServiceButton(section, serviceManagementTab, me
     } catch (e) {
       notify('error', 'Toggle failed: ' + e.message);
     } finally {
-      setTimeout(() => location.reload(), 500);
+      reloadPage()
     }
   };  
 }
@@ -436,31 +441,30 @@ function createServiceStatusDisplay(section,singboxManagmentTab, singboxStatus) 
 
 async function initializeAceEditor(content, key) {
   await loadScript('/luci-static/resources/view/singbox-ui/ace/ace.js');
-
   await loadScript('/luci-static/resources/view/singbox-ui/ace/ext-language_tools.js');
 
-ace.config.set('basePath', '/luci-static/resources/view/singbox-ui/ace/');
-ace.config.set('workerPath', '/luci-static/resources/view/singbox-ui/ace/');
+  ace.config.set('basePath', '/luci-static/resources/view/singbox-ui/ace/');
+  ace.config.set('workerPath', '/luci-static/resources/view/singbox-ui/ace/');
 
-editor = ace.edit(key);
+  editor = ace.edit(key);
 
-editor.setTheme("ace/theme/tomorrow_night_bright");
-editor.session.setMode("ace/mode/json");
-editor.setValue(content, -1);
-editor.clearSelection();
-editor.session.setUseWorker(true);
+  editor.setTheme("ace/theme/tomorrow_night_bright");
+  editor.session.setMode("ace/mode/json5");
+  editor.setValue(content, -1);
+  editor.clearSelection();
+  editor.session.setUseWorker(true);
 
-editor.setOptions({
-    fontSize: "12px",
-    showPrintMargin: false,
-    wrap: true,
-    highlightActiveLine: true,
-    behavioursEnabled: true,
-    showFoldWidgets: true,
-    foldStyle: 'markbegin',
-    enableBasicAutocompletion: true,
-    enableLiveAutocompletion: true,
-    enableSnippets: false
+  editor.setOptions({
+      fontSize: "12px",
+      showPrintMargin: false,
+      wrap: true,
+      highlightActiveLine: true,
+      behavioursEnabled: true,
+      showFoldWidgets: true,
+      foldStyle: 'markbegin',
+      enableBasicAutocompletion: true,
+      enableLiveAutocompletion: true,
+      enableSnippets: false
   });
 }
 
@@ -474,10 +478,8 @@ async function createConfigEditor(section, tab, config, key) {
         id: key,
         style: 'height: 600px; width: 100%; border: 1px solid #ccc;',
       }),
-    ]);    
-
+    ]);
     initializeAceEditor(await loadFile(`/etc/sing-box/${config.name}`), key);
-    
     return container;
   };
 }
@@ -507,7 +509,7 @@ function createSaveConfigButton(section, tab, config, key) {
       await execService('sing-box', 'reload');
       notify('info', 'Sing‑Box reloaded');
     }
-    setTimeout(() => location.reload(), 800);
+    reloadPage()
   };
 }
 
@@ -533,7 +535,7 @@ function createSaveUrlButton(section, configTab, config) {
     if (!url) return notify('error', 'URL empty');
     if (!isValidUrl(url)) return notify('error', 'Invalid URL');
     await saveFile(`/etc/sing-box/url_${config.name}`, url, 'URL saved');
-    setTimeout(() => location.reload(), 800);
+    reloadPage()
   };
 }
 
@@ -554,7 +556,7 @@ async function createUpdateConfigButton(section, configTab, config) {
           [`/etc/sing-box/url_${config.name}`, `/etc/sing-box/${config.name}`]
         );
         if (r.code === 2) return notify('info', 'No changes detected');
-        if (r.code !== 0) throw new Error(r.stderr || r.stdout || 'Unknown');
+        if (r.code !== 0) return notify('error', r.stderr || r.stdout || 'Unknown');
         if (config.name === 'config.json') {
           await execService('sing-box', 'reload');
           notify('info', 'Main config reloaded');
@@ -564,7 +566,7 @@ async function createUpdateConfigButton(section, configTab, config) {
       } catch (e) {
         notify('error', 'Update failed: ' + e.message);
       } finally {
-        setTimeout(() => location.reload(), 800);
+        reloadPage()
       }
     };
 }
@@ -594,7 +596,7 @@ function createSetAsMainConfigButton(section, configTab, config) {
     } catch (e) {
       notify('error', `Failed to set main: ${e.message}`);
     } finally {
-      setTimeout(() => location.reload(), 700);
+      reloadPage()
     }
   };
 }
@@ -618,7 +620,7 @@ function createClearConfigButton(section, configTab, config) {
     } catch (e) {
       notify('error', `Clear failed: ${e.message}`);
     } finally {
-      setTimeout(() => location.reload(), 700);
+      reloadPage()
     }
   };
 }
