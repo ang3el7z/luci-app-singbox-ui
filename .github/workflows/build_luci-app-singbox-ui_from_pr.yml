@@ -77,7 +77,7 @@ jobs:
           mkdir -p artifacts
           cp ./new-ipk/*.ipk ./artifacts/
 
-      - name: Remove old .ipk files (> 7 days)
+      - name: Remove old .ipk files (> 7 days old)
         run: |
           for file in artifacts/*.ipk; do
             if [ -f "$file" ]; then
