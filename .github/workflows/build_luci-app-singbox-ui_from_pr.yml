@@ -79,24 +79,44 @@ jobs:
 
       - name: Remove old .ipk files (> 7 days)
         run: |
+          echo "Current directory: $(pwd)"
+          echo "Listing artifacts directory:"
+          ls -l artifacts/ || echo "artifacts/ not found"
+          echo "Listing .ipk files:"
+          ls artifacts/*.ipk || echo "No .ipk files"
           for file in artifacts/*.ipk; do
             if [ -f "$file" ]; then
+              echo "Processing file: $file"
               basename=$(basename "$file")
+              echo "Basename: $basename"
               date_part="${basename##*-}"
+              echo "Date part before .ipk remove: $date_part"
               date_part="${date_part%.ipk}"
+              echo "Date part: $date_part"
               if [[ $date_part =~ ^[0-9]{8}-[0-9]{4}$ ]]; then
+                echo "Matched regex"
                 ymd=${date_part:0:8}
                 hm=${date_part:9:4}
                 h=${hm:0:2}
                 m=${hm:2:2}
+                echo "Parsed: $ymd $h:$m"
                 file_date=$(date -d "${ymd:0:4}-${ymd:4:2}-${ymd:6:2} ${h}:${m}:00" +%s)
                 now=$(date +%s)
+                echo "File timestamp: $file_date"
+                echo "Now timestamp: $now"
                 diff=$(( (now - file_date) / 86400 ))
+                echo "Diff days: $diff"
                 if (( diff > 7 )); then
                   echo "Deleting old file: $file"
                   rm "$file"
+                else
+                  echo "Keeping file, age $diff <=7"
                 fi
+              else
+                echo "Did not match regex"
               fi
+            else
+              echo "No file: $file"
             fi
           done
 
