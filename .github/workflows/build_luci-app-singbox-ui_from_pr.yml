@@ -83,7 +83,13 @@ jobs:
 
       - name: Update index.txt
         run: |
-          ls artifacts/*.ipk | xargs -n1 basename > artifacts/index.txt
+          shopt -s nullglob
+          files=(artifacts/*.ipk)
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "" > artifacts/index.txt
+          else
+            printf "%s\n" "${files[@]##*/}" > artifacts/index.txt
+          fi
 
       - name: Commit and push changes
         run: |
