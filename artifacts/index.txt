@@ -14,3 +14,4 @@ luci-app-singbox-ui-pr-53-add-json5-refactoring-add-reloadpage-comment-20250811-
 luci-app-singbox-ui-pr-54-test-pr-action-20250811-1945.ipk
 luci-app-singbox-ui-pr-55-test-pr-action-20250811-1953.ipk
 luci-app-singbox-ui-pr-55-test-pr-action-20250811-2000.ipk
+luci-app-singbox-ui-pr-55-test-pr-action-20250811-2011.ipk
