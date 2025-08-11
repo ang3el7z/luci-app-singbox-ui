@@ -66,15 +66,19 @@ jobs:
           ref: main
           fetch-depth: 0
 
-      - name: Download artifact
+      - name: Copy new .ipk from previous job artifact
         uses: actions/download-artifact@v4.3.0
         with:
           name: built-ipk
-          path: artifacts/
+          path: ./new-ipk/
+
+      - name: Copy new .ipk to artifacts directory
+        run: |
+          mkdir -p artifacts
+          cp ./new-ipk/*.ipk ./artifacts/
 
       - name: Remove old .ipk files (> 7 days)
         run: |
-          mkdir -p artifacts
           find artifacts/ -type f -name "*.ipk" -mtime +7 -print -delete
 
       - name: Update index.txt
