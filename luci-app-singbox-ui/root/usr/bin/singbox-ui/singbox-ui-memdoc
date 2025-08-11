@@ -1,20 +1,20 @@
 #!/bin/sh
 
 MEMDOC_SERVICE_NAME="singbox-ui-memdoc-service"
-THRESHOLD=15000 # 15MB в KB
+THRESHOLD=15000 # 15MB в килобайтах / 15MB in kilobytes
 SINGBOX="/etc/init.d/sing-box"
-MIN_RESTART_INTERVAL=60 # Минимум 60 секунд между перезапусками
+MIN_RESTART_INTERVAL=60 # Минимум 60 секунд между перезапусками / Minimum 60 seconds between restarts
 last_restart=0
 
-# Проверяем, работает ли singbox
+# Проверяем, работает ли singbox / Check if singbox is running
 check_singbox() {
   while ! pgrep singbox >/dev/null 2>&1; do
     logger -t $MEMDOC_SERVICE_NAME "Singbox not running, waiting..."
-    sleep 30 # подождать 30 секунд
+    sleep 30
   done
 }
 
-
+# ======== Основной код / Main code ========
 
 logger -t $MEMDOC_SERVICE_NAME "Starting service"
 check_singbox
@@ -24,11 +24,11 @@ while true; do
     current_time=$(date +%s)
 
     if [ "$FREE_MEM" -le "$THRESHOLD" ]; then
-        # Проверяем, когда был последний перезапуск
+        # Проверяем, когда был последний перезапуск / Check when the last restart was
         if [ $((current_time - last_restart)) -ge $MIN_RESTART_INTERVAL ]; then
             logger -t $MEMDOC_SERVICE_NAME "Low memory detected (${FREE_MEM}KB <= ${THRESHOLD}KB)"
-            
-            # Проверка статуса службы
+
+            # Проверка статуса службы / Service status check
             if [ -x "$SINGBOX" ] && $SINGBOX status | grep -q "running"; then
                 logger -t $MEMDOC_SERVICE_NAME "Restarting singbox service"
                 $SINGBOX restart
@@ -41,7 +41,7 @@ while true; do
             logger -t $MEMDOC_SERVICE_NAME "Memory low but skip restart: too early"
         fi
     fi
-    
+
     sleep 10
     check_singbox
 done
