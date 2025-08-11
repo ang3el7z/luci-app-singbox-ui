@@ -690,6 +690,7 @@ install() {
     clean_singbox_config
     perform_install_mode
     disabled_ipv6
+    network_check
     show_success "$MSG_INSTALL_SUCCESS"
 }
 
@@ -703,6 +704,7 @@ uninstall() {
     remove_singbox_data
     uninstall_existing_files
     restore_ipv6
+    network_check
     show_success "$MSG_UNINSTALL_SUCCESS"
 }
 
