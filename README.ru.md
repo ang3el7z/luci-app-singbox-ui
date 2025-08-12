@@ -51,8 +51,8 @@ wget -O /root/install.sh https://raw.githubusercontent.com/ang3el7z/luci-app-sin
 ## 🧩 Подсказки для пользователей
 
 ### 🔑 Очистка SSH-ключа:
-```bash
-ssh-keygen -R 192.168.1.1
+```bash 
+ssh-keygen -R 192.168.1.1 
 ```
 
 ### 🛜 Подключение к роутеру:
@@ -60,33 +60,29 @@ ssh-keygen -R 192.168.1.1
 ssh root@192.168.1.1
 ```
 
-### 🔄 Обновление OpenWrt-интерфейса (если плагин не виден):
-`Ctrl + Shift + I` (Откройте DevTools → обновите)
+### 🔄 Обновление OpenWrt-интерфейса (если плагин не виден, нужно сбросить кэш):
+`Ctrl + Shift + I`
 
----
+Или нажмите F12, чтобы открыть DevTools, затем кликните правой кнопкой на кнопку «Обновить» и выберите «Жёсткая перезагрузка».
 
-## 🗂️ Шаблоны конфигураций
+### 🗂️ Шаблоны конфигураций
 
 - [`openwrt-template-original-2.11`](https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/file/openwrt-template-original-openwrt_2.11.json)  
 - [`openwrt-template-bot-2.11`](https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/file/openwrt-template-bot-openwrt_2.11.json)
 
----
-
-## 🛠️ Исправления
+### 🛠️ Исправления
 
 - [`Исправление низкой скорости в tun-режиме`](https://github.com/ang3el7z/luci-app-singbox-ui/issues/1)
-
----
-
-## 👨‍💻 Подсказки для разработчика
-
-### Установка в одно нажатие:
-```bash
-wget -O install-one-click.sh https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/scripts/install-one-click.sh && chmod +x install-one-click.sh && ./install-one-click.sh
-```
+- `установите tun в конфиге -> singtun0`
 
 ---
 
 ## 🙏 Благодарности
 
-Особая благодарность [@strayge](https://github.com/strayge) за вклад.
+Вы также можете создать Pull Request или Issue. И не забудьте нажать на значок звезды ⭐, чтобы поддержать проект.
+
+---
+
+## Stargazers over time
+
+[![Stargazers over time](https://starchart.cc/ang3el7z/luci-app-singbox-ui.svg?variant=adaptive)](https://starchart.cc/ang3el7z/luci-app-singbox-ui)

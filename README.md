@@ -59,33 +59,29 @@ ssh-keygen -R 192.168.1.1
 ssh root@192.168.1.1
 ```
 
-### 🔄 Refresh OpenWrt UI (if plugin not visible):
+### 🔄 Refresh OpenWrt UI (if plugin not visible, need clear cache):
 `Ctrl + Shift + I` (DevTools → refresh)
 
----
+Press F12 to open DevTools, then right-click the “Reload” button and select “Hard Reload”.
 
-## 🗂️ Config Templates
+### 🗂️ Config Templates
 
 - [`openwrt-template-original-2.11`](https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/file/openwrt-template-original-openwrt_2.11.json)  
 - [`openwrt-template-bot-2.11`](https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/file/openwrt-template-bot-openwrt_2.11.json)
 
----
-
-## 🛠️ Fixes
+### 🛠️ Fixes
 
 - [`Fix low speed in tun mode`](https://github.com/ang3el7z/luci-app-singbox-ui/issues/1)
-
----
-
-## 👨‍💻 Dev Shortcuts
-
-### One-click installer:
-```bash
-wget -O install-one-click.sh https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/scripts/install-one-click.sh && chmod +x install-one-click.sh && ./install-one-click.sh
-```
+- `set tun in config -> singtun0`
 
 ---
 
 ## 🙏 Credits
 
-Thanks to [@strayge](https://github.com/strayge) for contributions.
+You can also create a Pull Request or Issue. And don’t forget to click the star ⭐ icon to support the project.
+
+---
+
+## Stargazers over time
+
+[![Stargazers over time](https://starchart.cc/ang3el7z/luci-app-singbox-ui.svg?variant=adaptive)](https://starchart.cc/ang3el7z/luci-app-singbox-ui)
