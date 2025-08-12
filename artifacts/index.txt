@@ -5,3 +5,4 @@ luci-app-singbox-ui-pr-55-test-pr-action-20250811-2000.ipk
 luci-app-singbox-ui-pr-55-test-pr-action-20250811-2011.ipk
 luci-app-singbox-ui-pr-55-test-pr-action-20250811-2021.ipk
 luci-app-singbox-ui-pr-55-test-pr-action-20250811-2028.ipk
+luci-app-singbox-ui-pr-56-edit-readme-add-star-20250812-1457.ipk
