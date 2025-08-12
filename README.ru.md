@@ -1,6 +1,6 @@
 # 🌐 luci-app-singbox-ui
 
-[🇬🇧 Read in English](./README.md)
+[Read in English](./README.md)
 
 Веб-интерфейс для Sing-Box под **OpenWrt 23/24**
 
