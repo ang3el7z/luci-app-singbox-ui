@@ -1,0 +1,181 @@
+// version 2.12.json
+{
+  "log": {
+    "level": "error",
+    "timestamp": true
+  },
+  "experimental": {
+    "clash_api": {
+      "external_controller": "0.0.0.0:9090",
+      "external_ui": "dashboard"
+    },
+    "cache_file": {
+      "enabled": true
+    }
+  },
+  "inbounds": [
+    {
+      "type": "tun",
+      "tag": "tun-in",
+      "domain_strategy": "prefer_ipv4",
+      "interface_name": "singtun0",
+      "address": [
+        "172.19.0.1/30"
+      ],
+      "mtu": 1400,
+      "auto_route": true,
+      "strict_route": true,
+      "auto_redirect": true,
+      "auto_redirect_input_mark": "0x2023",
+      "auto_redirect_output_mark": "0x2024",
+      "endpoint_independent_nat": false,
+      "stack": "mixed",
+      "platform": {
+        "http_proxy": {
+          "enabled": false,
+          "server": "127.0.0.1",
+          "server_port": 2080
+        }
+      }
+    },
+    {
+      "type": "mixed",
+      "tag": "in"
+    }
+  ],
+  "dns": {
+    "servers": [
+      {
+        "tag": "dns_direct",
+        "address": "https://dns.google/dns-query",
+        "address_resolver": "dns-remote",
+        "strategy": "prefer_ipv4",
+        "detour": "direct"
+      },
+      {
+        "tag": "dns-remote",
+        "address": "tcp://8.8.8.8",
+        "address_strategy": "prefer_ipv4",
+        "strategy": "prefer_ipv4",
+        "detour": "direct"
+      }
+    ],
+    "rules": [
+      {
+        "outbound": "any",
+        "server": "dns-direct",
+        "disable_cache": false
+      }
+    ],
+    "strategy": "ipv4_only",
+    "independent_cache": true
+  },
+  "outbounds": [
+    {
+      "type": "direct",
+      "tag": "direct"
+    },
+    // Start you outbounds connect
+    {
+      "tag": "proxy-out",
+      "type": "vless",
+      "server": "**********",
+      "server_port": 443,
+      "uuid": "**********",
+      "flow": "xtls-rprx-vision",
+      "tls": {
+        "enabled": true,
+        "insecure": false,
+        "server_name": "*********",
+        "utls": {
+          "enabled": true,
+          "fingerprint": "chrome"
+        },
+        "reality": {
+          "enabled": true,
+          "public_key": "**********",
+          "short_id": "*********"
+        }
+      }
+    }
+    // End you outbounds connect
+  ],
+  "route": {
+    "auto_detect_interface": true,
+    "rules": [
+      {
+        "action": "sniff"
+      },
+      {
+        "protocol": "dns",
+        "action": "hijack-dns"
+      },
+      {
+        "inbound": "in",
+        "action": "resolve",
+        "strategy": "prefer_ipv4"
+      },
+      {
+        "inbound": "in",
+        "action": "sniff",
+        "timeout": "1s"
+      },
+      {
+        "protocol": "bittorrent",
+        "outbound": "direct"
+      },
+      {
+        "ip_is_private": true,
+        "outbound": "direct"
+      },
+      {
+        "protocol": "quic",
+        "outbound": "block"
+      },
+      {
+        "outbound": "proxy",
+        "rule_set": [
+          "ruleset-domain-refilter_domains.srs",
+          "ruleset-ip-refilter_ipsum.srs",
+          "discord-voice-ip-list.srs",
+          "ru-bundle.srs"
+        ]
+      }
+    ],
+    "final": "direct",
+    "rule_set": [
+      {
+        "tag": "ruleset-domain-refilter_domains.srs",
+        "type": "remote",
+        "format": "binary",
+        "url": "https://github.com/1andrevich/Re-filter-lists/releases/latest/download/ruleset-domain-refilter_domains.srs",
+        "download_detour": "direct",
+        "update_interval": "86400s"
+      },
+      {
+        "tag": "ruleset-ip-refilter_ipsum.srs",
+        "type": "remote",
+        "format": "binary",
+        "url": "https://github.com/1andrevich/Re-filter-lists/releases/latest/download/ruleset-ip-refilter_ipsum.srs",
+        "download_detour": "direct",
+        "update_interval": "86400s"
+      },
+      {
+        "tag": "discord-voice-ip-list.srs",
+        "type": "remote",
+        "format": "binary",
+        "url": "https://github.com/legiz-ru/sb-rule-sets/raw/main/discord-voice-ip-list.srs",
+        "download_detour": "direct",
+        "update_interval": "86400s"
+      },
+      {
+        "tag": "ru-bundle.srs",
+        "type": "remote",
+        "format": "binary",
+        "url": "https://github.com/legiz-ru/sb-rule-sets/raw/main/ru-bundle.srs",
+        "download_detour": "direct",
+        "update_interval": "86400s"
+      }
+    ]
+  }
+}
