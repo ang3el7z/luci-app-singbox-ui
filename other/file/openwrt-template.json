@@ -77,7 +77,7 @@
     },
     // Start you outbounds connect
     {
-      "tag": "proxy-out",
+      "tag": "proxy",
       "type": "vless",
       "server": "**********",
       "server_port": 443,
