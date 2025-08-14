@@ -1,7 +1,7 @@
+// version 2.12.json
 {
   "log": {
     "level": "error",
-    "output": "singbox.log",
     "timestamp": true
   },
   "experimental": {
@@ -19,7 +19,9 @@
       "tag": "tun-in",
       "domain_strategy": "prefer_ipv4",
       "interface_name": "singtun0",
-      "address": ["172.19.0.1/30"],
+      "address": [
+        "172.19.0.1/30"
+      ],
       "mtu": 1400,
       "auto_route": true,
       "strict_route": true,
@@ -45,7 +47,7 @@
     "servers": [
       {
         "tag": "dns_direct",
-        "address": "https://example.com/dns-query",
+        "address": "https://dns.google/dns-query",
         "address_resolver": "dns-remote",
         "strategy": "prefer_ipv4",
         "detour": "direct"
@@ -74,63 +76,76 @@
       "tag": "direct"
     },
     {
-      "type": "vless",
       "tag": "proxy",
-      "server": "example.com",
+      "type": "vless",
+      "server": "**********",
       "server_port": 443,
-      "uuid": "00000000-0000-0000-0000-000000000000",
-      "domain_strategy": "ipv4_only",
+      "uuid": "**********",
+      "flow": "xtls-rprx-vision",
       "tls": {
         "enabled": true,
         "insecure": false,
-        "server_name": "example.com",
+        "server_name": "*********",
         "utls": {
           "enabled": true,
           "fingerprint": "chrome"
+        },
+        "reality": {
+          "enabled": true,
+          "public_key": "**********",
+          "short_id": "*********"
         }
-      },
-      "transport": {
-        "type": "ws",
-        "path": "/websocket"
       }
     }
   ],
   "route": {
     "auto_detect_interface": true,
-    "override_android_vpn": true,
     "rules": [
-      { "action": "sniff" },
-      { "protocol": "dns", "action": "hijack-dns" },
-      { "inbound": "in", "action": "resolve", "strategy": "prefer_ipv4" },
-      { "inbound": "in", "action": "sniff", "timeout": "1s" },
-      { "protocol": "bittorrent", "outbound": "direct" },
-      { "ip_is_private": true, "outbound": "direct" },
-      { "protocol": "quic", "outbound": "block" },
+      {
+        "action": "sniff"
+      },
+      {
+        "protocol": "dns",
+        "action": "hijack-dns"
+      },
+      {
+        "inbound": "in",
+        "action": "resolve",
+        "strategy": "prefer_ipv4"
+      },
+      {
+        "inbound": "in",
+        "action": "sniff",
+        "timeout": "1s"
+      },
+      {
+        "protocol": "bittorrent",
+        "outbound": "direct"
+      },
+      {
+        "ip_is_private": true,
+        "outbound": "direct"
+      },
+      {
+        "protocol": "quic",
+        "outbound": "block"
+      },
       {
         "outbound": "proxy",
-        "rule_set": ["geosite:cn", "geoip:cn"]
-      },
-      {
-        "action": "reject",
-        "rule_set": ["block"]
+        "rule_set": [
+          "openai.srs"
+        ]
       }
     ],
-    "final": "proxy",
+    "final": "direct",
     "rule_set": [
       {
-        "tag": "geosite:cn",
-        "type": "builtin",
-        "format": "binary"
-      },
-      {
-        "tag": "geoip:cn",
-        "type": "builtin",
-        "format": "binary"
-      },
-      {
-        "tag": "block",
-        "type": "builtin",
-        "format": "binary"
+        "tag": "openai.srs",
+        "type": "remote",
+        "format": "binary",
+        "url": "https://github.com/SagerNet/sing-geosite/raw/refs/heads/rule-set/geosite-openai.srs",
+        "download_detour": "direct",
+        "update_interval": "86400s"
       }
     ]
   }
