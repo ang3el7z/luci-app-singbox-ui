@@ -66,7 +66,7 @@ Press F12 to open DevTools, then right-click the “Reload” button and select 
 
 ### 🗂️ Config Templates
 
-- [`openwrt-template-original-2.11`](https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/file/openwrt-template-original-openwrt_2.11.json)  
+- [`openwrt-template-original-2.11`](https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/file/openwrt-template-original-openwrt_2.11.json)
 - [`openwrt-template-bot-2.11`](https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/file/openwrt-template-bot-openwrt_2.11.json)
 
 ### 🛠️ Fixes
