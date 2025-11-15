@@ -507,7 +507,9 @@ restart_firewall() {
 # Перезагрузка network / Restart network
 restart_network() {
     show_progress "$MSG_RESTART_NETWORK"
-    service network restart
+    uci commit network           # применяем изменения конфигурации
+    /etc/init.d/network reload   # перечитываем сеть без полного рестарта
+    ifup proxy 2>/dev/null || true  # поднимаем только интерфейс proxy
 }
 
 # Включение sing-box / Enable sing-box
