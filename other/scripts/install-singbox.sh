@@ -232,6 +232,10 @@ init_language() {
             MSG_MODE_FOUND_TPROXY="Найден TPROXY режим"
             MSG_MODE_FOUND_TUN="Найден TUN режим"
             MSG_MODE_TPROXY_IN_DEVELOPMENT="Режим TPROXY в разработке (для тестирования), продолжить? (Y/n)"
+            MSG_NET_CHOOSE="Выберите способ перезапуска сети:"
+            MSG_NET_OPTION1="1) Безопасный reload (рекомендуется при работе через Wi-Fi или CMD/командной строке)"
+            MSG_NET_OPTION2="2) Полный restart сервиса (подходит для современных SSH-клиентов)"
+            MSG_NET_PROMPT="Ваш выбор [1/2] (2 дефолт): "
             ;;
         *)
             MSG_INSTALL_TITLE="Starting! ($script_name)"
@@ -295,6 +299,10 @@ init_language() {
             MSG_MODE_FOUND_TPROXY="TPROXY mode found"
             MSG_MODE_FOUND_TUN="TUN mode found"
             MSG_MODE_TPROXY_IN_DEVELOPMENT="TPROXY mode in development (for testing), continue? (Y/n)"
+            MSG_NET_CHOOSE="Choose the network restart method:"
+            MSG_NET_OPTION1="1) Safe reload (recommended when connected via Wi-Fi or CMD/Command Prompt)"
+            MSG_NET_OPTION2="2) Full network service restart (suitable for modern SSH clients)"
+            MSG_NET_PROMPT="Your choice [1/2] (2 default): "
             ;;
     esac
 }
@@ -506,10 +514,27 @@ restart_firewall() {
 
 # Перезагрузка network / Restart network
 restart_network() {
+    # Спросить только при первом использовании
+    if [ -z "$RESTART_MODE" ]; then
+        show_message ""
+        show_message "$MSG_NET_CHOOSE"
+        show_message "$MSG_NET_OPTION1"
+        show_message "$MSG_NET_OPTION2"
+
+        read_input "$MSG_NET_PROMPT" RESTART_MODE
+    fi
+
     show_progress "$MSG_RESTART_NETWORK"
-    uci commit network           # применяем изменения конфигурации
-    /etc/init.d/network reload   # перечитываем сеть без полного рестарта
-    ifup proxy 2>/dev/null || true  # поднимаем только интерфейс proxy
+
+    if [ "$RESTART_MODE" = "1" ]; then
+        # Безопасный reload: не рвёт Wi-Fi и слабые SSH-клиенты
+        uci commit network
+        /etc/init.d/network reload
+        ifup proxy 2>/dev/null || true
+    else
+        # Полный restart: современные SSH-клиенты переподключатся
+        service network restart
+    fi
 }
 
 # Включение sing-box / Enable sing-box
