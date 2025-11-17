@@ -236,6 +236,18 @@ init_language() {
             MSG_NET_OPTION1="1) Безопасный reload (рекомендуется при работе через Wi-Fi или CMD/командной строке)"
             MSG_NET_OPTION2="2) Полный restart сервиса (подходит для современных SSH-клиентов)"
             MSG_NET_PROMPT="Ваш выбор [1/2] (2 дефолт): "
+            MSG_SINGBOX_CHOOSE="Выберите способ установки sing-box:"
+            MSG_SINGBOX_OPTION1="1) Установить последнюю версию из магазина"
+            MSG_SINGBOX_OPTION2="2) Ручная установка"
+            MSG_SINGBOX_PROMPT="Введите ваш выбор [1-2]:"
+            MSG_SINGBOX_MANUAL_DESC="Для ручной установки загрузите IPK файл из вашего репозитория GitHub"
+            MSG_SINGBOX_MANUAL_INSTRUCTIONS="Инструкция по ручной установке:"
+            MSG_SINGBOX_MANUAL_STEPS="1. Загрузите sing-box_1.11.15_openwrt_aarch64_cortex-a53.ipk из вашего репозитория
+2. Загрузите файл на устройство OpenWrt (через SCP или веб-интерфейс)
+3. Установите: opkg install /путь/к/sing-box_1.11.15_openwrt_aarch64_cortex-a53.ipk
+4. После установки вернитесь к этому скрипту"
+            MSG_SINGBOX_CONFIRM_PROMPT="Вы установили sing-box вручную? [1-Да, 2-Установить из магазина]:"
+            MSG_SINGBOX_MANUAL_CONFIRMED="✓ Ручная установка sing-box подтверждена!"
             ;;
         *)
             MSG_INSTALL_TITLE="Starting! ($script_name)"
@@ -303,6 +315,18 @@ init_language() {
             MSG_NET_OPTION1="1) Safe reload (recommended when connected via Wi-Fi or CMD/Command Prompt)"
             MSG_NET_OPTION2="2) Full network service restart (suitable for modern SSH clients)"
             MSG_NET_PROMPT="Your choice [1/2] (2 default): "
+            MSG_SINGBOX_CHOOSE="Choose sing-box installation method:"
+            MSG_SINGBOX_OPTION1="1) Install latest version from store"
+            MSG_SINGBOX_OPTION2="2) Manual installation"
+            MSG_SINGBOX_PROMPT="Enter your choice [1-2]:"
+            MSG_SINGBOX_MANUAL_DESC="For manual installation, download the IPK file from your GitHub repository"
+            MSG_SINGBOX_MANUAL_INSTRUCTIONS="Manual Installation Instructions:"
+            MSG_SINGBOX_MANUAL_STEPS="1. Download sing-box.ipk from your repository
+2. Upload it to your OpenWrt device (via SCP or web interface)
+3. Install: opkg install /path/to/sing-box.ipk
+4. After installation, return to this script"
+            MSG_SINGBOX_CONFIRM_PROMPT="Have you installed sing-box manually? [1-Yes, 2-Install from store]:"
+            MSG_SINGBOX_MANUAL_CONFIRMED="✓ sing-box manual installation confirmed!"
             ;;
     esac
 }
@@ -375,10 +399,50 @@ network_check() {
 # Установка sing-box / Install sing-box
 install_singbox() {
     show_progress "$MSG_INSTALL_SINGBOX"
-    if opkg install sing-box; then
-        show_success "$MSG_INSTALL_SINGBOX_SUCCESS"
+    
+    # Спросить только при первом использовании
+    if [ -z "$SINGBOX_INSTALL_MODE" ]; then
+        show_message ""
+        show_message "$MSG_SINGBOX_CHOOSE"
+        show_message "$MSG_SINGBOX_OPTION1"
+        show_message "$MSG_SINGBOX_OPTION2"
+        show_message ""
+        show_message "$MSG_SINGBOX_MANUAL_DESC"
+
+        read_input "$MSG_SINGBOX_PROMPT" SINGBOX_INSTALL_MODE
+    fi
+
+    if [ "$SINGBOX_INSTALL_MODE" = "1" ]; then
+        # Установка из магазина
+        show_progress "$MSG_INSTALL_SINGBOX"
+        
+        if opkg install sing-box; then
+            show_success "$MSG_INSTALL_SINGBOX_SUCCESS"
+        else
+            show_error "$MSG_INSTALL_SINGBOX_ERROR"
+            exit 1
+        fi
+    elif [ "$SINGBOX_INSTALL_MODE" = "2" ]; then
+        # Ручная установка
+        show_message ""
+        show_message "$MSG_SINGBOX_MANUAL_INSTRUCTIONS"
+        show_message ""
+        show_message "$MSG_SINGBOX_MANUAL_STEPS"
+        show_message ""
+        read_input "$MSG_SINGBOX_CONFIRM_PROMPT" SINGBOX_MANUAL_CONFIRM
+        
+        if [ "$SINGBOX_MANUAL_CONFIRM" = "1" ]; then
+            show_success "$MSG_SINGBOX_MANUAL_CONFIRMED"
+        elif [ "$SINGBOX_MANUAL_CONFIRM" = "2" ]; then
+            # Перезапустить функцию для выбора установки из магазина
+            SINGBOX_INSTALL_MODE=""
+            install_singbox
+        else
+            show_error "$MSG_INVALID_INPUT"
+            exit 1
+        fi
     else
-        show_error "$MSG_INSTALL_SINGBOX_ERROR"
+        show_error "$MSG_INVALID_INPUT"
         exit 1
     fi
 }
