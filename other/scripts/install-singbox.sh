@@ -240,14 +240,16 @@ init_language() {
             MSG_SINGBOX_OPTION1="1) Установить последнюю версию из магазина"
             MSG_SINGBOX_OPTION2="2) Ручная установка"
             MSG_SINGBOX_PROMPT="Введите ваш выбор [1-2]:"
-            MSG_SINGBOX_MANUAL_DESC="Для ручной установки загрузите IPK файл из вашего репозитория GitHub"
             MSG_SINGBOX_MANUAL_INSTRUCTIONS="Инструкция по ручной установке:"
-            MSG_SINGBOX_MANUAL_STEPS="1. Загрузите sing-box_1.11.15_openwrt_aarch64_cortex-a53.ipk из вашего репозитория
-2. Загрузите файл на устройство OpenWrt (через SCP или веб-интерфейс)
-3. Установите: opkg install /путь/к/sing-box_1.11.15_openwrt_aarch64_cortex-a53.ipk
-4. После установки вернитесь к этому скрипту"
-            MSG_SINGBOX_CONFIRM_PROMPT="Вы установили sing-box вручную? [1-Да, 2-Установить из магазина]:"
-            MSG_SINGBOX_MANUAL_CONFIRMED="✓ Ручная установка sing-box подтверждена!"
+            MSG_SINGBOX_MANUAL_STEP_1="1. Загрузите sing-box.ipk из вашего репозитория"
+            MSG_SINGBOX_MANUAL_STEP_2="2. Загрузите файл в папку /tmp на устройство OpenWrt"
+            MSG_SINGBOX_MANUAL_STEP_3="3. Нажмите 1 для продолжения установки"
+            MSG_SINGBOX_FILE_NOT_FOUND="Файлы sing-box*.ipk не найдены в /tmp!"
+            MSG_SINGBOX_UPLOAD_INSTRUCTIONS="Пожалуйста, загрузите файл сначала!"
+            MSG_SINGBOX_FILE_FOUND="Найден файл:"
+            MSG_SINGBOX_MULTIPLE_FILES_FOUND="Найдено несколько файлов. Выберите один:"
+            MSG_SINGBOX_SELECT_FILE="Выберите файл [1-N]:"
+            MSG_SINGBOX_CONFIRM_PROMPT="Установить выбранный файл? [1-Да, 2-Использовать магазин]:"
             ;;
         *)
             MSG_INSTALL_TITLE="Starting! ($script_name)"
@@ -315,18 +317,16 @@ init_language() {
             MSG_NET_OPTION1="1) Safe reload (recommended when connected via Wi-Fi or CMD/Command Prompt)"
             MSG_NET_OPTION2="2) Full network service restart (suitable for modern SSH clients)"
             MSG_NET_PROMPT="Your choice [1/2] (2 default): "
-            MSG_SINGBOX_CHOOSE="Choose sing-box installation method:"
-            MSG_SINGBOX_OPTION1="1) Install latest version from store"
-            MSG_SINGBOX_OPTION2="2) Manual installation"
-            MSG_SINGBOX_PROMPT="Enter your choice [1-2]:"
-            MSG_SINGBOX_MANUAL_DESC="For manual installation, download the IPK file from your GitHub repository"
             MSG_SINGBOX_MANUAL_INSTRUCTIONS="Manual Installation Instructions:"
-            MSG_SINGBOX_MANUAL_STEPS="1. Download sing-box.ipk from your repository
-2. Upload it to your OpenWrt device (via SCP or web interface)
-3. Install: opkg install /path/to/sing-box.ipk
-4. After installation, return to this script"
-            MSG_SINGBOX_CONFIRM_PROMPT="Have you installed sing-box manually? [1-Yes, 2-Install from store]:"
-            MSG_SINGBOX_MANUAL_CONFIRMED="✓ sing-box manual installation confirmed!"
+            MSG_SINGBOX_MANUAL_STEP_1="1. Download the sing-box.ipk from your repository"
+            MSG_SINGBOX_MANUAL_STEP_2="2. Upload the file to the /tmp folder on your OpenWrt device"
+            MSG_SINGBOX_MANUAL_STEP_3="3. Press 1 to continue the installation"
+            MSG_SINGBOX_FILE_NOT_FOUND="No sing-box*.ipk files found in /tmp!"
+            MSG_SINGBOX_UPLOAD_INSTRUCTIONS="Please upload the file first!"
+            MSG_SINGBOX_FILE_FOUND="File found:"
+            MSG_SINGBOX_MULTIPLE_FILES_FOUND="Multiple files found. Please select one:"
+            MSG_SINGBOX_SELECT_FILE="Select file [1-N]:"
+            MSG_SINGBOX_CONFIRM_PROMPT="Install the selected file? [1-Yes, 2-Use store]:"
             ;;
     esac
 }
@@ -407,8 +407,6 @@ install_singbox() {
         show_message "$MSG_SINGBOX_OPTION1"
         show_message "$MSG_SINGBOX_OPTION2"
         show_message ""
-        show_message "$MSG_SINGBOX_MANUAL_DESC"
-
         read_input "$MSG_SINGBOX_PROMPT" SINGBOX_INSTALL_MODE
     fi
 
@@ -423,19 +421,77 @@ install_singbox() {
             exit 1
         fi
     elif [ "$SINGBOX_INSTALL_MODE" = "2" ]; then
-        # Ручная установка
+        # Ручная установка из /tmp
         show_message ""
         show_message "$MSG_SINGBOX_MANUAL_INSTRUCTIONS"
         show_message ""
-        show_message "$MSG_SINGBOX_MANUAL_STEPS"
+        show_message "$MSG_SINGBOX_MANUAL_STEP_1"
+        show_message "$MSG_SINGBOX_MANUAL_STEP_2"
+        show_message "$MSG_SINGBOX_MANUAL_STEP_3"
         show_message ""
+        
+        # Найти все IPK файлы в /tmp
+        local ipk_files=()
+        local ipk_count=0
+        
+        if [ -d "/tmp" ]; then
+            while IFS= read -r file; do
+                ipk_files+=("$file")
+                ((ipk_count++))
+            done < <(find /tmp -maxdepth 1 -name "sing-box*.ipk" -type f 2>/dev/null | sort)
+        fi
+        
+        # Если файлы не найдены
+        if [ $ipk_count -eq 0 ]; then
+            show_error "$MSG_SINGBOX_FILE_NOT_FOUND"
+            show_message "$MSG_SINGBOX_UPLOAD_INSTRUCTIONS"
+            exit 1
+        fi
+        
+        # Если найден только один файл
+        if [ $ipk_count -eq 1 ]; then
+            show_message "$MSG_SINGBOX_FILE_FOUND: ${ipk_files[0]##*/}"
+            local selected_file="${ipk_files[0]}"
+        else
+            # Если найдено несколько файлов - показать выбор
+            show_message "$MSG_SINGBOX_MULTIPLE_FILES_FOUND"
+            show_message ""
+            
+            local i=1
+            for file in "${ipk_files[@]}"; do
+                show_message "$i) ${file##*/}"
+                ((i++))
+            done
+            
+            show_message ""
+            read_input "$MSG_SINGBOX_SELECT_FILE" SINGBOX_FILE_CHOICE
+            
+            # Проверка выбора
+            if [ "$SINGBOX_FILE_CHOICE" -lt 1 ] || [ "$SINGBOX_FILE_CHOICE" -gt $ipk_count ]; then
+                show_error "$MSG_INVALID_INPUT"
+                exit 1
+            fi
+            
+            local selected_file="${ipk_files[$((SINGBOX_FILE_CHOICE-1))]}"
+        fi
+        
+        # Подтверждение установки
         read_input "$MSG_SINGBOX_CONFIRM_PROMPT" SINGBOX_MANUAL_CONFIRM
         
         if [ "$SINGBOX_MANUAL_CONFIRM" = "1" ]; then
-            show_success "$MSG_SINGBOX_MANUAL_CONFIRMED"
+            # Установка
+            show_progress "$MSG_INSTALL_SINGBOX"
+            
+            if opkg install "$selected_file"; then
+                show_success "$MSG_INSTALL_SINGBOX_SUCCESS"
+                rm -f "$selected_file"
+            else
+                show_error "$MSG_INSTALL_SINGBOX_ERROR"
+                exit 1
+            fi
         elif [ "$SINGBOX_MANUAL_CONFIRM" = "2" ]; then
-            # Перезапустить функцию для выбора установки из магазина
-            SINGBOX_INSTALL_MODE=""
+            # Перезапустить для выбора магазина
+            SINGBOX_INSTALL_MODE="1"
             install_singbox
         else
             show_error "$MSG_INVALID_INPUT"
