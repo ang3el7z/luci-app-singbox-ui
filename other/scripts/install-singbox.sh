@@ -250,6 +250,7 @@ init_language() {
             MSG_SINGBOX_MULTIPLE_FILES_FOUND="Найдено несколько файлов. Выберите один:"
             MSG_SINGBOX_SELECT_FILE="Выберите файл [1-N]:"
             MSG_SINGBOX_CONFIRM_PROMPT="Установить выбранный файл? [1-Да, 2-Использовать магазин]:"
+            MSG_INVALID_INPUT="Ошибка: Некорректный ввод"
             ;;
         *)
             MSG_INSTALL_TITLE="Starting! ($script_name)"
@@ -327,6 +328,7 @@ init_language() {
             MSG_SINGBOX_MULTIPLE_FILES_FOUND="Multiple files found. Please select one:"
             MSG_SINGBOX_SELECT_FILE="Select file [1-N]:"
             MSG_SINGBOX_CONFIRM_PROMPT="Install the selected file? [1-Yes, 2-Use store]:"
+            MSG_INVALID_INPUT="Error: Invalid input"
             ;;
     esac
 }
@@ -397,6 +399,7 @@ network_check() {
 }
 
 # Установка sing-box / Install sing-box
+# Установка sing-box / Install sing-box
 install_singbox() {
     show_progress "$MSG_INSTALL_SINGBOX"
     
@@ -430,19 +433,17 @@ install_singbox() {
         show_message "$MSG_SINGBOX_MANUAL_STEP_3"
         show_message ""
         
-        # Найти все IPK файлы в /tmp
-        local ipk_files=()
+        # Найти все IPK файлы в /tmp (без использования массивов)
+        local ipk_files=""
         local ipk_count=0
         
         if [ -d "/tmp" ]; then
-            while IFS= read -r file; do
-                ipk_files+=("$file")
-                ((ipk_count++))
-            done < <(find /tmp -maxdepth 1 -name "sing-box*.ipk" -type f 2>/dev/null | sort)
+            ipk_files=$(find /tmp -maxdepth 1 -name "sing-box*.ipk" -type f 2>/dev/null | sort)
+            ipk_count=$(echo "$ipk_files" | wc -l)
         fi
         
         # Если файлы не найдены
-        if [ $ipk_count -eq 0 ]; then
+        if [ $ipk_count -eq 0 ] || [ -z "$ipk_files" ]; then
             show_error "$MSG_SINGBOX_FILE_NOT_FOUND"
             show_message "$MSG_SINGBOX_UPLOAD_INSTRUCTIONS"
             exit 1
@@ -450,18 +451,24 @@ install_singbox() {
         
         # Если найден только один файл
         if [ $ipk_count -eq 1 ]; then
-            show_message "$MSG_SINGBOX_FILE_FOUND: ${ipk_files[0]##*/}"
-            local selected_file="${ipk_files[0]}"
+            local selected_file="$ipk_files"
+            show_message "$MSG_SINGBOX_FILE_FOUND: ${selected_file##*/}"
         else
             # Если найдено несколько файлов - показать выбор
             show_message "$MSG_SINGBOX_MULTIPLE_FILES_FOUND"
             show_message ""
             
             local i=1
-            for file in "${ipk_files[@]}"; do
-                show_message "$i) ${file##*/}"
-                ((i++))
-            done
+            local file_list=""
+            while IFS= read -r file; do
+                if [ -n "$file" ]; then
+                    show_message "$i) ${file##*/}"
+                    file_list="${file_list}${file}\n"
+                    i=$((i + 1))
+                fi
+            done <<EOF
+$ipk_files
+EOF
             
             show_message ""
             read_input "$MSG_SINGBOX_SELECT_FILE" SINGBOX_FILE_CHOICE
@@ -472,7 +479,7 @@ install_singbox() {
                 exit 1
             fi
             
-            local selected_file="${ipk_files[$((SINGBOX_FILE_CHOICE-1))]}"
+            local selected_file=$(echo "$ipk_files" | sed -n "${SINGBOX_FILE_CHOICE}p")
         fi
         
         # Подтверждение установки
