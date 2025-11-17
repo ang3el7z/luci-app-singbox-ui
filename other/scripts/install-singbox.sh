@@ -251,6 +251,12 @@ init_language() {
             MSG_SINGBOX_SELECT_FILE="Выберите файл [1-N]:"
             MSG_SINGBOX_CONFIRM_PROMPT="Установить выбранный файл? [1-Да, 2-Использовать магазин]:"
             MSG_INVALID_INPUT="Ошибка: Некорректный ввод"
+            MSG_SINGBOX_RETRY_PROMPT="Выберите действие [1-Повторить поиск, 2-Использовать магазин]: "
+            MSG_SINGBOX_ERROR_OPTIONS="Выберите действие после ошибки:"
+            MSG_SINGBOX_TRY_ANOTHER_FILE="Попробовать другой файл"
+            MSG_SINGBOX_USE_STORE="Использовать магазин"
+            MSG_SINGBOX_EXIT="Выйти"
+            MSG_SINGBOX_ERROR_CHOICE="Ваш выбор [1-3]: "
             ;;
         *)
             MSG_INSTALL_TITLE="Starting! ($script_name)"
@@ -329,6 +335,12 @@ init_language() {
             MSG_SINGBOX_SELECT_FILE="Select file [1-N]:"
             MSG_SINGBOX_CONFIRM_PROMPT="Install the selected file? [1-Yes, 2-Use store]:"
             MSG_INVALID_INPUT="Error: Invalid input"
+            MSG_SINGBOX_RETRY_PROMPT="Choose action [1-Retry search, 2-Use store]: "
+            MSG_SINGBOX_ERROR_OPTIONS="Choose action after error:"
+            MSG_SINGBOX_TRY_ANOTHER_FILE="Try another file"
+            MSG_SINGBOX_USE_STORE="Use store"
+            MSG_SINGBOX_EXIT="Exit"
+            MSG_SINGBOX_ERROR_CHOICE="Your choice [1-3]: "
             ;;
     esac
 }
@@ -425,6 +437,16 @@ install_singbox() {
         fi
     elif [ "$SINGBOX_INSTALL_MODE" = "2" ]; then
         # Ручная установка из /tmp
+        manual_singbox_install
+    else
+        show_error "$MSG_INVALID_INPUT"
+        exit 1
+    fi
+}
+
+# Ручная установка sing-box / Manual sing-box installation
+manual_singbox_install() {
+    while true; do
         show_message ""
         show_message "$MSG_SINGBOX_MANUAL_INSTRUCTIONS"
         show_message ""
@@ -439,19 +461,34 @@ install_singbox() {
         
         if [ -d "/tmp" ]; then
             ipk_files=$(find /tmp -maxdepth 1 -name "sing-box*.ipk" -type f 2>/dev/null | sort)
-            ipk_count=$(echo "$ipk_files" | wc -l)
+            ipk_count=$(echo "$ipk_files" | grep -c . || true)
         fi
         
         # Если файлы не найдены
         if [ $ipk_count -eq 0 ] || [ -z "$ipk_files" ]; then
             show_error "$MSG_SINGBOX_FILE_NOT_FOUND"
             show_message "$MSG_SINGBOX_UPLOAD_INSTRUCTIONS"
-            exit 1
+            
+            read_input "$MSG_SINGBOX_RETRY_PROMPT" RETRY_CHOICE
+            case $RETRY_CHOICE in
+                1) continue ;;
+                2) 
+                    SINGBOX_INSTALL_MODE="1"
+                    install_singbox
+                    return
+                    ;;
+                *) 
+                    show_error "$MSG_INVALID_INPUT"
+                    exit 1
+                    ;;
+            esac
         fi
+        
+        local selected_file=""
         
         # Если найден только один файл
         if [ $ipk_count -eq 1 ]; then
-            local selected_file="$ipk_files"
+            selected_file="$ipk_files"
             show_message "$MSG_SINGBOX_FILE_FOUND: ${selected_file##*/}"
         else
             # Если найдено несколько файлов - показать выбор
@@ -476,10 +513,10 @@ EOF
             # Проверка выбора
             if [ "$SINGBOX_FILE_CHOICE" -lt 1 ] || [ "$SINGBOX_FILE_CHOICE" -gt $ipk_count ]; then
                 show_error "$MSG_INVALID_INPUT"
-                exit 1
+                continue
             fi
             
-            local selected_file=$(echo "$ipk_files" | sed -n "${SINGBOX_FILE_CHOICE}p")
+            selected_file=$(echo "$ipk_files" | sed -n "${SINGBOX_FILE_CHOICE}p")
         fi
         
         # Подтверждение установки
@@ -492,22 +529,49 @@ EOF
             if opkg install "$selected_file"; then
                 show_success "$MSG_INSTALL_SINGBOX_SUCCESS"
                 rm -f "$selected_file"
+                break
             else
                 show_error "$MSG_INSTALL_SINGBOX_ERROR"
-                exit 1
+                
+                # Предложить варианты после ошибки
+                show_message ""
+                show_message "$MSG_SINGBOX_ERROR_OPTIONS"
+                show_message "1) $MSG_SINGBOX_TRY_ANOTHER_FILE"
+                show_message "2) $MSG_SINGBOX_USE_STORE"
+                show_message "3) $MSG_SINGBOX_EXIT"
+                read_input "$MSG_SINGBOX_ERROR_CHOICE" ERROR_CHOICE
+                
+                case $ERROR_CHOICE in
+                    1) 
+                        # Удалить поврежденный файл и попробовать другой
+                        rm -f "$selected_file"
+                        continue
+                        ;;
+                    2)
+                        # Переключиться на установку из магазина
+                        SINGBOX_INSTALL_MODE="1"
+                        install_singbox
+                        return
+                        ;;
+                    3)
+                        exit 1
+                        ;;
+                    *)
+                        show_error "$MSG_INVALID_INPUT"
+                        exit 1
+                        ;;
+                esac
             fi
         elif [ "$SINGBOX_MANUAL_CONFIRM" = "2" ]; then
-            # Перезапустить для выбора магазина
+            # Переключиться на установку из магазина
             SINGBOX_INSTALL_MODE="1"
             install_singbox
+            return
         else
             show_error "$MSG_INVALID_INPUT"
-            exit 1
+            continue
         fi
-    else
-        show_error "$MSG_INVALID_INPUT"
-        exit 1
-    fi
+    done
 }
 
 # Удаление sing-box / Uninstall sing-box
