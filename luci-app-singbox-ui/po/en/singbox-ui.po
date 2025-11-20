@@ -1,0 +1,242 @@
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Language: en\n"
+
+msgid "Sing‑Box UI Configuration"
+msgstr "Sing‑Box UI Configuration"
+
+msgid "Singbox"
+msgstr "Singbox"
+
+msgid "Services"
+msgstr "Services"
+
+msgid "Service Status"
+msgstr "Service Status"
+
+msgid "Running"
+msgstr "Running"
+
+msgid "Inactive"
+msgstr "Inactive"
+
+msgid "Error"
+msgstr "Error"
+
+msgid "Dashboard"
+msgstr "Dashboard"
+
+msgid "Open Sing‑Box Web UI"
+msgstr "Open Sing‑Box Web UI"
+
+msgid "Stop"
+msgstr "Stop"
+
+msgid "Start"
+msgstr "Start"
+
+msgid "Restart"
+msgstr "Restart"
+
+msgid "Sing‑Box"
+msgstr "Sing‑Box"
+
+msgid "Autoupdater"
+msgstr "Autoupdater"
+
+msgid "Health Autoupdater"
+msgstr "Health Autoupdater"
+
+msgid "Main Config"
+msgstr "Main Config"
+
+msgid "Backup Config #1"
+msgstr "Backup Config #1"
+
+msgid "Backup Config #2"
+msgstr "Backup Config #2"
+
+msgid "Subscription URL"
+msgstr "Subscription URL"
+
+msgid "Valid subscription URL for auto-updates"
+msgstr "Valid subscription URL for auto-updates"
+
+msgid "Save URL"
+msgstr "Save URL"
+
+msgid "Update Config"
+msgstr "Update Config"
+
+msgid "Fetch & update from URL"
+msgstr "Fetch & update from URL"
+
+msgid "Update"
+msgstr "Update"
+
+msgid "Edit JSON configuration below"
+msgstr "Edit JSON configuration below"
+
+msgid "Save Config"
+msgstr "Save Config"
+
+msgid "Save"
+msgstr "Save"
+
+msgid "Set as Main"
+msgstr "Set as Main"
+
+msgid "Switch: %s to main config"
+msgstr "Switch: %s to main config"
+
+msgid "Clear All"
+msgstr "Clear All"
+
+msgid "Clear config and URL"
+msgstr "Clear config and URL"
+
+msgid "Autoupdater Service"
+msgstr "Autoupdater Service"
+
+msgid "Automatically updates the main config every 60 minutes and reloads Sing‑Box if changes are detected."
+msgstr "Automatically updates the main config every 60 minutes and reloads Sing‑Box if changes are detected."
+
+msgid "Stop Service"
+msgstr "Stop Service"
+
+msgid "Start Service"
+msgstr "Start Service"
+
+msgid "Health Autoupdater Service"
+msgstr "Health Autoupdater Service"
+
+msgid "Checks server health every 90 seconds. After 60 successful checks, updates config and reloads Sing‑Box. If the server goes down, stops Sing‑Box; when back online, restores config and restarts the service."
+msgstr "Checks server health every 90 seconds. After 60 successful checks, updates config and reloads Sing‑Box. If the server goes down, stops Sing‑Box; when back online, restores config and restarts the service."
+
+msgid "Memdoc Service"
+msgstr "Memory Monitor Service"
+
+msgid "Memory leak Service"
+msgstr "Memory Monitor Service"
+
+msgid "Checks memory usage every 10 seconds. If memory usage exceeds 15 MB, restarts Sing‑Box."
+msgstr "Checks memory usage every 10 seconds. If memory usage exceeds 15 MB, restarts Sing‑Box."
+
+msgid "stopped"
+msgstr "stopped"
+
+msgid "started"
+msgstr "started"
+
+msgid "restarted"
+msgstr "restarted"
+
+msgid " and "
+msgstr " and "
+
+msgid "No changes detected"
+msgstr "No changes detected"
+
+msgid "Update failed: %s"
+msgstr "Update failed: %s"
+
+msgid "Main config updated and reloaded"
+msgstr "Main config updated and reloaded"
+
+msgid "%s updated"
+msgstr "%s updated"
+
+msgid "Config saved"
+msgstr "Config saved"
+
+msgid "Sing‑Box reloaded"
+msgstr "Sing‑Box reloaded"
+
+msgid "URL saved"
+msgstr "URL saved"
+
+msgid "Main config set"
+msgstr "Main config set"
+
+msgid "Backup config updated"
+msgstr "Backup config updated"
+
+msgid "Main URL set"
+msgstr "Main URL set"
+
+msgid "Backup URL set"
+msgstr "Backup URL set"
+
+msgid "%s is now main"
+msgstr "%s is now main"
+
+msgid "Config cleared"
+msgstr "Config cleared"
+
+msgid "URL cleared"
+msgstr "URL cleared"
+
+msgid "Services stopped"
+msgstr "Services stopped"
+
+msgid "Autoupdater service stopped"
+msgstr "Autoupdater service stopped"
+
+msgid "Autoupdater service started"
+msgstr "Autoupdater service started"
+
+msgid "Health Autoupdater service stopped"
+msgstr "Health Autoupdater service stopped"
+
+msgid "Health Autoupdater service started"
+msgstr "Health Autoupdater service started"
+
+msgid "Memory leak service stopped"
+msgstr "Memory monitor service stopped"
+
+msgid "Memory leak service started"
+msgstr "Memory monitor service started"
+
+msgid "Operation failed: %s"
+msgstr "Operation failed: %s"
+
+msgid "Restart failed: %s"
+msgstr "Restart failed: %s"
+
+msgid "Toggle failed: %s"
+msgstr "Toggle failed: %s"
+
+msgid "Clear failed: %s"
+msgstr "Clear failed: %s"
+
+msgid "Failed to set main: %s"
+msgstr "Failed to set main: %s"
+
+msgid "Configuration is empty"
+msgstr "Configuration is empty"
+
+msgid "Config validation error: %s"
+msgstr "Config validation error: %s"
+
+msgid "Validation failed: %s"
+msgstr "Validation failed: %s"
+
+msgid "Failed to save file: %s"
+msgstr "Failed to save file: %s"
+
+msgid "URL is empty"
+msgstr "URL is empty"
+
+msgid "Invalid URL format"
+msgstr "Invalid URL format"
+
+msgid "Editor is not initialized"
+msgstr "Editor is not initialized"
+
+msgid "Failed to set UCI option \"%s\": %s"
+msgstr "Failed to set UCI option \"%s\": %s"
+
+msgid "Unknown error"
+msgstr "Unknown error"
+

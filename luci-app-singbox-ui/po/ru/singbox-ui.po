@@ -1,0 +1,242 @@
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Language: ru\n"
+
+msgid "Sing‑Box UI Configuration"
+msgstr "Конфигурация Sing‑Box UI"
+
+msgid "Singbox"
+msgstr "Singbox"
+
+msgid "Services"
+msgstr "Сервисы"
+
+msgid "Service Status"
+msgstr "Статус сервиса"
+
+msgid "Running"
+msgstr "Запущен"
+
+msgid "Inactive"
+msgstr "Остановлен"
+
+msgid "Error"
+msgstr "Ошибка"
+
+msgid "Dashboard"
+msgstr "Панель управления"
+
+msgid "Open Sing‑Box Web UI"
+msgstr "Открыть веб-интерфейс Sing‑Box"
+
+msgid "Stop"
+msgstr "Остановить"
+
+msgid "Start"
+msgstr "Запустить"
+
+msgid "Restart"
+msgstr "Перезапустить"
+
+msgid "Sing‑Box"
+msgstr "Sing‑Box"
+
+msgid "Autoupdater"
+msgstr "Автообновление"
+
+msgid "Health Autoupdater"
+msgstr "Автообновление с проверкой"
+
+msgid "Main Config"
+msgstr "Основной конфиг"
+
+msgid "Backup Config #1"
+msgstr "Резервный конфиг #1"
+
+msgid "Backup Config #2"
+msgstr "Резервный конфиг #2"
+
+msgid "Subscription URL"
+msgstr "URL подписки"
+
+msgid "Valid subscription URL for auto-updates"
+msgstr "Валидный URL подписки для автоматических обновлений"
+
+msgid "Save URL"
+msgstr "Сохранить URL"
+
+msgid "Update Config"
+msgstr "Обновить конфиг"
+
+msgid "Fetch & update from URL"
+msgstr "Загрузить и обновить из URL"
+
+msgid "Update"
+msgstr "Обновить"
+
+msgid "Edit JSON configuration below"
+msgstr "Редактировать JSON конфигурацию ниже"
+
+msgid "Save Config"
+msgstr "Сохранить конфиг"
+
+msgid "Save"
+msgstr "Сохранить"
+
+msgid "Set as Main"
+msgstr "Установить как основной"
+
+msgid "Switch: %s to main config"
+msgstr "Переключить: %s на основной конфиг"
+
+msgid "Clear All"
+msgstr "Очистить всё"
+
+msgid "Clear config and URL"
+msgstr "Очистить конфиг и URL"
+
+msgid "Autoupdater Service"
+msgstr "Сервис автообновления"
+
+msgid "Automatically updates the main config every 60 minutes and reloads Sing‑Box if changes are detected."
+msgstr "Автоматически обновляет основной конфиг каждые 60 минут и перезагружает Sing‑Box при обнаружении изменений."
+
+msgid "Stop Service"
+msgstr "Остановить сервис"
+
+msgid "Start Service"
+msgstr "Запустить сервис"
+
+msgid "Health Autoupdater Service"
+msgstr "Сервис автообновления с проверкой"
+
+msgid "Checks server health every 90 seconds. After 60 successful checks, updates config and reloads Sing‑Box. If the server goes down, stops Sing‑Box; when back online, restores config and restarts the service."
+msgstr "Проверяет состояние сервера каждые 90 секунд. После 60 успешных проверок обновляет конфиг и перезагружает Sing‑Box. Если сервер недоступен, останавливает Sing‑Box; когда сервер снова доступен, восстанавливает конфиг и перезапускает сервис."
+
+msgid "Memdoc Service"
+msgstr "Сервис мониторинга памяти"
+
+msgid "Memory leak Service"
+msgstr "Сервис мониторинга памяти"
+
+msgid "Checks memory usage every 10 seconds. If memory usage exceeds 15 MB, restarts Sing‑Box."
+msgstr "Проверяет использование памяти каждые 10 секунд. Если использование памяти превышает 15 МБ, перезапускает Sing‑Box."
+
+msgid "stopped"
+msgstr "остановлен"
+
+msgid "started"
+msgstr "запущен"
+
+msgid "restarted"
+msgstr "перезапущен"
+
+msgid " and "
+msgstr " и "
+
+msgid "No changes detected"
+msgstr "Изменений не обнаружено"
+
+msgid "Update failed: %s"
+msgstr "Обновление не удалось: %s"
+
+msgid "Main config updated and reloaded"
+msgstr "Основной конфиг обновлён и перезагружен"
+
+msgid "%s updated"
+msgstr "%s обновлён"
+
+msgid "Config saved"
+msgstr "Конфиг сохранён"
+
+msgid "Sing‑Box reloaded"
+msgstr "Sing‑Box перезагружен"
+
+msgid "URL saved"
+msgstr "URL сохранён"
+
+msgid "Main config set"
+msgstr "Основной конфиг установлен"
+
+msgid "Backup config updated"
+msgstr "Резервный конфиг обновлён"
+
+msgid "Main URL set"
+msgstr "Основной URL установлен"
+
+msgid "Backup URL set"
+msgstr "Резервный URL установлен"
+
+msgid "%s is now main"
+msgstr "%s теперь основной"
+
+msgid "Config cleared"
+msgstr "Конфиг очищен"
+
+msgid "URL cleared"
+msgstr "URL очищен"
+
+msgid "Services stopped"
+msgstr "Сервисы остановлены"
+
+msgid "Autoupdater service stopped"
+msgstr "Сервис автообновления остановлен"
+
+msgid "Autoupdater service started"
+msgstr "Сервис автообновления запущен"
+
+msgid "Health Autoupdater service stopped"
+msgstr "Сервис автообновления с проверкой остановлен"
+
+msgid "Health Autoupdater service started"
+msgstr "Сервис автообновления с проверкой запущен"
+
+msgid "Memory leak service stopped"
+msgstr "Сервис мониторинга памяти остановлен"
+
+msgid "Memory leak service started"
+msgstr "Сервис мониторинга памяти запущен"
+
+msgid "Operation failed: %s"
+msgstr "Операция не удалась: %s"
+
+msgid "Restart failed: %s"
+msgstr "Перезапуск не удался: %s"
+
+msgid "Toggle failed: %s"
+msgstr "Переключение не удалось: %s"
+
+msgid "Clear failed: %s"
+msgstr "Очистка не удалась: %s"
+
+msgid "Failed to set main: %s"
+msgstr "Не удалось установить основной: %s"
+
+msgid "Configuration is empty"
+msgstr "Конфигурация пуста"
+
+msgid "Config validation error: %s"
+msgstr "Ошибка валидации конфига: %s"
+
+msgid "Validation failed: %s"
+msgstr "Валидация не удалась: %s"
+
+msgid "Failed to save file: %s"
+msgstr "Не удалось сохранить файл: %s"
+
+msgid "URL is empty"
+msgstr "URL пуст"
+
+msgid "Invalid URL format"
+msgstr "Неверный формат URL"
+
+msgid "Editor is not initialized"
+msgstr "Редактор не инициализирован"
+
+msgid "Failed to set UCI option \"%s\": %s"
+msgstr "Не удалось установить опцию UCI \"%s\": %s"
+
+msgid "Unknown error"
+msgstr "Неизвестная ошибка"
+

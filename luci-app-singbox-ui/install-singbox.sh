@@ -239,17 +239,11 @@ init_language() {
             MSG_SINGBOX_CHOOSE="Выберите способ установки sing-box:"
             MSG_SINGBOX_OPTION1="1) Установить последнюю версию из магазина"
             MSG_SINGBOX_OPTION2="2) Ручная установка"
-            MSG_SINGBOX_OPTION3="3) Установка из GitHub (other/ipk)"
-            MSG_SINGBOX_PROMPT="Введите ваш выбор [1-3]:"
+            MSG_SINGBOX_PROMPT="Введите ваш выбор [1-2]:"
             MSG_SINGBOX_MANUAL_INSTRUCTIONS="Инструкция по ручной установке:"
             MSG_SINGBOX_MANUAL_STEP_1="1. Загрузите sing-box.ipk из вашего репозитория"
             MSG_SINGBOX_MANUAL_STEP_2="2. Загрузите файл в папку /tmp на устройство OpenWrt"
-            MSG_SINGBOX_GITHUB_DOWNLOADING="Загрузка sing-box из GitHub..."
-            MSG_SINGBOX_GITHUB_CHOOSE="Выберите файл для установки:"
-            MSG_SINGBOX_GITHUB_NO_FILES="Файлы не найдены в репозитории"
-            MSG_SINGBOX_GITHUB_DOWNLOAD_SUCCESS="Файл успешно загружен"
-            MSG_SINGBOX_GITHUB_DOWNLOAD_ERROR="Ошибка загрузки файла"
-            MSG_SINGBOX_GITHUB_BRANCH="Ветка репозитория (по умолчанию: main):"
+            MSG_SINGBOX_MANUAL_STEP_3="3. Нажмите 1 для продолжения установки"
             MSG_SINGBOX_FILE_NOT_FOUND="Файлы sing-box*.ipk не найдены в /tmp!"
             MSG_SINGBOX_UPLOAD_INSTRUCTIONS="Пожалуйста, загрузите файл сначала!"
             MSG_SINGBOX_FILE_FOUND="Найден файл:"
@@ -333,12 +327,7 @@ init_language() {
             MSG_SINGBOX_MANUAL_INSTRUCTIONS="Manual Installation Instructions:"
             MSG_SINGBOX_MANUAL_STEP_1="1. Download the sing-box.ipk from your repository"
             MSG_SINGBOX_MANUAL_STEP_2="2. Upload the file to the /tmp folder on your OpenWrt device"
-            MSG_SINGBOX_GITHUB_DOWNLOADING="Downloading sing-box from GitHub..."
-            MSG_SINGBOX_GITHUB_CHOOSE="Select file to install:"
-            MSG_SINGBOX_GITHUB_NO_FILES="No files found in repository"
-            MSG_SINGBOX_GITHUB_DOWNLOAD_SUCCESS="File downloaded successfully"
-            MSG_SINGBOX_GITHUB_DOWNLOAD_ERROR="Error downloading file"
-            MSG_SINGBOX_GITHUB_BRANCH="Repository branch (default: main):"
+            MSG_SINGBOX_MANUAL_STEP_3="3. Press 1 to continue the installation"
             MSG_SINGBOX_FILE_NOT_FOUND="No sing-box*.ipk files found in /tmp!"
             MSG_SINGBOX_UPLOAD_INSTRUCTIONS="Please upload the file first!"
             MSG_SINGBOX_FILE_FOUND="File found:"
@@ -432,7 +421,6 @@ install_singbox() {
         show_message "$MSG_SINGBOX_CHOOSE"
         show_message "$MSG_SINGBOX_OPTION1"
         show_message "$MSG_SINGBOX_OPTION2"
-        show_message "$MSG_SINGBOX_OPTION3"
         show_message ""
         read_input "$MSG_SINGBOX_PROMPT" SINGBOX_INSTALL_MODE
     fi
@@ -450,9 +438,6 @@ install_singbox() {
     elif [ "$SINGBOX_INSTALL_MODE" = "2" ]; then
         # Ручная установка из /tmp
         manual_singbox_install
-    elif [ "$SINGBOX_INSTALL_MODE" = "3" ]; then
-        # Установка из GitHub
-        github_singbox_install
     else
         show_error "$MSG_INVALID_INPUT"
         exit 1
@@ -467,6 +452,7 @@ manual_singbox_install() {
         show_message ""
         show_message "$MSG_SINGBOX_MANUAL_STEP_1"
         show_message "$MSG_SINGBOX_MANUAL_STEP_2"
+        show_message "$MSG_SINGBOX_MANUAL_STEP_3"
         show_message ""
         
         # Найти все IPK файлы в /tmp (без использования массивов)
@@ -533,228 +519,59 @@ EOF
             selected_file=$(echo "$ipk_files" | sed -n "${SINGBOX_FILE_CHOICE}p")
         fi
         
-        # Установка
-        show_progress "$MSG_INSTALL_SINGBOX"
+        # Подтверждение установки
+        read_input "$MSG_SINGBOX_CONFIRM_PROMPT" SINGBOX_MANUAL_CONFIRM
         
-        if opkg install "$selected_file"; then
-            show_success "$MSG_INSTALL_SINGBOX_SUCCESS"
-            break
+        if [ "$SINGBOX_MANUAL_CONFIRM" = "1" ]; then
+            # Установка
+            show_progress "$MSG_INSTALL_SINGBOX"
+            
+            if opkg install "$selected_file"; then
+                show_success "$MSG_INSTALL_SINGBOX_SUCCESS"
+                rm -f "$selected_file"
+                break
+            else
+                show_error "$MSG_INSTALL_SINGBOX_ERROR"
+                
+                # Предложить варианты после ошибки
+                show_message ""
+                show_message "$MSG_SINGBOX_ERROR_OPTIONS"
+                show_message "1) $MSG_SINGBOX_TRY_ANOTHER_FILE"
+                show_message "2) $MSG_SINGBOX_USE_STORE"
+                show_message "3) $MSG_SINGBOX_EXIT"
+                read_input "$MSG_SINGBOX_ERROR_CHOICE" ERROR_CHOICE
+                
+                case $ERROR_CHOICE in
+                    1) 
+                        # Удалить поврежденный файл и попробовать другой
+                        rm -f "$selected_file"
+                        continue
+                        ;;
+                    2)
+                        # Переключиться на установку из магазина
+                        SINGBOX_INSTALL_MODE="1"
+                        install_singbox
+                        return
+                        ;;
+                    3)
+                        exit 1
+                        ;;
+                    *)
+                        show_error "$MSG_INVALID_INPUT"
+                        exit 1
+                        ;;
+                esac
+            fi
+        elif [ "$SINGBOX_MANUAL_CONFIRM" = "2" ]; then
+            # Переключиться на установку из магазина
+            SINGBOX_INSTALL_MODE="1"
+            install_singbox
+            return
         else
-            show_error "$MSG_INSTALL_SINGBOX_ERROR"
-            
-            # Предложить варианты после ошибки
-            show_message ""
-            show_message "$MSG_SINGBOX_ERROR_OPTIONS"
-            show_message "1) $MSG_SINGBOX_TRY_ANOTHER_FILE"
-            show_message "2) $MSG_SINGBOX_USE_STORE"
-            show_message "3) $MSG_SINGBOX_EXIT"
-            read_input "$MSG_SINGBOX_ERROR_CHOICE" ERROR_CHOICE
-            
-            case $ERROR_CHOICE in
-                1) 
-                    # Попробовать другой файл
-                    continue
-                    ;;
-                2)
-                    # Переключиться на установку из магазина
-                    SINGBOX_INSTALL_MODE="1"
-                    install_singbox
-                    return
-                    ;;
-                3)
-                    exit 1
-                    ;;
-                *)
-                    show_error "$MSG_INVALID_INPUT"
-                    exit 1
-                    ;;
-            esac
+            show_error "$MSG_INVALID_INPUT"
+            continue
         fi
     done
-}
-
-# Установка sing-box из GitHub / Install sing-box from GitHub
-github_singbox_install() {
-    local BRANCH="${BRANCH:-main}"
-    local GITHUB_REPO="ang3el7z/luci-app-singbox-ui"
-    local GITHUB_BASE_URL="https://raw.githubusercontent.com/${GITHUB_REPO}/${BRANCH}/other/ipk"
-    
-    show_progress "$MSG_SINGBOX_GITHUB_DOWNLOADING"
-    
-    # Спросить ветку, если не указана
-    if [ -z "$BRANCH" ] || [ "$BRANCH" = "main" ]; then
-        read_input "$MSG_SINGBOX_GITHUB_BRANCH" BRANCH_INPUT
-        if [ -n "$BRANCH_INPUT" ]; then
-            BRANCH="$BRANCH_INPUT"
-            GITHUB_BASE_URL="https://raw.githubusercontent.com/${GITHUB_REPO}/${BRANCH}/other/ipk"
-        fi
-    fi
-    
-    # Получить список файлов через GitHub API
-    if [ "$LANG" = "1" ]; then
-        show_progress "Поиск доступных файлов в репозитории..."
-    else
-        show_progress "Searching for available files in repository..."
-    fi
-    
-    # Получить список файлов через GitHub API
-    local api_url="https://api.github.com/repos/${GITHUB_REPO}/contents/other/ipk?ref=${BRANCH}"
-    local file_list=""
-    
-    if command -v curl >/dev/null 2>&1; then
-        file_list=$(curl -sL "$api_url" 2>/dev/null | grep -o '"name": *"[^"]*\.ipk"' | sed 's/"name": *"\([^"]*\)"/\1/' | tr '\n' ' ' || echo "")
-    elif command -v wget >/dev/null 2>&1; then
-        file_list=$(wget -qO- "$api_url" 2>/dev/null | grep -o '"name": *"[^"]*\.ipk"' | sed 's/"name": *"\([^"]*\)"/\1/' | tr '\n' ' ' || echo "")
-    fi
-    
-    # Если API не работает, используем известный файл как fallback
-    if [ -z "$file_list" ]; then
-        file_list="sing-box_1.11.15_openwrt_aarch64_cortex-a53.ipk"
-    fi
-    
-    # Показать доступные файлы
-    if [ -z "$file_list" ]; then
-        show_error "$MSG_SINGBOX_GITHUB_NO_FILES"
-        show_message "$MSG_SINGBOX_RETRY_PROMPT"
-        read_input "" RETRY_CHOICE
-        case $RETRY_CHOICE in
-            1) github_singbox_install; return ;;
-            2) 
-                SINGBOX_INSTALL_MODE="1"
-                install_singbox
-                return
-                ;;
-            *) exit 1 ;;
-        esac
-    fi
-    
-    # Подсчитать количество файлов
-    ipk_count=$(echo "$file_list" | wc -w)
-    
-    local selected_file=""
-    local selected_url=""
-    
-    # Если один файл
-    if [ "$ipk_count" -eq 1 ]; then
-        selected_file=$(echo "$file_list" | tr -d ' ')
-        show_message "$MSG_SINGBOX_FILE_FOUND: $selected_file"
-    else
-        # Несколько файлов - показать выбор
-        show_message "$MSG_SINGBOX_GITHUB_CHOOSE"
-        show_message ""
-        
-        local i=1
-        local file
-        for file in $file_list; do
-            if [ -n "$file" ]; then
-                show_message "$i) $file"
-                i=$((i + 1))
-            fi
-        done
-        
-        show_message ""
-        read_input "$MSG_SINGBOX_SELECT_FILE" FILE_CHOICE
-        
-        # Проверка выбора
-        if [ "$FILE_CHOICE" -lt 1 ] || [ "$FILE_CHOICE" -gt "$ipk_count" ]; then
-            show_error "$MSG_INVALID_INPUT"
-            github_singbox_install
-            return
-        fi
-        
-        selected_file=$(echo "$file_list" | tr ' ' '\n' | sed -n "${FILE_CHOICE}p")
-    fi
-    
-    # Скачать файл
-    selected_url="${GITHUB_BASE_URL}/${selected_file}"
-    local tmp_file="/tmp/${selected_file}"
-    
-    if [ "$LANG" = "1" ]; then
-        show_progress "Загрузка: $selected_file"
-    else
-        show_progress "Downloading: $selected_file"
-    fi
-    
-    if command -v wget >/dev/null 2>&1; then
-        if wget -q -O "$tmp_file" "$selected_url" 2>/dev/null; then
-            show_success "$MSG_SINGBOX_GITHUB_DOWNLOAD_SUCCESS"
-        else
-            show_error "$MSG_SINGBOX_GITHUB_DOWNLOAD_ERROR"
-            show_message "$MSG_SINGBOX_RETRY_PROMPT"
-            read_input "" RETRY_CHOICE
-            case $RETRY_CHOICE in
-                1) github_singbox_install; return ;;
-                2) 
-                    SINGBOX_INSTALL_MODE="1"
-                    install_singbox
-                    return
-                    ;;
-                *) exit 1 ;;
-            esac
-        fi
-    elif command -v curl >/dev/null 2>&1; then
-        if curl -sL -o "$tmp_file" "$selected_url" 2>/dev/null; then
-            show_success "$MSG_SINGBOX_GITHUB_DOWNLOAD_SUCCESS"
-        else
-            show_error "$MSG_SINGBOX_GITHUB_DOWNLOAD_ERROR"
-            show_message "$MSG_SINGBOX_RETRY_PROMPT"
-            read_input "" RETRY_CHOICE
-            case $RETRY_CHOICE in
-                1) github_singbox_install; return ;;
-                2) 
-                    SINGBOX_INSTALL_MODE="1"
-                    install_singbox
-                    return
-                    ;;
-                *) exit 1 ;;
-            esac
-        fi
-    else
-        if [ "$LANG" = "1" ]; then
-            show_error "wget или curl не найдены"
-        else
-            show_error "wget or curl not found"
-        fi
-        exit 1
-    fi
-    
-    # Установка файла
-    show_progress "$MSG_INSTALL_SINGBOX"
-    
-    if opkg install "$tmp_file"; then
-        show_success "$MSG_INSTALL_SINGBOX_SUCCESS"
-        rm -f "$tmp_file"
-    else
-        show_error "$MSG_INSTALL_SINGBOX_ERROR"
-        rm -f "$tmp_file"
-        
-        # Предложить варианты после ошибки
-        show_message ""
-        show_message "$MSG_SINGBOX_ERROR_OPTIONS"
-        show_message "1) $MSG_SINGBOX_TRY_ANOTHER_FILE"
-        show_message "2) $MSG_SINGBOX_USE_STORE"
-        show_message "3) $MSG_SINGBOX_EXIT"
-        read_input "$MSG_SINGBOX_ERROR_CHOICE" ERROR_CHOICE
-        
-        case $ERROR_CHOICE in
-            1) 
-                github_singbox_install
-                return
-                ;;
-            2)
-                SINGBOX_INSTALL_MODE="1"
-                install_singbox
-                return
-                ;;
-            3)
-                exit 1
-                ;;
-            *)
-                show_error "$MSG_INVALID_INPUT"
-                exit 1
-                ;;
-        esac
-    fi
 }
 
 # Удаление sing-box / Uninstall sing-box
