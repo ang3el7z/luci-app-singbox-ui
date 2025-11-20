@@ -427,7 +427,6 @@ network_check() {
 }
 
 # Установка sing-box / Install sing-box
-# Установка sing-box / Install sing-box
 install_singbox() {
     show_progress "$MSG_INSTALL_SINGBOX"
     
