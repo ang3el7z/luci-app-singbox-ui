@@ -330,6 +330,11 @@ init_language() {
             MSG_NET_OPTION1="1) Safe reload (recommended when connected via Wi-Fi or CMD/Command Prompt)"
             MSG_NET_OPTION2="2) Full network service restart (suitable for modern SSH clients)"
             MSG_NET_PROMPT="Your choice [1/2] (2 default): "
+            MSG_SINGBOX_CHOOSE="Choose sing-box installation method:"
+            MSG_SINGBOX_OPTION1="1) Install latest version from store"
+            MSG_SINGBOX_OPTION2="2) Manual installation"
+            MSG_SINGBOX_OPTION3="3) Install from GitHub (other/ipk)"
+            MSG_SINGBOX_PROMPT="Enter your choice [1-3]:"
             MSG_SINGBOX_MANUAL_INSTRUCTIONS="Manual Installation Instructions:"
             MSG_SINGBOX_MANUAL_STEP_1="1. Download the sing-box.ipk from your repository"
             MSG_SINGBOX_MANUAL_STEP_2="2. Upload the file to the /tmp folder on your OpenWrt device"
@@ -1048,7 +1053,7 @@ perform_install_mode() {
             ;;
         2)
             read_input "$MSG_MODE_TPROXY_IN_DEVELOPMENT" MODE_DEVELOPMENT
-            case $MODE_DEVELOPMENTE in
+            case $MODE_DEVELOPMENT in
                 [Yy])
                     installed_tproxy_mode
                     ;;

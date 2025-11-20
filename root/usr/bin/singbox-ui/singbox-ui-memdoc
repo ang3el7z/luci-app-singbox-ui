@@ -1,0 +1,79 @@
+#!/bin/sh
+# Sing-Box UI Memory Monitor Service
+# Monitors memory usage and restarts sing-box if memory is low
+
+set -euo pipefail
+
+SERVICE_NAME="singbox-ui-memdoc-service"
+INIT_DIR="/etc/init.d"
+SINGBOX_SERVICE="${INIT_DIR}/sing-box"
+THRESHOLD=15000  # 15MB in kilobytes
+MIN_RESTART_INTERVAL=60  # Minimum 60 seconds between restarts
+CHECK_INTERVAL=10  # Check memory every 10 seconds
+SINGBOX_WAIT_INTERVAL=30  # Wait for sing-box to start
+MAX_WAIT=300  # Maximum wait time for sing-box to start (5 minutes)
+
+last_restart=0
+
+# Check if sing-box is running
+check_singbox() {
+    local wait_time=0
+    while ! pgrep -f "sing-box" >/dev/null 2>&1; do
+        if [ $wait_time -ge $MAX_WAIT ]; then
+            logger -t "$SERVICE_NAME" "Sing-box not running after ${MAX_WAIT}s, exiting"
+            exit 1
+        fi
+        logger -t "$SERVICE_NAME" "Sing-box not running, waiting... (${wait_time}s/${MAX_WAIT}s)"
+        sleep $SINGBOX_WAIT_INTERVAL
+        wait_time=$((wait_time + SINGBOX_WAIT_INTERVAL))
+    done
+}
+
+# Get available memory
+get_available_memory() {
+    awk '/MemAvailable/ {print $2}' /proc/meminfo 2>/dev/null || echo "0"
+}
+
+# Check service status
+is_service_running() {
+    [ -x "$SINGBOX_SERVICE" ] && "$SINGBOX_SERVICE" status 2>/dev/null | grep -q "running"
+}
+
+# Main loop
+main() {
+    logger -t "$SERVICE_NAME" "Starting service"
+    check_singbox
+    
+    while true; do
+        check_singbox
+        
+        local free_mem
+        free_mem=$(get_available_memory)
+        local current_time
+        current_time=$(date +%s)
+        
+        if [ "$free_mem" -le "$THRESHOLD" ]; then
+            local time_since_restart
+            time_since_restart=$((current_time - last_restart))
+            
+            if [ $time_since_restart -ge $MIN_RESTART_INTERVAL ]; then
+                logger -t "$SERVICE_NAME" "Low memory detected: ${free_mem}KB <= ${THRESHOLD}KB"
+                
+                if is_service_running; then
+                    logger -t "$SERVICE_NAME" "Restarting sing-box service"
+                    "$SINGBOX_SERVICE" restart || true
+                    last_restart=$current_time
+                    sleep 60  # Wait after restart
+                else
+                    logger -t "$SERVICE_NAME" "Service not running or not executable"
+                fi
+            else
+                logger -t "$SERVICE_NAME" "Memory low but skipping restart: too early (${time_since_restart}s < ${MIN_RESTART_INTERVAL}s)"
+            fi
+        fi
+        
+        sleep $CHECK_INTERVAL
+    done
+}
+
+main "$@"

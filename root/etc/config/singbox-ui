@@ -1,0 +1,4 @@
+config main 'main'
+	# Service state flags (0 = disabled, 1 = enabled)
+	option autoupdater_service_state '0'
+	option health_autoupdater_service_state '0'

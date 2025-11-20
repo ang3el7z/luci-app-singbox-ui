@@ -1,0 +1,163 @@
+#!/bin/sh
+# Sing-Box UI Health Autoupdater Service
+# Monitors server health and updates config when healthy
+
+set -euo pipefail
+
+UCI_CONFIG="singbox-ui"
+UCI_SECTION="main"
+UCI_OPTION_STATE="health_autoupdater_service_state"
+SERVICE_NAME="singbox-ui-health-autoupdater-service"
+AUTOUPDATER_SERVICE_NAME="singbox-ui-autoupdater-service"
+CONFIG_DIR="/etc/sing-box"
+BIN_DIR="/usr/bin/singbox-ui"
+INIT_DIR="/etc/init.d"
+TARGET_FILE="${CONFIG_DIR}/config.json"
+URL_FILE="${CONFIG_DIR}/url_config.json"
+ERROR_FLAG="/tmp/singbox-ui-health-autoupdater-error.flag"
+INTERVAL_HEALTH=90  # 1.5 minutes
+CHECKS_TO_UPDATE=60  # Number of successful health checks before updating
+MAX_FAILS=2  # Maximum consecutive failed health checks before stopping
+CHECK_INTERVAL=30  # Check sing-box status every 30 seconds
+MAX_WAIT=300  # Maximum wait time for sing-box to start (5 minutes)
+CURL_TIMEOUT=5  # HTTP check timeout in seconds
+
+# Read config URL
+read_config_url() {
+    if [ ! -r "$URL_FILE" ]; then
+        logger -t "$SERVICE_NAME" "URL file not found: $URL_FILE"
+        exit 1
+    fi
+    CONFIG_URL=$(cat "$URL_FILE" | tr -d '\n\r\t ')
+    if [ -z "$CONFIG_URL" ]; then
+        logger -t "$SERVICE_NAME" "Empty URL in $URL_FILE"
+        exit 1
+    fi
+}
+
+# Check UCI flag
+check_uci() {
+    local enabled
+    enabled=$(uci -q get "${UCI_CONFIG}.${UCI_SECTION}.${UCI_OPTION_STATE}" 2>/dev/null || echo "0")
+    if [ "$enabled" != "1" ]; then
+        logger -t "$SERVICE_NAME" "Health autoupdater disabled via UCI config, stopping service"
+        "${INIT_DIR}/${SERVICE_NAME}" stop
+        exit 0
+    fi
+}
+
+# Check if autoupdater service is running
+check_autoupdater_service() {
+    if pgrep -f "$AUTOUPDATER_SERVICE_NAME" >/dev/null 2>&1; then
+        logger -t "$SERVICE_NAME" "$AUTOUPDATER_SERVICE_NAME running, stopping $SERVICE_NAME"
+        "${INIT_DIR}/${SERVICE_NAME}" stop
+        exit 0
+    fi
+}
+
+# Check if sing-box is running
+check_singbox() {
+    local wait_time=0
+    while ! pgrep -f "sing-box" >/dev/null 2>&1; do
+        if [ $wait_time -ge $MAX_WAIT ]; then
+            logger -t "$SERVICE_NAME" "Sing-box not running after ${MAX_WAIT}s, exiting"
+            exit 1
+        fi
+        logger -t "$SERVICE_NAME" "Sing-box not running, waiting... (${wait_time}s/${MAX_WAIT}s)"
+        sleep $CHECK_INTERVAL
+        wait_time=$((wait_time + CHECK_INTERVAL))
+    done
+}
+
+# Check server health
+check_server() {
+    local code
+    code=$(curl -s -o /dev/null -w "%{http_code}" --max-time $CURL_TIMEOUT --connect-timeout $CURL_TIMEOUT "$CONFIG_URL" 2>/dev/null || echo "000")
+    [ "$code" -ge 200 ] && [ "$code" -lt 400 ]
+}
+
+# Update configuration
+update_config() {
+    "${BIN_DIR}/singbox-ui-updater" "$URL_FILE" "$TARGET_FILE"
+    return $?
+}
+
+# Main loop
+main() {
+    logger -t "$SERVICE_NAME" "Starting service"
+    
+    read_config_url
+    check_uci
+    check_autoupdater_service
+    check_singbox
+    
+    local success_counter=0
+    local fail_counter=0
+    
+    while true; do
+        check_uci
+        check_autoupdater_service
+        check_singbox
+        
+        if check_server; then
+            success_counter=$((success_counter + 1))
+            fail_counter=0
+            logger -t "$SERVICE_NAME" "Health check success: #$success_counter/$CHECKS_TO_UPDATE"
+            
+            if [ -f "$ERROR_FLAG" ]; then
+                # Network recovered, update config and start sing-box
+                logger -t "$SERVICE_NAME" "Network recovered, updating config"
+                update_config
+                CODE=$?
+                
+                if [ "$CODE" = 0 ] || [ "$CODE" = 2 ]; then
+                    logger -t "$SERVICE_NAME" "Config restored, starting sing-box"
+                    "${INIT_DIR}/sing-box" start || true
+                    rm -f "$ERROR_FLAG"
+                    success_counter=0
+                else
+                    logger -t "$SERVICE_NAME" "Updater failed during recovery"
+                fi
+            else
+                if [ "$success_counter" -ge "$CHECKS_TO_UPDATE" ]; then
+                    # Update config after successful checks
+                    logger -t "$SERVICE_NAME" "Running config update (after $success_counter successful checks)"
+                    update_config
+                    CODE=$?
+                    
+                    case "$CODE" in
+                        0)
+                            logger -t "$SERVICE_NAME" "Config updated, reloading sing-box"
+                            "${INIT_DIR}/sing-box" reload || true
+                            success_counter=0
+                            ;;
+                        2)
+                            logger -t "$SERVICE_NAME" "No changes in config"
+                            success_counter=0
+                            ;;
+                        *)
+                            logger -t "$SERVICE_NAME" "Updater failed with code: $CODE"
+                            touch "$ERROR_FLAG"
+                            success_counter=0
+                            ;;
+                    esac
+                fi
+            fi
+        else
+            # Server unavailable
+            fail_counter=$((fail_counter + 1))
+            success_counter=0
+            logger -t "$SERVICE_NAME" "Health check failed: #$fail_counter/$MAX_FAILS"
+            
+            if [ "$fail_counter" -ge "$MAX_FAILS" ] && [ ! -f "$ERROR_FLAG" ]; then
+                logger -t "$SERVICE_NAME" "Stopping sing-box due to $fail_counter consecutive failed health checks"
+                "${INIT_DIR}/sing-box" stop || true
+                touch "$ERROR_FLAG"
+            fi
+        fi
+        
+        sleep $INTERVAL_HEALTH
+    done
+}
+
+main "$@"

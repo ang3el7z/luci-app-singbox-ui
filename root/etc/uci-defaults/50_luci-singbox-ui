@@ -1,0 +1,57 @@
+#!/bin/sh
+# Copyright (C) 2024 luci-app-singbox-ui
+# This is free software, licensed under the GNU General Public License v2.
+
+APP_TAG="singbox-ui"
+TIMESTAMP="$(date '+%Y-%m-%d %H:%M:%S')"
+
+# Logging helper
+log_msg() {
+    logger -t "$APP_TAG" "[uci-defaults] $*"
+}
+
+log_msg "Starting initialization"
+
+# Clear LuCI cache
+log_msg "Clearing LuCI cache"
+rm -f /var/luci-indexcache* /tmp/luci-indexcache* 2>/dev/null || true
+find /tmp -maxdepth 1 -name "luci-*cache*" -type f -delete 2>/dev/null || true
+
+# Clear uhttpd cache
+log_msg "Clearing uhttpd cache"
+rm -f /var/lib/uhttpd/* 2>/dev/null || true
+
+# Restart rpcd if available
+if [ -x /etc/init.d/rpcd ]; then
+    log_msg "Restarting rpcd"
+    /etc/init.d/rpcd restart >/dev/null 2>&1 || true
+fi
+
+# Restart uhttpd if available
+if [ -x /etc/init.d/uhttpd ]; then
+    log_msg "Restarting uhttpd"
+    /etc/init.d/uhttpd restart >/dev/null 2>&1 || true
+fi
+
+# Reload dnsmasq if running
+if pgrep dnsmasq >/dev/null 2>&1; then
+    log_msg "Reloading dnsmasq"
+    killall -HUP dnsmasq 2>/dev/null || true
+fi
+
+# Set permissions for static files
+STATIC_DIR="/www/luci-static/resources/view/singbox-ui"
+if [ -d "$STATIC_DIR" ]; then
+    log_msg "Setting permissions for static files"
+    chmod -R 755 "$STATIC_DIR" 2>/dev/null || true
+fi
+
+# Create lock directory for updater
+LOCK_DIR="/var/lock"
+if [ ! -d "$LOCK_DIR" ]; then
+    mkdir -p "$LOCK_DIR" 2>/dev/null || true
+fi
+
+log_msg "Initialization completed: $TIMESTAMP"
+
+exit 0

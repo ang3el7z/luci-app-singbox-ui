@@ -1,0 +1,88 @@
+#!/bin/sh
+# Sing-Box UI Autoupdater Service
+# Automatically updates configuration from URL every hour
+
+set -euo pipefail
+
+UCI_CONFIG="singbox-ui"
+UCI_SECTION="main"
+UCI_OPTION_STATE="autoupdater_service_state"
+SERVICE_NAME="singbox-ui-autoupdater-service"
+CONFIG_DIR="/etc/sing-box"
+BIN_DIR="/usr/bin/singbox-ui"
+INIT_DIR="/etc/init.d"
+TARGET_FILE="${CONFIG_DIR}/config.json"
+URL_FILE="${CONFIG_DIR}/url_config.json"
+INTERVAL=3600  # 1 hour
+CHECK_INTERVAL=30  # Check sing-box status every 30 seconds
+MAX_WAIT=300  # Maximum wait time for sing-box to start (5 minutes)
+
+# Check UCI flag
+check_uci() {
+    local enabled
+    enabled=$(uci -q get "${UCI_CONFIG}.${UCI_SECTION}.${UCI_OPTION_STATE}" 2>/dev/null || echo "0")
+    if [ "$enabled" != "1" ]; then
+        logger -t "$SERVICE_NAME" "Autoupdater disabled via UCI config, stopping service"
+        "${INIT_DIR}/${SERVICE_NAME}" stop
+        exit 0
+    fi
+}
+
+# Check if sing-box is running
+check_singbox() {
+    local wait_time=0
+    while ! pgrep -f "sing-box" >/dev/null 2>&1; do
+        if [ $wait_time -ge $MAX_WAIT ]; then
+            logger -t "$SERVICE_NAME" "Sing-box not running after ${MAX_WAIT}s, exiting"
+            exit 1
+        fi
+        logger -t "$SERVICE_NAME" "Sing-box not running, waiting... (${wait_time}s/${MAX_WAIT}s)"
+        sleep $CHECK_INTERVAL
+        wait_time=$((wait_time + CHECK_INTERVAL))
+    done
+}
+
+# Update configuration
+update_config() {
+    if [ ! -r "$URL_FILE" ]; then
+        logger -t "$SERVICE_NAME" "URL file not found: $URL_FILE"
+        return 1
+    fi
+    
+    "${BIN_DIR}/singbox-ui-updater" "$URL_FILE" "$TARGET_FILE"
+    return $?
+}
+
+# Main loop
+main() {
+    logger -t "$SERVICE_NAME" "Starting service"
+    
+    check_uci
+    check_singbox
+    
+    while true; do
+        check_uci
+        check_singbox
+        
+        logger -t "$SERVICE_NAME" "Running updater"
+        update_config
+        CODE=$?
+        
+        case "$CODE" in
+            0)
+                logger -t "$SERVICE_NAME" "Config updated, reloading sing-box"
+                "${INIT_DIR}/sing-box" reload || true
+                ;;
+            2)
+                logger -t "$SERVICE_NAME" "No changes in config"
+                ;;
+            *)
+                logger -t "$SERVICE_NAME" "Updater failed with code: $CODE"
+                ;;
+        esac
+        
+        sleep $INTERVAL
+    done
+}
+
+main "$@"

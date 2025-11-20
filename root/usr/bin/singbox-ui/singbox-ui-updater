@@ -1,0 +1,119 @@
+#!/bin/sh
+# Sing-Box UI Config Updater
+# Downloads and validates configuration from URL
+
+set -euo pipefail
+
+SCRIPT_NAME="singbox-ui-updater"
+LOCK_FILE="/var/lock/singbox-ui-updater.lock"
+LOCK_TIMEOUT=300  # 5 minutes
+
+# Cleanup function
+cleanup() {
+    [ -n "${TMP_FILE:-}" ] && [ -f "$TMP_FILE" ] && rm -f "$TMP_FILE"
+    [ -n "${TMP_RAW:-}" ] && [ -f "$TMP_RAW" ] && rm -f "$TMP_RAW"
+    [ -n "${LOCK_FD:-}" ] && flock -u "$LOCK_FD" 2>/dev/null || true
+}
+
+trap cleanup EXIT INT TERM
+
+# Check arguments
+[ $# -eq 2 ] || {
+    logger -t "$SCRIPT_NAME" "Usage: $0 <url-file> <target-file>"
+    echo "Usage: $0 <url-file> <target-file>" >&2
+    exit 1
+}
+
+URL_FILE="$1"
+TARGET_FILE="$2"
+
+# Validate URL file
+[ -r "$URL_FILE" ] || {
+    logger -t "$SCRIPT_NAME" "URL file not found: $URL_FILE"
+    echo "URL file not found" >&2
+    exit 1
+}
+
+# Read URL
+CONFIG_URL=$(cat "$URL_FILE" | tr -d '\n\r\t ')
+[ -n "$CONFIG_URL" ] || {
+    logger -t "$SCRIPT_NAME" "Empty URL in $URL_FILE"
+    echo "Empty URL" >&2
+    exit 1
+}
+
+# Validate URL format
+case "$CONFIG_URL" in
+    http://*|https://*)
+        ;;
+    *)
+        logger -t "$SCRIPT_NAME" "Invalid URL format: $CONFIG_URL"
+        echo "Invalid URL format" >&2
+        exit 1
+        ;;
+esac
+
+# Check dependencies
+command -v curl >/dev/null 2>&1 || {
+    logger -t "$SCRIPT_NAME" "curl not found"
+    echo "curl not installed" >&2
+    exit 1
+}
+
+command -v jq >/dev/null 2>&1 || {
+    logger -t "$SCRIPT_NAME" "jq not found"
+    echo "jq not installed" >&2
+    exit 1
+}
+
+# Create lock directory
+mkdir -p "$(dirname "$LOCK_FILE")"
+
+# Acquire lock
+exec {LOCK_FD}>"$LOCK_FILE"
+if ! flock -w "$LOCK_TIMEOUT" "$LOCK_FD"; then
+    logger -t "$SCRIPT_NAME" "Failed to acquire lock (timeout: ${LOCK_TIMEOUT}s)"
+    echo "Another updater is running" >&2
+    exit 1
+fi
+
+# Create temp files
+TMP_FILE="${TARGET_FILE}.tmp.$$"
+TMP_RAW="${TMP_FILE}.download"
+
+logger -t "$SCRIPT_NAME" "Downloading config from $CONFIG_URL"
+
+# Download with timeout and retry
+if ! curl -fsSL --max-time 30 --connect-timeout 10 --retry 2 --retry-delay 1 \
+     "$CONFIG_URL" -o "$TMP_RAW" 2>/dev/null; then
+    logger -t "$SCRIPT_NAME" "Download failed from $CONFIG_URL"
+    echo "Download failed" >&2
+    exit 1
+fi
+
+# Validate JSON
+if ! jq . "$TMP_RAW" > "$TMP_FILE" 2>/dev/null; then
+    logger -t "$SCRIPT_NAME" "Invalid JSON received from $CONFIG_URL"
+    echo "Invalid JSON" >&2
+    exit 1
+fi
+
+rm -f "$TMP_RAW"
+
+# Check if file changed
+if [ -f "$TARGET_FILE" ]; then
+    OLD_HASH=$(sha256sum "$TARGET_FILE" 2>/dev/null | awk '{print $1}')
+    NEW_HASH=$(sha256sum "$TMP_FILE" 2>/dev/null | awk '{print $1}')
+    if [ "$OLD_HASH" = "$NEW_HASH" ]; then
+        logger -t "$SCRIPT_NAME" "No changes detected in config"
+        exit 2
+    fi
+fi
+
+# Atomic move
+mv "$TMP_FILE" "$TARGET_FILE"
+TMP_FILE=""  # Prevent cleanup from removing the file
+
+logger -t "$SCRIPT_NAME" "Config updated successfully: $TARGET_FILE"
+echo "Success"
+exit 0
