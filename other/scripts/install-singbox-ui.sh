@@ -283,7 +283,10 @@ waiting() {
 # Обновление репозиториев и установка зависимостей / Update repos and install dependencies
 update_pkgs() {
     show_progress "$MSG_UPDATE_PKGS"
-    if opkg update && opkg install curl jq && (opkg install nano || opkg install nano-full); then
+    if opkg update && \
+       opkg install --force-reinstall libcurl4 curl && \
+       opkg install jq && \
+       (opkg install nano || opkg install nano-full); then
         show_success "$MSG_DEPS_SUCCESS"
     else
         show_error "$MSG_DEPS_ERROR"
