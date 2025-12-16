@@ -257,6 +257,13 @@ init_language() {
             MSG_SINGBOX_USE_STORE="Использовать магазин"
             MSG_SINGBOX_EXIT="Выйти"
             MSG_SINGBOX_ERROR_CHOICE="Ваш выбор [1-3]: "
+            MSG_SINGBOX_DOWNLOAD_MENU_OPTION1="1) Скачать sing-box_1.11.15 автоматически в /tmp"
+            MSG_SINGBOX_DOWNLOAD_MENU_OPTION2="2) $MSG_SINGBOX_USE_STORE"
+            MSG_SINGBOX_DOWNLOAD_MENU_OPTION3="3) Повторить поиск файла (ручная загрузка)"
+            MSG_SINGBOX_DOWNLOAD_PROMPT="Выберите действие [1-3]: "
+            MSG_SINGBOX_DOWNLOAD_START="Загрузка sing-box_1.11.15 в /tmp..."
+            MSG_SINGBOX_DOWNLOAD_SUCCESS="Файл sing-box_1.11.15 успешно загружен в /tmp."
+            MSG_SINGBOX_DOWNLOAD_ERROR="Не удалось скачать файл sing-box_1.11.15. Проверьте подключение к интернету."
             ;;
         *)
             MSG_INSTALL_TITLE="Starting! ($script_name)"
@@ -341,6 +348,13 @@ init_language() {
             MSG_SINGBOX_USE_STORE="Use store"
             MSG_SINGBOX_EXIT="Exit"
             MSG_SINGBOX_ERROR_CHOICE="Your choice [1-3]: "
+            MSG_SINGBOX_DOWNLOAD_MENU_OPTION1="1) Download sing-box_1.11.15 automatically to /tmp"
+            MSG_SINGBOX_DOWNLOAD_MENU_OPTION2="2) $MSG_SINGBOX_USE_STORE"
+            MSG_SINGBOX_DOWNLOAD_MENU_OPTION3="3) Retry file search (manual upload)"
+            MSG_SINGBOX_DOWNLOAD_PROMPT="Choose action [1-3]: "
+            MSG_SINGBOX_DOWNLOAD_START="Downloading sing-box_1.11.15 to /tmp..."
+            MSG_SINGBOX_DOWNLOAD_SUCCESS="sing-box_1.11.15 downloaded to /tmp successfully."
+            MSG_SINGBOX_DOWNLOAD_ERROR="Failed to download sing-box_1.11.15. Please check your internet connection."
             ;;
     esac
 }
@@ -445,6 +459,11 @@ install_singbox() {
 
 # Ручная установка sing-box / Manual sing-box installation
 manual_singbox_install() {
+    # Параметры дефолтной версии для авто-скачивания
+    local SINGBOX_DEFAULT_IPK_NAME="sing-box_1.11.15_openwrt_aarch64_cortex-a53.ipk"
+    local SINGBOX_DEFAULT_IPK_URL="https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/ipk/${SINGBOX_DEFAULT_IPK_NAME}"
+    local SINGBOX_DEFAULT_IPK_DST="/tmp/${SINGBOX_DEFAULT_IPK_NAME}"
+
     while true; do
         show_message ""
         show_message "$MSG_SINGBOX_MANUAL_INSTRUCTIONS"
@@ -468,27 +487,25 @@ manual_singbox_install() {
             show_error "$MSG_SINGBOX_FILE_NOT_FOUND"
             show_message "$MSG_SINGBOX_UPLOAD_INSTRUCTIONS"
             show_message ""
-            show_message "1) Скачать sing-box_1.11.15 автоматически в /tmp"
-            show_message "2) $MSG_SINGBOX_USE_STORE"
-            show_message "3) $MSG_SINGBOX_RETRY_MANUAL_UPLOAD"  # текст можешь завести отдельно
-            read_input "$MSG_SINGBOX_RETRY_PROMPT" RETRY_CHOICE
+            show_message "$MSG_SINGBOX_DOWNLOAD_MENU_OPTION1"
+            show_message "$MSG_SINGBOX_DOWNLOAD_MENU_OPTION2"
+            show_message "$MSG_SINGBOX_DOWNLOAD_MENU_OPTION3"
+            read_input "$MSG_SINGBOX_DOWNLOAD_PROMPT" RETRY_CHOICE
 
             case $RETRY_CHOICE in
                 1)
-                    show_progress "Downloading sing-box_1.11.15 to /tmp..."
-                    local url="https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/ipk/sing-box_1.11.15_openwrt_aarch64_cortex-a53.ipk"
-                    local dst="/tmp/sing-box_1.11.15_openwrt_aarch64_cortex-a53.ipk"
+                    show_progress "$MSG_SINGBOX_DOWNLOAD_START"
 
                     # удалить старый, если был
-                    [ -f "$dst" ] && rm -f "$dst"
+                    [ -f "$SINGBOX_DEFAULT_IPK_DST" ] && rm -f "$SINGBOX_DEFAULT_IPK_DST"
 
-                    if wget -O "$dst" "$url"; then
-                        show_success "Файл успешно загружен в /tmp."
-                        # после загрузки вернуться в начало цикла — он найдёт файл и предложит установить
+                    if wget -O "$SINGBOX_DEFAULT_IPK_DST" "$SINGBOX_DEFAULT_IPK_URL"; then
+                        show_success "$MSG_SINGBOX_DOWNLOAD_SUCCESS"
+                        # после загрузки вернуться в начало цикла — теперь файл найдётся
                         continue
                     else
-                        show_error "Не удалось скачать файл sing-box_1.11.15. Проверьте подключение к интернету."
-                        # вернуть к ручной загрузке/магазину
+                        show_error "$MSG_SINGBOX_DOWNLOAD_ERROR"
+                        # вернуться к ручной загрузке/поиску
                         continue
                     fi
                     ;;
@@ -498,7 +515,7 @@ manual_singbox_install() {
                     return
                     ;;
                 3)
-                    # просто заново показать инструкции по ручной загрузке
+                    # просто заново показать инструкции по ручной загрузке и повторить поиск
                     continue
                     ;;
                 *)
@@ -513,18 +530,16 @@ manual_singbox_install() {
         # Если найден только один файл
         if [ $ipk_count -eq 1 ]; then
             selected_file="$ipk_files"
-            show_message "$MSG_SINGBOX_FILE_FOUND: ${selected_file##*/}"
+            show_message "$MSG_SINGBOX_FILE_FOUND ${selected_file##*/}"
         else
             # Если найдено несколько файлов - показать выбор
             show_message "$MSG_SINGBOX_MULTIPLE_FILES_FOUND"
             show_message ""
             
             local i=1
-            local file_list=""
             while IFS= read -r file; do
                 if [ -n "$file" ]; then
                     show_message "$i) ${file##*/}"
-                    file_list="${file_list}${file}\n"
                     i=$((i + 1))
                 fi
             done <<EOF
