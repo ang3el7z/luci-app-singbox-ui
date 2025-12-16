@@ -411,7 +411,6 @@ network_check() {
 }
 
 # Установка sing-box / Install sing-box
-# Установка sing-box / Install sing-box
 install_singbox() {
     show_progress "$MSG_INSTALL_SINGBOX"
     
@@ -455,7 +454,7 @@ manual_singbox_install() {
         show_message "$MSG_SINGBOX_MANUAL_STEP_3"
         show_message ""
         
-        # Найти все IPK файлы в /tmp (без использования массивов)
+        # Найти все IPK файлы в /tmp
         local ipk_files=""
         local ipk_count=0
         
@@ -468,22 +467,47 @@ manual_singbox_install() {
         if [ $ipk_count -eq 0 ] || [ -z "$ipk_files" ]; then
             show_error "$MSG_SINGBOX_FILE_NOT_FOUND"
             show_message "$MSG_SINGBOX_UPLOAD_INSTRUCTIONS"
-            
+            show_message ""
+            show_message "1) Скачать sing-box_1.11.15 автоматически в /tmp"
+            show_message "2) $MSG_SINGBOX_USE_STORE"
+            show_message "3) $MSG_SINGBOX_RETRY_MANUAL_UPLOAD"  # текст можешь завести отдельно
             read_input "$MSG_SINGBOX_RETRY_PROMPT" RETRY_CHOICE
+
             case $RETRY_CHOICE in
-                1) continue ;;
-                2) 
+                1)
+                    show_progress "Downloading sing-box_1.11.15 to /tmp..."
+                    local url="https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/ipk/sing-box_1.11.15_openwrt_aarch64_cortex-a53.ipk"
+                    local dst="/tmp/sing-box_1.11.15_openwrt_aarch64_cortex-a53.ipk"
+
+                    # удалить старый, если был
+                    [ -f "$dst" ] && rm -f "$dst"
+
+                    if wget -O "$dst" "$url"; then
+                        show_success "Файл успешно загружен в /tmp."
+                        # после загрузки вернуться в начало цикла — он найдёт файл и предложит установить
+                        continue
+                    else
+                        show_error "Не удалось скачать файл sing-box_1.11.15. Проверьте подключение к интернету."
+                        # вернуть к ручной загрузке/магазину
+                        continue
+                    fi
+                    ;;
+                2)
                     SINGBOX_INSTALL_MODE="1"
                     install_singbox
                     return
                     ;;
-                *) 
+                3)
+                    # просто заново показать инструкции по ручной загрузке
+                    continue
+                    ;;
+                *)
                     show_error "$MSG_INVALID_INPUT"
                     exit 1
                     ;;
             esac
         fi
-        
+
         local selected_file=""
         
         # Если найден только один файл
@@ -523,7 +547,6 @@ EOF
         read_input "$MSG_SINGBOX_CONFIRM_PROMPT" SINGBOX_MANUAL_CONFIRM
         
         if [ "$SINGBOX_MANUAL_CONFIRM" = "1" ]; then
-            # Установка
             show_progress "$MSG_INSTALL_SINGBOX"
             
             if opkg install "$selected_file"; then
@@ -533,7 +556,6 @@ EOF
             else
                 show_error "$MSG_INSTALL_SINGBOX_ERROR"
                 
-                # Предложить варианты после ошибки
                 show_message ""
                 show_message "$MSG_SINGBOX_ERROR_OPTIONS"
                 show_message "1) $MSG_SINGBOX_TRY_ANOTHER_FILE"
@@ -542,13 +564,11 @@ EOF
                 read_input "$MSG_SINGBOX_ERROR_CHOICE" ERROR_CHOICE
                 
                 case $ERROR_CHOICE in
-                    1) 
-                        # Удалить поврежденный файл и попробовать другой
+                    1)
                         rm -f "$selected_file"
                         continue
                         ;;
                     2)
-                        # Переключиться на установку из магазина
                         SINGBOX_INSTALL_MODE="1"
                         install_singbox
                         return
@@ -563,7 +583,6 @@ EOF
                 esac
             fi
         elif [ "$SINGBOX_MANUAL_CONFIRM" = "2" ]; then
-            # Переключиться на установку из магазина
             SINGBOX_INSTALL_MODE="1"
             install_singbox
             return
