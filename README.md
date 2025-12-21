@@ -82,6 +82,12 @@ You can also create a Pull Request or Issue. And don’t forget to click the sta
 
 ---
 
+## License
+
+MIT License - see [LICENSE](./LICENSE) file for details
+
+---
+
 ## Stargazers over time
 
 [![Stargazers over time](https://starchart.cc/ang3el7z/luci-app-singbox-ui.svg?variant=adaptive)](https://starchart.cc/ang3el7z/luci-app-singbox-ui)
