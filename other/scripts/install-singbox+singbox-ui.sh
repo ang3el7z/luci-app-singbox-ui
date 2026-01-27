@@ -213,6 +213,7 @@ init_language() {
         MSG_OPERATION_REINSTALL_UPDATE="3. Переустановка/Обновление"
         MSG_OPERATION_CHOICE="Ваш выбор: "
         MSG_INSTALL_SFTP_SERVER="Установить openssh-sftp-server? y/n (n - по умолчанию): "
+        MSG_SFTP_ALREADY_INSTALLED="openssh-sftp-server уже установлен"
         MSG_INVALID_INPUT="Некорректный ввод"
         MSG_REPEAT_INPUT="Повторите ввод"
         ;;
@@ -242,6 +243,7 @@ init_language() {
         MSG_OPERATION_REINSTALL_UPDATE="3. Reinstall/Update"
         MSG_OPERATION_CHOICE="Your choice: "
         MSG_INSTALL_SFTP_SERVER="Install openssh-sftp-server? y/n (n - by default): "
+        MSG_SFTP_ALREADY_INSTALLED="openssh-sftp-server already installed"
         MSG_INVALID_INPUT="Invalid input"
         MSG_REPEAT_INPUT="Repeat input"
         ;;

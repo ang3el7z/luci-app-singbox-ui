@@ -236,14 +236,20 @@ init_language() {
             MSG_UNINSTALLING_TPROXY_MODE="Удаление TPROXY режима..."
             MSG_TPROXY_ROUTE_SETUP="Настройка policy routing для TPROXY..."
             MSG_TPROXY_ROUTE_CLEANUP="Удаление policy routing для TPROXY..."
+            MSG_TPROXY_NFT_INSTALL="Установка nftables (nft) для TPROXY..."
+            MSG_TPROXY_NFT_INSTALLED="nftables успешно установлен"
+            MSG_TPROXY_NFT_ERROR="Не удалось установить nftables"
             MSG_INSTALLING_TUN_MODE="Установка TUN режима..."
             MSG_UNINSTALLING_TUN_MODE="Удаление TUN режима..."
+            MSG_TUN_DEPS_INSTALL="Установка зависимостей для TUN режима..."
+            MSG_TUN_DEPS_INSTALLED="Зависимости для TUN режима установлены"
+            MSG_TUN_DEPS_ALREADY="Зависимости для TUN режима уже установлены"
+            MSG_TUN_DEPS_ERROR="Ошибка установки зависимостей для TUN режима"
             MSG_UNINSTALL_EXISTING_FILES="Удаление существующих файлов sing-box..."
             MSG_INVALID_MODE="Ошибка: Некорректный режим"
             MSG_INVALID_MODE_FOUND="Ошибка: Не найден режим для удаления."
             MSG_MODE_FOUND_TPROXY="Найден TPROXY режим"
             MSG_MODE_FOUND_TUN="Найден TUN режим"
-            MSG_MODE_TPROXY_IN_DEVELOPMENT="Режим TPROXY в разработке (для тестирования), продолжить? (Y/n)"
             MSG_NET_CHOOSE="Выберите способ перезапуска сети:"
             MSG_NET_OPTION1="1) Безопасный reload (рекомендуется при работе через Wi-Fi или CMD/командной строке)"
             MSG_NET_OPTION2="2) Полный restart сервиса (подходит для современных SSH-клиентов)"
@@ -263,7 +269,6 @@ init_language() {
             MSG_SINGBOX_SELECT_FILE="Выберите файл [1-N]:"
             MSG_SINGBOX_CONFIRM_PROMPT="Установить выбранный файл? [1-Да, 2-Использовать магазин]:"
             MSG_INVALID_INPUT="Ошибка: Некорректный ввод"
-            MSG_SINGBOX_RETRY_PROMPT="Выберите действие [1-Повторить поиск, 2-Использовать магазин]: "
             MSG_SINGBOX_ERROR_OPTIONS="Выберите действие после ошибки:"
             MSG_SINGBOX_TRY_ANOTHER_FILE="Попробовать другой файл"
             MSG_SINGBOX_USE_STORE="Использовать магазин"
@@ -281,7 +286,7 @@ init_language() {
             ;;
         *)
             MSG_INSTALL_TITLE="Starting! ($script_name)"
-            MSG_UPDATE_PKGS="Updating packages and installing dependencies..."
+            MSG_UPDATE_PKGS="Updating repositories..."
             MSG_PKGS_SUCCESS="Packages updated successfully"
             MSG_PKGS_ERROR="Error updating packages"
             MSG_INSTALL_SINGBOX="Installing latest sing-box version..."
@@ -335,18 +340,28 @@ init_language() {
             MSG_UNINSTALLING_TPROXY_MODE="Uninstalling TPROXY mode..."
             MSG_TPROXY_ROUTE_SETUP="Configuring TPROXY policy routing..."
             MSG_TPROXY_ROUTE_CLEANUP="Removing TPROXY policy routing..."
+            MSG_TPROXY_NFT_INSTALL="Installing nftables (nft) for TPROXY..."
+            MSG_TPROXY_NFT_INSTALLED="nftables installed successfully"
+            MSG_TPROXY_NFT_ERROR="Failed to install nftables"
             MSG_INSTALLING_TUN_MODE="Installing TUN mode..."
             MSG_UNINSTALLING_TUN_MODE="Uninstalling TUN mode..."
+            MSG_TUN_DEPS_INSTALL="Installing TUN mode dependencies..."
+            MSG_TUN_DEPS_INSTALLED="TUN mode dependencies installed"
+            MSG_TUN_DEPS_ALREADY="TUN mode dependencies already installed"
+            MSG_TUN_DEPS_ERROR="Failed to install TUN mode dependencies"
             MSG_UNINSTALL_EXISTING_FILES="Uninstalling existing sing-box files..."
             MSG_INVALID_MODE="Error: Invalid mode"
             MSG_INVALID_MODE_FOUND="Error: Mode not found for removal."
             MSG_MODE_FOUND_TPROXY="TPROXY mode found"
             MSG_MODE_FOUND_TUN="TUN mode found"
-            MSG_MODE_TPROXY_IN_DEVELOPMENT="TPROXY mode in development (for testing), continue? (Y/n)"
             MSG_NET_CHOOSE="Choose the network restart method:"
             MSG_NET_OPTION1="1) Safe reload (recommended when connected via Wi-Fi or CMD/Command Prompt)"
             MSG_NET_OPTION2="2) Full network service restart (suitable for modern SSH clients)"
             MSG_NET_PROMPT="Your choice [1/2] (2 default): "
+            MSG_SINGBOX_CHOOSE="Choose sing-box installation method:"
+            MSG_SINGBOX_OPTION1="1) Install latest version from store"
+            MSG_SINGBOX_OPTION2="2) Manual install"
+            MSG_SINGBOX_PROMPT="Enter your choice [1-2]:"
             MSG_SINGBOX_MANUAL_INSTRUCTIONS="Manual Installation Instructions:"
             MSG_SINGBOX_MANUAL_STEP_1="1. Download the sing-box.ipk from your repository"
             MSG_SINGBOX_MANUAL_STEP_2="2. Upload the file to the /tmp folder on your OpenWrt device"
@@ -358,7 +373,6 @@ init_language() {
             MSG_SINGBOX_SELECT_FILE="Select file [1-N]:"
             MSG_SINGBOX_CONFIRM_PROMPT="Install the selected file? [1-Yes, 2-Use store]:"
             MSG_INVALID_INPUT="Error: Invalid input"
-            MSG_SINGBOX_RETRY_PROMPT="Choose action [1-Retry search, 2-Use store]: "
             MSG_SINGBOX_ERROR_OPTIONS="Choose action after error:"
             MSG_SINGBOX_TRY_ANOTHER_FILE="Try another file"
             MSG_SINGBOX_USE_STORE="Use store"
@@ -387,12 +401,49 @@ waiting() {
 # Обновление репозиториев / Update repos
 update_pkgs() {
     show_progress "$MSG_UPDATE_PKGS"
-    if opkg update && opkg install nftables; then
+    if opkg update; then
       show_success "$MSG_PKGS_SUCCESS"
     else
       show_error "$MSG_PKGS_ERROR"
       exit 1
     fi
+}
+
+ensure_nft_available() {
+    if command -v nft >/dev/null 2>&1; then
+        return 0
+    fi
+    if [ -x /usr/sbin/nft ] || [ -x /sbin/nft ]; then
+        return 0
+    fi
+    show_progress "$MSG_TPROXY_NFT_INSTALL"
+    if opkg install nftables; then
+        show_success "$MSG_TPROXY_NFT_INSTALLED"
+        return 0
+    fi
+    show_error "$MSG_TPROXY_NFT_ERROR"
+    exit 1
+}
+
+install_mode_deps() {
+    case $MODE in
+        1)
+            show_progress "$MSG_TUN_DEPS_INSTALL"
+            if opkg list-installed | grep -q "^kmod-tun "; then
+                show_success "$MSG_TUN_DEPS_ALREADY"
+                return 0
+            fi
+            if opkg install kmod-tun; then
+                show_success "$MSG_TUN_DEPS_INSTALLED"
+            else
+                show_error "$MSG_TUN_DEPS_ERROR"
+                exit 1
+            fi
+            ;;
+        2)
+            ensure_nft_available
+            ;;
+    esac
 }
 
 # Выбор операции установки / Choose install operation
@@ -868,6 +919,7 @@ define RESERVED_IP = {
     127.0.0.0/8,
     169.254.0.0/16,
     172.16.0.0/12,
+    192.168.0.0/16,
     192.0.0.0/24,
     224.0.0.0/4,
     240.0.0.0/4,
@@ -973,9 +1025,9 @@ uninstalled_tun_mode() {
 # Установка tproxy mode / Install tproxy mode
 installed_tproxy_mode() {
     show_progress "$MSG_INSTALLING_TPROXY_MODE"
+    enable_singbox
     setup_tproxy_routing
     install_nft_rule
-    enable_singbox
     network_check
 }
 
@@ -1021,6 +1073,7 @@ perform_uninstall_mode() {
 install() {
     show_progress "$MSG_INSTALLING"
     choose_mode
+    install_mode_deps
     install_singbox
     configure_singbox_service
     disable_singbox_service
