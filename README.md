@@ -38,7 +38,9 @@ wget -O /root/install.sh https://raw.githubusercontent.com/ang3el7z/luci-app-sin
 ### 2. Select mode:
 - `Singbox-ui`
 - `Singbox (tun mode)`
+- `Singbox (tproxy mode)`
 - `Singbox (tun mode) + singbox-ui`
+- `Singbox (tproxy mode) + singbox-ui`
 
 ### 3. Choose operation:
 - Install
@@ -67,6 +69,7 @@ Press F12 to open DevTools, then right-click the “Reload” button and select 
 ### 🗂️ Config Templates
 
 - [`openwrt-template`](https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/file/openwrt-template.json)
+- [`openwrt-template-tproxy`](https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/file/openwrt-template-tproxy.json)
 > Please refer to the official documentation and articles here: [`Sing-Box Configuration`](https://sing-box.sagernet.org/configuration/)
 
 ### 🛠️ Fixes

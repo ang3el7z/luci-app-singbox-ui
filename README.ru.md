@@ -39,7 +39,9 @@ wget -O /root/install.sh https://raw.githubusercontent.com/ang3el7z/luci-app-sin
 ### 2. Выберите режим:
 - `Singbox-ui`
 - `Singbox (tun режим)`
+- `Singbox (tproxy режим)`
 - `Singbox (tun режим) + singbox-ui`
+- `Singbox (tproxy режим) + singbox-ui`
 
 ### 3. Выберите операцию:
 - Установка
@@ -68,6 +70,7 @@ ssh root@192.168.1.1
 ### 🗂️ Шаблоны конфигураций
 
 - [`openwrt-template`](https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/file/openwrt-template.json)
+- [`openwrt-template-tproxy`](https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/file/openwrt-template-tproxy.json)
 > Изучайте официальную документацию и статьи по ссылке: [`Sing-Box Configuration`](https://sing-box.sagernet.org/configuration/)
 
 ### 🛠️ Исправления

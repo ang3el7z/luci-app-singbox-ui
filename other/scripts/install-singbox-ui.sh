@@ -163,10 +163,20 @@ init_language() {
     local script_name="install-singbox-ui.sh"
     
     if [ -z "$LANG" ]; then
-        show_message "Выберите язык / Select language [1/2]:"
-        show_message "1. Русский (Russian)"
-        show_message "2. English (Английский)"
-        read_input " Ваш выбор / Your choice [1/2]: " LANG
+        while true; do
+            show_message "Выберите язык / Select language [1/2]:"
+            show_message "1. Русский (Russian)"
+            show_message "2. English (Английский)"
+            read_input " Ваш выбор / Your choice [1/2]: " LANG
+            case "$LANG" in
+                1|2)
+                    break
+                    ;;
+                *)
+                    show_error "Invalid choice. Please enter 1 or 2."
+                    ;;
+            esac
+        done
     fi
 
     case ${LANG:-2} in
@@ -205,6 +215,7 @@ init_language() {
             MSG_EDIT_COMPLETE="Завершили редактирование config.json? [y/N]: "
             MSG_EDIT_SUCCESS="Успешно"
             MSG_INVALID_INPUT="Некорректный ввод"
+            MSG_REPEAT_INPUT="Повторите ввод"
             MSG_OPERATION="Выберите тип операции:"
             MSG_OPERATION_INSTALL="1. Установка"
             MSG_OPERATION_DELETE="2. Удаление"
@@ -255,6 +266,7 @@ init_language() {
             MSG_EDIT_COMPLETE="Finished editing config.json? [y/N]: "
             MSG_EDIT_SUCCESS="Success"
             MSG_INVALID_INPUT="Invalid input"
+            MSG_REPEAT_INPUT="Repeat input"
             MSG_OPERATION="Select install operation:"
             MSG_OPERATION_INSTALL="1. Install"
             MSG_OPERATION_DELETE="2. Delete"
@@ -297,11 +309,21 @@ update_pkgs() {
 # Выбор операции установки / Choose install operation
 choose_install_operation() {
     if [ -z "$OPERATION" ]; then
-        show_message "$MSG_OPERATION"
-        show_message "$MSG_OPERATION_INSTALL"
-        show_message "$MSG_OPERATION_DELETE"
-        show_message "$MSG_OPERATION_REINSTALL_UPDATE"
-        read_input "$MSG_OPERATION_CHOICE" OPERATION
+        while true; do
+            show_message "$MSG_OPERATION"
+            show_message "$MSG_OPERATION_INSTALL"
+            show_message "$MSG_OPERATION_DELETE"
+            show_message "$MSG_OPERATION_REINSTALL_UPDATE"
+            read_input "$MSG_OPERATION_CHOICE" OPERATION
+            case "$OPERATION" in
+                1|2|3)
+                    break
+                    ;;
+                *)
+                    show_error "$MSG_INVALID_INPUT. $MSG_REPEAT_INPUT"
+                    ;;
+            esac
+        done
     fi
 }
 
@@ -343,84 +365,90 @@ network_check() {
 
 # Выбор версии для установки / Version selection
 choose_install_version() {
-    show_message "$MSG_CHOOSE_VERSION"
-    show_message "$MSG_OPTION_1"
-    show_message "$MSG_OPTION_2"
-    show_message "$MSG_OPTION_3"
-    show_message "$MSG_OPTION_4"
-    read_input "$MSG_YOUR_CHOICE" VERSION_CHOICE
-
     # Ссылки на файлы для каждой версии / URLs for each version
     local url_latest="https://github.com/ang3el7z/luci-app-singbox-ui/releases/latest/download/luci-app-singbox-ui.ipk"
     local url_lite="https://github.com/ang3el7z/luci-app-singbox-ui/releases/download/v1.2.1/luci-app-singbox-ui.ipk"
 
-    case "$VERSION_CHOICE" in
-    1)
-        DOWNLOAD_URL="$url_latest"
-        ;;
-    2)
-        DOWNLOAD_URL="$url_lite"
-        ;;
-    3)
-        # Получаем ссылку на последнюю pre-release сборку / Fetch latest pre-release build  
-        DOWNLOAD_URL=$(curl -s https://api.github.com/repos/ang3el7z/luci-app-singbox-ui/releases | \
-        grep -A 20 '"prerelease": true' | \
-        grep "browser_download_url.*luci-app-singbox-ui.ipk" | \
-        head -n 1 | \
-        sed -E 's/.*"browser_download_url": *"([^"]+)".*/\1/')
+    while true; do
+        show_message "$MSG_CHOOSE_VERSION"
+        show_message "$MSG_OPTION_1"
+        show_message "$MSG_OPTION_2"
+        show_message "$MSG_OPTION_3"
+        show_message "$MSG_OPTION_4"
+        read_input "$MSG_YOUR_CHOICE" VERSION_CHOICE
 
-        if [ -z "$DOWNLOAD_URL" ]; then
-            show_error "$MSG_NO_PRE_RELEASE"
+        case "$VERSION_CHOICE" in
+        1)
             DOWNLOAD_URL="$url_latest"
-        fi
-        ;;
-    4)
-        local runner_base_url="https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/artifacts"
-        local index_url="$runner_base_url/index.txt"
+            break
+            ;;
+        2)
+            DOWNLOAD_URL="$url_lite"
+            break
+            ;;
+        3)
+            # Получаем ссылку на последнюю pre-release сборку / Fetch latest pre-release build  
+            DOWNLOAD_URL=$(curl -s https://api.github.com/repos/ang3el7z/luci-app-singbox-ui/releases | \
+            grep -A 20 '"prerelease": true' | \
+            grep "browser_download_url.*luci-app-singbox-ui.ipk" | \
+            head -n 1 | \
+            sed -E 's/.*"browser_download_url": *"([^"]+)".*/\1/')
 
-        show_progress "$MSG_SELECT_RUNNER"
+            if [ -z "$DOWNLOAD_URL" ]; then
+                show_error "$MSG_NO_PRE_RELEASE"
+                DOWNLOAD_URL="$url_latest"
+            fi
+            break
+            ;;
+        4)
+            local runner_base_url="https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/artifacts"
+            local index_url="$runner_base_url/index.txt"
 
-        # Получаем список runner сборок с проверкой / Get list of runner builds with validation
-        local http_code=$(curl -s -o /tmp/index.txt -w "%{http_code}" "$index_url")
-        if [ "$http_code" != "200" ]; then
-            show_error "$MSG_RUNNER_INDEX_UNAVAILABLE"
-            show_progress "$MSG_INSTALL_LATEST"
-            DOWNLOAD_URL="$url_latest"
-            return
-        fi
+            show_progress "$MSG_SELECT_RUNNER"
 
-        local runner_files=$(cat /tmp/index.txt)
+            # Получаем список runner сборок с проверкой / Get list of runner builds with validation
+            local http_code=$(curl -s -o /tmp/index.txt -w "%{http_code}" "$index_url")
+            if [ "$http_code" != "200" ]; then
+                show_error "$MSG_RUNNER_INDEX_UNAVAILABLE"
+                show_progress "$MSG_INSTALL_LATEST"
+                DOWNLOAD_URL="$url_latest"
+                break
+            fi
 
-        if [ -z "$runner_files" ]; then
-            show_error "$MSG_RUNNER_LIST_EMPTY"
-            show_progress "$MSG_INSTALL_LATEST"
-            DOWNLOAD_URL="$url_latest"
-            return
-        fi
+            local runner_files=$(cat /tmp/index.txt)
 
-        local i=1
-        for file in $runner_files; do
-            show_message "  [$i] $file"
-            eval RUNNER_$i="'$file'"
-            i=$((i+1))
-        done
+            if [ -z "$runner_files" ]; then
+                show_error "$MSG_RUNNER_LIST_EMPTY"
+                show_progress "$MSG_INSTALL_LATEST"
+                DOWNLOAD_URL="$url_latest"
+                break
+            fi
 
-        read_input "$MSG_YOUR_CHOICE" CHOICE
+            local i=1
+            for file in $runner_files; do
+                show_message "  [$i] $file"
+                eval RUNNER_$i="'$file'"
+                i=$((i+1))
+            done
 
-        eval selected_runner_file=\$RUNNER_"$CHOICE"
+            while true; do
+                read_input "$MSG_YOUR_CHOICE" CHOICE
+                eval selected_runner_file=\$RUNNER_"$CHOICE"
 
-        if [ -z "$selected_runner_file" ]; then
-            show_error "$MSG_INVALID_CHOICE"
-            DOWNLOAD_URL="$url_latest"
-        else
-            DOWNLOAD_URL="$runner_base_url/$selected_runner_file"
-        fi
-        ;;
-    *)
-        show_error "$MSG_INVALID_CHOICE"
-        DOWNLOAD_URL="$url_latest"
-        ;;
-    esac
+                if [ -n "$selected_runner_file" ] && [ "$CHOICE" -ge 1 ] && [ "$CHOICE" -le $((i-1)) ] 2>/dev/null; then
+                    DOWNLOAD_URL="$runner_base_url/$selected_runner_file"
+                    break
+                else
+                    show_error "$MSG_INVALID_CHOICE. $MSG_REPEAT_INPUT"
+                fi
+            done
+            break
+            ;;
+        *)
+            show_error "$MSG_INVALID_CHOICE. $MSG_REPEAT_INPUT"
+            ;;
+        esac
+    done
 }
 
 # Установка singbox-ui / Install singbox-ui
