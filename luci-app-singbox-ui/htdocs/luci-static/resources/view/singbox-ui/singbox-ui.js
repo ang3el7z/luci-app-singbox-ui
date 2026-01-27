@@ -22,6 +22,8 @@ const getInputValueByKey = (key) => {
   return document.querySelector(`#${CSS.escape(id)}`)?.value.trim();
 };
 
+const TPROXY_RULE_FILE = '/etc/nftables.d/singbox.nft';
+
 async function loadFile(path) {
   try { return (await fs.read(path)) || ''; }
   catch { return ''; }
@@ -44,6 +46,50 @@ async function execService(name, action) {
   } catch (err) {
     console.error(`[${name}] Error executing "${action}":`, err);
     return 'error';
+  }
+}
+
+async function runNft(args) {
+  try {
+    return await fs.exec('/usr/sbin/nft', args);
+  } catch (e) {
+    return await fs.exec('nft', args);
+  }
+}
+
+async function isTproxyConfigPresent() {
+  try {
+    await fs.stat(TPROXY_RULE_FILE);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function isTproxyTablePresent() {
+  try {
+    await runNft(['list', 'table', 'ip', 'singbox']);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function disableTproxy() {
+  try {
+    await runNft(['delete', 'table', 'ip', 'singbox']);
+    console.log('[tproxy] nft table deleted');
+  } catch (e) {
+    console.warn('[tproxy] Failed to delete nft table:', e);
+  }
+}
+
+async function enableTproxy() {
+  try {
+    await runNft(['-f', TPROXY_RULE_FILE]);
+    console.log('[tproxy] nft rules applied');
+  } catch (e) {
+    console.warn('[tproxy] Failed to apply nft rules:', e);
   }
 }
 
@@ -193,6 +239,8 @@ async function createServiceButton(section, singboxManagmentTab, singboxStatus) 
     const singboxRunning = (singboxStatus === 'running');
     const healthAutoupdaterServiceTempFlag = await setUciOption('health_autoupdater_service_state', 'read', 'state');
     const autoupdaterServiceTempFlag = await setUciOption('autoupdater_service_state', 'read', 'state');
+    const tproxyConfigPresent = await isTproxyConfigPresent();
+    const tproxyActive = tproxyConfigPresent || await isTproxyTablePresent();
   
     function getServiceNames() {
       const names = ['Sing‑Box'];
@@ -225,6 +273,9 @@ async function createServiceButton(section, singboxManagmentTab, singboxStatus) 
           const stoppedServices = [];
   
           if (singboxRunning) {
+            if (tproxyActive) {
+              await disableTproxy();
+            }
             await execService('sing-box', 'stop');
             stoppedServices.push('Sing‑Box');
           }
@@ -242,6 +293,9 @@ async function createServiceButton(section, singboxManagmentTab, singboxStatus) 
           const startedServices = [];
   
           await execService('sing-box', 'start');
+          if (tproxyConfigPresent) {
+            await enableTproxy();
+          }
           startedServices.push('Sing‑Box');
   
           if (autoupdaterServiceTempFlag ) {
@@ -612,6 +666,9 @@ function createClearConfigButton(section, configTab, config) {
       await saveFile(`/etc/sing-box/${config.name}`, '{}', 'Config cleared');
       await saveFile(`/etc/sing-box/url_${config.name}`, '', 'URL cleared');
       if (config.name === 'config.json') {
+        if (await isTproxyTablePresent()) {
+          await disableTproxy();
+        }
         await execService('sing-box', 'stop');
         await execServiceLifecycle('singbox-ui-autoupdater-service', 'stop');
         await execServiceLifecycle('singbox-ui-health-autoupdater-service', 'stop');

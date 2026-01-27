@@ -224,6 +224,8 @@ init_language() {
             MSG_MODE_CHOICE="Ваш выбор: "
             MSG_INSTALLING_TPROXY_MODE="Установка TPROXY режима..."
             MSG_UNINSTALLING_TPROXY_MODE="Удаление TPROXY режима..."
+            MSG_TPROXY_ROUTE_SETUP="Настройка policy routing для TPROXY..."
+            MSG_TPROXY_ROUTE_CLEANUP="Удаление policy routing для TPROXY..."
             MSG_INSTALLING_TUN_MODE="Установка TUN режима..."
             MSG_UNINSTALLING_TUN_MODE="Удаление TUN режима..."
             MSG_UNINSTALL_EXISTING_FILES="Удаление существующих файлов sing-box..."
@@ -319,6 +321,8 @@ init_language() {
             MSG_MODE_CHOICE="Your choice: "
             MSG_INSTALLING_TPROXY_MODE="Installing TPROXY mode..."
             MSG_UNINSTALLING_TPROXY_MODE="Uninstalling TPROXY mode..."
+            MSG_TPROXY_ROUTE_SETUP="Configuring TPROXY policy routing..."
+            MSG_TPROXY_ROUTE_CLEANUP="Removing TPROXY policy routing..."
             MSG_INSTALLING_TUN_MODE="Installing TUN mode..."
             MSG_UNINSTALLING_TUN_MODE="Uninstalling TUN mode..."
             MSG_UNINSTALL_EXISTING_FILES="Uninstalling existing sing-box files..."
@@ -795,6 +799,8 @@ uninstall_existing_files(){
 install_nft_rule() {
     nft_rule_file="/etc/nftables.d/singbox.nft"
 
+    mkdir -p /etc/nftables.d
+
     cat << 'EOF' > "$nft_rule_file"
 define RESERVED_IP = {
     10.0.0.0/8,
@@ -834,6 +840,21 @@ EOF
 # Удаление правил nft / Remove nft rules
 uninstall_nft_rule() {
     nft delete table ip singbox 2>/dev/null
+    rm -f /etc/nftables.d/singbox.nft
+}
+
+# Настройка policy routing для TPROXY / Configure policy routing for TPROXY
+setup_tproxy_routing() {
+    show_progress "$MSG_TPROXY_ROUTE_SETUP"
+    ip rule add fwmark 1 table 100 2>/dev/null || true
+    ip route add local 0.0.0.0/0 dev lo table 100 2>/dev/null || true
+}
+
+# Удаление policy routing для TPROXY / Remove policy routing for TPROXY
+cleanup_tproxy_routing() {
+    show_progress "$MSG_TPROXY_ROUTE_CLEANUP"
+    ip rule del fwmark 1 table 100 2>/dev/null || true
+    ip route flush table 100 2>/dev/null || true
 }
 
 # Выбор режима / Choose mode
@@ -882,13 +903,17 @@ uninstalled_tun_mode() {
 # Установка tproxy mode / Install tproxy mode
 installed_tproxy_mode() {
     show_progress "$MSG_INSTALLING_TPROXY_MODE"
+    setup_tproxy_routing
     install_nft_rule
+    enable_singbox
+    network_check
 }
 
 # Удаление tproxy mode / Uninstall tproxy mode
 uninstalled_tproxy_mode() {
     show_progress "$MSG_UNINSTALLING_TPROXY_MODE"
     uninstall_nft_rule
+    cleanup_tproxy_routing
 }
 
 # Выбор режима установки / Choose install mode
@@ -898,17 +923,7 @@ perform_install_mode() {
             installed_tun_mode
             ;;
         2)
-            read_input "$MSG_MODE_TPROXY_IN_DEVELOPMENT" MODE_DEVELOPMENT
-            case $MODE_DEVELOPMENTE in
-                [Yy])
-                    installed_tproxy_mode
-                    ;;
-                *)
-                    unset MODE
-                    choose_mode
-                    perform_install_mode
-                    ;;
-            esac
+            installed_tproxy_mode
             ;;
         *)
             show_error "$MSG_INVALID_MODE"
