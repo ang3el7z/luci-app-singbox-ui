@@ -174,10 +174,20 @@ init_language() {
     local script_name="install-one-click.sh"
 
     if [ -z "$LANG" ]; then
-        show_message "Выберите язык / Select language [1/2]:"
-        show_message "1. Русский (Russian)"
-        show_message "2. English (Английский)"
-        read_input " Ваш выбор / Your choice [1/2]: " LANG
+        while true; do
+            show_message "Выберите язык / Select language [1/2]:"
+            show_message "1. Русский (Russian)"
+            show_message "2. English (Английский)"
+            read_input " Ваш выбор / Your choice [1/2]: " LANG
+            case "$LANG" in
+                1|2)
+                    break
+                    ;;
+                *)
+                    show_error "Неверный выбор / Invalid choice"
+                    ;;
+            esac
+        done
     fi
     
     case ${LANG:-1} in
@@ -202,6 +212,8 @@ init_language() {
             MSG_WAITING="Ожидание %d сек"
             MSG_ROUTER_NOT_AVAILABLE="Роутер %s не доступен после %d сек"
             MSG_BRANCH="Введите ветку (по умолчанию main, нажмите Enter): "
+            MSG_INVALID_INPUT="Некорректный ввод"
+            MSG_REPEAT_INPUT="Повторите ввод"
             ;;
         *)
             MSG_INSTALL_TITLE="Starting! ($script_name)"
@@ -224,6 +236,8 @@ init_language() {
             MSG_WAITING="Waiting %d sec"
             MSG_ROUTER_NOT_AVAILABLE="Router %s not available after %d sec"
             MSG_BRANCH="Enter BRANCH (default main, press Enter): "
+            MSG_INVALID_INPUT="Invalid input"
+            MSG_REPEAT_INPUT="Repeat input"
             ;;
     esac
 }
@@ -331,16 +345,26 @@ input_data() {
 
 # Запрос на сброс роутера / Ask for router reset
 clear_router() {
-    read_input "$MSG_RESET_ROUTER" RESET_CHOICE
-    case "$RESET_CHOICE" in
-      [Yy])
-        if reset_router; then
-            waiting 60 && wait_for_router && network_check
-        else
-            exit 1
-        fi
-        ;;
-    esac
+    while true; do
+        read_input "$MSG_RESET_ROUTER" RESET_CHOICE
+        case "$RESET_CHOICE" in
+          [Yy]|[Nn]|"")
+            case "$RESET_CHOICE" in
+              [Yy])
+                if reset_router; then
+                    waiting 60 && wait_for_router && network_check
+                else
+                    exit 1
+                fi
+                ;;
+            esac
+            break
+            ;;
+          *)
+            show_error "$MSG_INVALID_INPUT. $MSG_REPEAT_INPUT"
+            ;;
+        esac
+    done
 }
 
 # Удаление старого ключа / Remove old key

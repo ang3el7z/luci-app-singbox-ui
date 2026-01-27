@@ -163,10 +163,20 @@ init_language() {
     local script_name="install-singbox.sh"
 
     if [ -z "$LANG" ]; then
-        show_message "Выберите язык / Select language [1/2]:"
-        show_message "1. Русский (Russian)"
-        show_message "2. English (Английский)"
-        read_input " Ваш выбор / Your choice [1/2]: " LANG
+        while true; do
+            show_message "Выберите язык / Select language [1/2]:"
+            show_message "1. Русский (Russian)"
+            show_message "2. English (Английский)"
+            read_input " Ваш выбор / Your choice [1/2]: " LANG
+            case "$LANG" in
+                1|2)
+                    break
+                    ;;
+                *)
+                    show_error "Invalid choice. Please enter 1 or 2."
+                    ;;
+            esac
+        done
     fi
 
     case ${LANG:-2} in
@@ -266,6 +276,8 @@ init_language() {
             MSG_SINGBOX_DOWNLOAD_START="Загрузка sing-box_1.11.15 в /tmp..."
             MSG_SINGBOX_DOWNLOAD_SUCCESS="Файл sing-box_1.11.15 успешно загружен в /tmp."
             MSG_SINGBOX_DOWNLOAD_ERROR="Не удалось скачать файл sing-box_1.11.15. Проверьте подключение к интернету."
+            MSG_INVALID_INPUT="Ошибка: Некорректный ввод"
+            MSG_REPEAT_INPUT="Повторите ввод"
             ;;
         *)
             MSG_INSTALL_TITLE="Starting! ($script_name)"
@@ -359,6 +371,8 @@ init_language() {
             MSG_SINGBOX_DOWNLOAD_START="Downloading sing-box_1.11.15 to /tmp..."
             MSG_SINGBOX_DOWNLOAD_SUCCESS="sing-box_1.11.15 downloaded to /tmp successfully."
             MSG_SINGBOX_DOWNLOAD_ERROR="Failed to download sing-box_1.11.15. Please check your internet connection."
+            MSG_INVALID_INPUT="Error: Invalid input"
+            MSG_REPEAT_INPUT="Repeat input"
             ;;
     esac
 }
@@ -384,11 +398,21 @@ update_pkgs() {
 # Выбор операции установки / Choose install operation
 choose_install_operation() {
     if [ -z "$OPERATION" ]; then
-        show_message "$MSG_OPERATION"
-        show_message "$MSG_INSTALL"
-        show_message "$MSG_DELETE"
-        show_message "$MSG_REINSTALL_UPDATE"
-        read_input "$MSG_CHOICE" OPERATION
+        while true; do
+            show_message "$MSG_OPERATION"
+            show_message "$MSG_INSTALL"
+            show_message "$MSG_DELETE"
+            show_message "$MSG_REINSTALL_UPDATE"
+            read_input "$MSG_CHOICE" OPERATION
+            case "$OPERATION" in
+                1|2|3)
+                    break
+                    ;;
+                *)
+                    show_error "$MSG_INVALID_INPUT. $MSG_REPEAT_INPUT"
+                    ;;
+            esac
+        done
     fi
 }
 
@@ -434,12 +458,22 @@ install_singbox() {
     
     # Спросить только при первом использовании
     if [ -z "$SINGBOX_INSTALL_MODE" ]; then
-        show_message ""
-        show_message "$MSG_SINGBOX_CHOOSE"
-        show_message "$MSG_SINGBOX_OPTION1"
-        show_message "$MSG_SINGBOX_OPTION2"
-        show_message ""
-        read_input "$MSG_SINGBOX_PROMPT" SINGBOX_INSTALL_MODE
+        while true; do
+            show_message ""
+            show_message "$MSG_SINGBOX_CHOOSE"
+            show_message "$MSG_SINGBOX_OPTION1"
+            show_message "$MSG_SINGBOX_OPTION2"
+            show_message ""
+            read_input "$MSG_SINGBOX_PROMPT" SINGBOX_INSTALL_MODE
+            case "$SINGBOX_INSTALL_MODE" in
+                1|2)
+                    break
+                    ;;
+                *)
+                    show_error "$MSG_INVALID_INPUT. $MSG_REPEAT_INPUT"
+                    ;;
+            esac
+        done
     fi
 
     if [ "$SINGBOX_INSTALL_MODE" = "1" ]; then
@@ -455,9 +489,6 @@ install_singbox() {
     elif [ "$SINGBOX_INSTALL_MODE" = "2" ]; then
         # Ручная установка из /tmp
         manual_singbox_install
-    else
-        show_error "$MSG_INVALID_INPUT"
-        exit 1
     fi
 }
 
@@ -494,39 +525,40 @@ manual_singbox_install() {
             show_message "$MSG_SINGBOX_DOWNLOAD_MENU_OPTION1"
             show_message "$MSG_SINGBOX_DOWNLOAD_MENU_OPTION2"
             show_message "$MSG_SINGBOX_DOWNLOAD_MENU_OPTION3"
-            read_input "$MSG_SINGBOX_DOWNLOAD_PROMPT" RETRY_CHOICE
+            while true; do
+                read_input "$MSG_SINGBOX_DOWNLOAD_PROMPT" RETRY_CHOICE
+                case $RETRY_CHOICE in
+                    1)
+                        show_progress "$MSG_SINGBOX_DOWNLOAD_START"
 
-            case $RETRY_CHOICE in
-                1)
-                    show_progress "$MSG_SINGBOX_DOWNLOAD_START"
+                        # удалить старый, если был
+                        [ -f "$SINGBOX_DEFAULT_IPK_DST" ] && rm -f "$SINGBOX_DEFAULT_IPK_DST"
 
-                    # удалить старый, если был
-                    [ -f "$SINGBOX_DEFAULT_IPK_DST" ] && rm -f "$SINGBOX_DEFAULT_IPK_DST"
-
-                    if wget -O "$SINGBOX_DEFAULT_IPK_DST" "$SINGBOX_DEFAULT_IPK_URL"; then
-                        show_success "$MSG_SINGBOX_DOWNLOAD_SUCCESS"
-                        # после загрузки вернуться в начало цикла — теперь файл найдётся
-                        continue
-                    else
-                        show_error "$MSG_SINGBOX_DOWNLOAD_ERROR"
-                        # вернуться к ручной загрузке/поиску
-                        continue
-                    fi
-                    ;;
-                2)
-                    SINGBOX_INSTALL_MODE="1"
-                    install_singbox
-                    return
-                    ;;
-                3)
-                    # просто заново показать инструкции по ручной загрузке и повторить поиск
-                    continue
-                    ;;
-                *)
-                    show_error "$MSG_INVALID_INPUT"
-                    exit 1
-                    ;;
-            esac
+                        if wget -O "$SINGBOX_DEFAULT_IPK_DST" "$SINGBOX_DEFAULT_IPK_URL"; then
+                            show_success "$MSG_SINGBOX_DOWNLOAD_SUCCESS"
+                            # после загрузки вернуться в начало цикла — теперь файл найдётся
+                            break
+                        else
+                            show_error "$MSG_SINGBOX_DOWNLOAD_ERROR"
+                            # вернуться к ручной загрузке/поиску
+                            break
+                        fi
+                        ;;
+                    2)
+                        SINGBOX_INSTALL_MODE="1"
+                        install_singbox
+                        return
+                        ;;
+                    3)
+                        # просто заново показать инструкции по ручной загрузке и повторить поиск
+                        break
+                        ;;
+                    *)
+                        show_error "$MSG_INVALID_INPUT. $MSG_REPEAT_INPUT"
+                        ;;
+                esac
+            done
+            [ "$RETRY_CHOICE" = "1" ] || [ "$RETRY_CHOICE" = "3" ] && continue
         fi
 
         local selected_file=""
@@ -551,19 +583,31 @@ $ipk_files
 EOF
             
             show_message ""
-            read_input "$MSG_SINGBOX_SELECT_FILE" SINGBOX_FILE_CHOICE
-            
-            # Проверка выбора
-            if [ "$SINGBOX_FILE_CHOICE" -lt 1 ] || [ "$SINGBOX_FILE_CHOICE" -gt $ipk_count ]; then
-                show_error "$MSG_INVALID_INPUT"
-                continue
-            fi
+            while true; do
+                read_input "$MSG_SINGBOX_SELECT_FILE" SINGBOX_FILE_CHOICE
+                # Проверка выбора
+                if [ "$SINGBOX_FILE_CHOICE" -ge 1 ] && [ "$SINGBOX_FILE_CHOICE" -le $ipk_count ] 2>/dev/null; then
+                    break
+                else
+                    show_error "$MSG_INVALID_INPUT. $MSG_REPEAT_INPUT"
+                fi
+            done
             
             selected_file=$(echo "$ipk_files" | sed -n "${SINGBOX_FILE_CHOICE}p")
         fi
         
         # Подтверждение установки
-        read_input "$MSG_SINGBOX_CONFIRM_PROMPT" SINGBOX_MANUAL_CONFIRM
+        while true; do
+            read_input "$MSG_SINGBOX_CONFIRM_PROMPT" SINGBOX_MANUAL_CONFIRM
+            case "$SINGBOX_MANUAL_CONFIRM" in
+                1|2)
+                    break
+                    ;;
+                *)
+                    show_error "$MSG_INVALID_INPUT. $MSG_REPEAT_INPUT"
+                    ;;
+            esac
+        done
         
         if [ "$SINGBOX_MANUAL_CONFIRM" = "1" ]; then
             show_progress "$MSG_INSTALL_SINGBOX"
@@ -580,26 +624,27 @@ EOF
                 show_message "1) $MSG_SINGBOX_TRY_ANOTHER_FILE"
                 show_message "2) $MSG_SINGBOX_USE_STORE"
                 show_message "3) $MSG_SINGBOX_EXIT"
-                read_input "$MSG_SINGBOX_ERROR_CHOICE" ERROR_CHOICE
-                
-                case $ERROR_CHOICE in
-                    1)
-                        rm -f "$selected_file"
-                        continue
-                        ;;
-                    2)
-                        SINGBOX_INSTALL_MODE="1"
-                        install_singbox
-                        return
-                        ;;
-                    3)
-                        exit 1
-                        ;;
+                while true; do
+                    read_input "$MSG_SINGBOX_ERROR_CHOICE" ERROR_CHOICE
+                    case $ERROR_CHOICE in
+                        1)
+                            rm -f "$selected_file"
+                            break
+                            ;;
+                        2)
+                            SINGBOX_INSTALL_MODE="1"
+                            install_singbox
+                            return
+                            ;;
+                        3)
+                            exit 1
+                            ;;
                     *)
-                        show_error "$MSG_INVALID_INPUT"
-                        exit 1
+                        show_error "$MSG_INVALID_INPUT. $MSG_REPEAT_INPUT"
                         ;;
-                esac
+                    esac
+                done
+                [ "$ERROR_CHOICE" = "1" ] && continue
             fi
         elif [ "$SINGBOX_MANUAL_CONFIRM" = "2" ]; then
             SINGBOX_INSTALL_MODE="1"
@@ -745,12 +790,27 @@ restart_firewall() {
 restart_network() {
     # Спросить только при первом использовании
     if [ -z "$RESTART_MODE" ]; then
-        show_message ""
-        show_message "$MSG_NET_CHOOSE"
-        show_message "$MSG_NET_OPTION1"
-        show_message "$MSG_NET_OPTION2"
+        while true; do
+            show_message ""
+            show_message "$MSG_NET_CHOOSE"
+            show_message "$MSG_NET_OPTION1"
+            show_message "$MSG_NET_OPTION2"
 
-        read_input "$MSG_NET_PROMPT" RESTART_MODE
+            read_input "$MSG_NET_PROMPT" RESTART_MODE
+            # Если пусто, используем значение по умолчанию (2)
+            if [ -z "$RESTART_MODE" ]; then
+                RESTART_MODE="2"
+                break
+            fi
+            case "$RESTART_MODE" in
+                1|2)
+                    break
+                    ;;
+                *)
+                    show_error "$MSG_INVALID_INPUT. $MSG_REPEAT_INPUT"
+                    ;;
+            esac
+        done
     fi
 
     show_progress "$MSG_RESTART_NETWORK"
@@ -860,10 +920,20 @@ cleanup_tproxy_routing() {
 # Выбор режима / Choose mode
 choose_mode() {
     if [ -z "$MODE" ]; then
-        show_message "$MSG_MODE"
-        show_message "$MSG_TUN"
-        show_message "$MSG_TPROXY"
-        read_input "$MSG_MODE_CHOICE" MODE
+        while true; do
+            show_message "$MSG_MODE"
+            show_message "$MSG_TUN"
+            show_message "$MSG_TPROXY"
+            read_input "$MSG_MODE_CHOICE" MODE
+            case "$MODE" in
+                1|2)
+                    break
+                    ;;
+                *)
+                    show_error "$MSG_INVALID_MODE. $MSG_REPEAT_INPUT"
+                    ;;
+            esac
+        done
     fi
 }
 

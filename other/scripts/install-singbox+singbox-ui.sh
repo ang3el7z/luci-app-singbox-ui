@@ -170,10 +170,20 @@ init_language() {
     local script_name="install-singbox+singbox-ui.sh"
 
     if [ -z "$LANG" ]; then
-        show_message "Выберите язык / Select language [1/2]:"
-        show_message "1. Русский (Russian)"
-        show_message "2. English (Английский)"
-        read_input " Ваш выбор / Your choice [1/2]: " LANG
+        while true; do
+            show_message "Выберите язык / Select language [1/2]:"
+            show_message "1. Русский (Russian)"
+            show_message "2. English (Английский)"
+            read_input " Ваш выбор / Your choice [1/2]: " LANG
+            case "$LANG" in
+                1|2)
+                    break
+                    ;;
+                *)
+                    show_error "Invalid choice. Please enter 1 or 2."
+                    ;;
+            esac
+        done
     fi
 
     case ${LANG:-2} in
@@ -204,6 +214,7 @@ init_language() {
         MSG_OPERATION_CHOICE="Ваш выбор: "
         MSG_INSTALL_SFTP_SERVER="Установить openssh-sftp-server? y/n (n - по умолчанию): "
         MSG_INVALID_INPUT="Некорректный ввод"
+        MSG_REPEAT_INPUT="Повторите ввод"
         ;;
     *)
         MSG_INSTALL_TITLE="Starting! ($script_name)"
@@ -232,6 +243,7 @@ init_language() {
         MSG_OPERATION_CHOICE="Your choice: "
         MSG_INSTALL_SFTP_SERVER="Install openssh-sftp-server? y/n (n - by default): "
         MSG_INVALID_INPUT="Invalid input"
+        MSG_REPEAT_INPUT="Repeat input"
         ;;
 esac
 }
@@ -251,14 +263,24 @@ update_pkgs() {
         echo "$MSG_SFTP_ALREADY_INSTALLED"
         SFTP_SERVER="n"
     else
-        read_input "$MSG_INSTALL_SFTP_SERVER" SFTP_SERVER
-        if [ -z "$SFTP_SERVER" ]; then
-            SFTP_SERVER="n"
-        fi
+        while true; do
+            read_input "$MSG_INSTALL_SFTP_SERVER" SFTP_SERVER
+            if [ -z "$SFTP_SERVER" ]; then
+                SFTP_SERVER="n"
+            fi
+            case "$SFTP_SERVER" in
+                [Yy]|[Nn])
+                    break
+                    ;;
+                *)
+                    show_error "$MSG_INVALID_INPUT. $MSG_REPEAT_INPUT"
+                    ;;
+            esac
+        done
     fi
 
     case $SFTP_SERVER in
-    y)
+    [Yy])
         if opkg update && opkg install openssh-sftp-server; then
             show_success "$MSG_DEPS_SUCCESS"
         else
@@ -266,17 +288,13 @@ update_pkgs() {
             exit 1
         fi
         ;;
-    n)
+    [Nn]|"")
         if opkg update; then
             show_success "$MSG_DEPS_SUCCESS"
         else
             show_error "$MSG_DEPS_ERROR"
             exit 1
         fi
-        ;;
-    *)
-        show_error "$MSG_DEPS_ERROR"
-        exit 1
         ;;
     esac
 }
@@ -285,11 +303,21 @@ update_pkgs() {
 # Выбор операции установки / Choose install operation
 choose_install_operation() {
     if [ -z "$OPERATION" ]; then
-        show_message "$MSG_OPERATION"
-        show_message "$MSG_OPERATION_INSTALL"
-        show_message "$MSG_OPERATION_DELETE"
-        show_message "$MSG_OPERATION_REINSTALL_UPDATE"
-        read_input "$MSG_OPERATION_CHOICE" OPERATION
+        while true; do
+            show_message "$MSG_OPERATION"
+            show_message "$MSG_OPERATION_INSTALL"
+            show_message "$MSG_OPERATION_DELETE"
+            show_message "$MSG_OPERATION_REINSTALL_UPDATE"
+            read_input "$MSG_OPERATION_CHOICE" OPERATION
+            case "$OPERATION" in
+                1|2|3)
+                    break
+                    ;;
+                *)
+                    show_error "$MSG_INVALID_INPUT. $MSG_REPEAT_INPUT"
+                    ;;
+            esac
+        done
     fi
 }
 
@@ -354,14 +382,24 @@ install_singbox_ui_script() {
 # Выбор варианта установки / Choose installation variant
 choose_action() {
     if [ -z "$ACTION_CHOICE" ]; then
-        show_message "$MSG_INSTALL_ACTION"
-        show_message "$MSG_INSTALL_SINGBOX_UI"
-        show_message "$MSG_INSTALL_SINGBOX"
-        show_message "$MSG_INSTALL_SINGBOX_UI_AND_SINGBOX"
-        read_input "$MSG_INSTALL_ACTION_CHOICE" ACTION_CHOICE
+        while true; do
+            show_message "$MSG_INSTALL_ACTION"
+            show_message "$MSG_INSTALL_SINGBOX_UI"
+            show_message "$MSG_INSTALL_SINGBOX"
+            show_message "$MSG_INSTALL_SINGBOX_UI_AND_SINGBOX"
+            read_input "$MSG_INSTALL_ACTION_CHOICE" ACTION_CHOICE
+            case "$ACTION_CHOICE" in
+                1|2|3)
+                    break
+                    ;;
+                *)
+                    show_error "$MSG_INVALID_INPUT. $MSG_REPEAT_INPUT"
+                    ;;
+            esac
+        done
     fi
 
-    case "${ACTION_CHOICE:-2}" in
+    case "$ACTION_CHOICE" in
         1)
             install_singbox_ui_script
             ;;
@@ -371,10 +409,6 @@ choose_action() {
         3)
             install_singbox_script
             install_singbox_ui_script
-            ;;
-        *)
-            show_error "$MSG_INVALID_INPUT"
-            exit 1
             ;;
     esac
 }
