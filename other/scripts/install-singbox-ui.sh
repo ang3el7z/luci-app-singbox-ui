@@ -239,7 +239,7 @@ choose_install_version() {
               | sort_by(.published_at)
               | last
               | .assets[]?
-              | select(.name|test("luci-app-singbox-ui.*\\.ipk$"))
+              | select((.name | startswith("luci-app-singbox-ui")) and (.name | endswith(".ipk")))
               | .browser_download_url' | head -n 1
     }
 
