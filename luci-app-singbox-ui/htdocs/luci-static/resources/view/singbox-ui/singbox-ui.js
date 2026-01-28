@@ -23,6 +23,9 @@ const getInputValueByKey = (key) => {
 };
 
 const TPROXY_RULE_FILE = '/etc/nftables.d/singbox.nft';
+const STYLE_ID = 'singbox-ui-style';
+const LOG_OUTPUT_ID = 'singbox-ui-log-output';
+const LOG_LIMIT = 200;
 
 async function loadFile(path) {
   try { return (await fs.read(path)) || ''; }
@@ -173,6 +176,82 @@ function loadScript(src) {
       script.onerror = reject;
       document.head.appendChild(script);
   });
+}
+
+function loadStyle(src) {
+  return new Promise((resolve, reject) => {
+    if (document.getElementById(STYLE_ID)) return resolve();
+    const link = document.createElement('link');
+    link.id = STYLE_ID;
+    link.rel = 'stylesheet';
+    link.href = src;
+    link.onload = resolve;
+    link.onerror = reject;
+    document.head.appendChild(link);
+  });
+}
+
+async function getKernelVersion() {
+  try {
+    const { stdout } = await fs.exec('/bin/uname', ['-r']);
+    return stdout.trim() || 'unknown';
+  } catch {
+    return 'unknown';
+  }
+}
+
+async function getSingboxUiVersion() {
+  const controlPath = '/usr/lib/opkg/info/luci-app-singbox-ui.control';
+  const control = await loadFile(controlPath);
+  if (control) {
+    const match = control.match(/^Version:\s*(.+)$/m);
+    if (match) return match[1].trim();
+  }
+  try {
+    const { stdout } = await fs.exec('/bin/opkg', ['status', 'luci-app-singbox-ui']);
+    const match = stdout.match(/^Version:\s*(.+)$/m);
+    return match ? match[1].trim() : 'unknown';
+  } catch {
+    return 'unknown';
+  }
+}
+
+async function getSingBoxVersion() {
+  try {
+    const { stdout } = await fs.exec('/usr/bin/sing-box', ['version']);
+    const line = stdout.trim().split('\n')[0] || '';
+    return line.replace(/^sing-box\s*/i, '').trim() || 'unknown';
+  } catch {
+    return 'unknown';
+  }
+}
+
+async function readLogEntries() {
+  const args = ['-l', String(LOG_LIMIT), '-e', 'sing-box', '-e', 'singbox-ui'];
+  try {
+    const { stdout } = await fs.exec('/sbin/logread', args);
+    return stdout.trim();
+  } catch (e) {
+    try {
+      const { stdout } = await fs.exec('logread', args);
+      return stdout.trim();
+    } catch (err) {
+      return `Failed to read logs: ${err.message || err}`;
+    }
+  }
+}
+
+async function refreshLogOutput() {
+  const output = document.getElementById(LOG_OUTPUT_ID);
+  if (!output) return;
+  output.textContent = 'Loading...';
+  const logs = await readLogEntries();
+  output.textContent = logs || 'No logs found';
+}
+
+function clearLogOutput() {
+  const output = document.getElementById(LOG_OUTPUT_ID);
+  if (output) output.textContent = '';
 }
 
 async function setUciOption(option, mode, value = null) {
@@ -491,6 +570,93 @@ function createServiceStatusDisplay(section,singboxManagmentTab, singboxStatus) 
   };
 }
 
+function getBadge(status, label) {
+  const statusClass = status === 'running'
+    ? 'singbox-badge--ok'
+    : status === 'inactive'
+      ? 'singbox-badge--warn'
+      : 'singbox-badge--err';
+  return `<span class="singbox-badge ${statusClass}">${label}</span>`;
+}
+
+function createOverviewCards(section, overviewTab, info) {
+  const dv = section.taboption(overviewTab, form.DummyValue, '_overview_cards', '');
+  dv.rawhtml = true;
+  dv.cfgvalue = () => {
+    const statusLabel = info.singboxStatus === 'running'
+      ? 'Running'
+      : info.singboxStatus === 'inactive'
+        ? 'Stopped'
+        : 'Error';
+    const statusBadge = getBadge(info.singboxStatus, statusLabel);
+    const tproxyBadge = info.tproxyActive
+      ? '<span class="singbox-badge singbox-badge--ok">Enabled</span>'
+      : '<span class="singbox-badge singbox-badge--muted">Disabled</span>';
+
+    return `
+      <div class="singbox-grid">
+        <div class="singbox-card">
+          <div class="singbox-card__title">Service</div>
+          <div class="singbox-card__row">
+            <span>Status</span>
+            ${statusBadge}
+          </div>
+          <div class="singbox-card__row">
+            <span>Sing‑Box</span>
+            <span class="singbox-mono">${info.singboxVersion}</span>
+          </div>
+          <div class="singbox-card__row">
+            <span>TPROXY</span>
+            ${tproxyBadge}
+          </div>
+        </div>
+        <div class="singbox-card">
+          <div class="singbox-card__title">System</div>
+          <div class="singbox-card__row">
+            <span>Kernel</span>
+            <span class="singbox-mono">${info.kernelVersion}</span>
+          </div>
+          <div class="singbox-card__row">
+            <span>Singbox‑UI</span>
+            <span class="singbox-mono">${info.uiVersion}</span>
+          </div>
+        </div>
+        <div class="singbox-card">
+          <div class="singbox-card__title">Actions</div>
+          <div class="singbox-card__hint">Use the buttons below to control services and reload config.</div>
+        </div>
+      </div>
+    `;
+  };
+}
+
+async function createLogsPanel(section, logsTab) {
+  const option = section.taboption(logsTab, form.DummyValue, 'logs_panel', '');
+  option.rawhtml = true;
+  option.render = async function () {
+    const refreshBtn = E('button', {
+      class: 'cbi-button cbi-button-apply',
+      click: () => refreshLogOutput()
+    }, ['Refresh']);
+
+    const clearBtn = E('button', {
+      class: 'cbi-button cbi-button-negative',
+      click: () => clearLogOutput()
+    }, ['Clear']);
+
+    const toolbar = E('div', { class: 'singbox-log__toolbar' }, [
+      refreshBtn,
+      clearBtn,
+      E('span', { class: 'singbox-log__hint' }, [`Last ${LOG_LIMIT} lines from logread`])
+    ]);
+
+    const output = E('pre', { id: LOG_OUTPUT_ID, class: 'singbox-log__output' }, ['Loading...']);
+    const container = E('div', { class: 'singbox-log' }, [toolbar, output]);
+    await refreshLogOutput();
+    return container;
+  };
+}
+
 // === Components ============================================
 
 async function initializeAceEditor(content, key) {
@@ -698,25 +864,39 @@ return view.extend({
   handleReset: null,
 
   async render() {
+    await loadStyle('/luci-static/resources/view/singbox-ui/singbox-ui.css');
+
     const map = new form.Map('singbox-ui', 'Sing‑Box UI Configuration');
     const section = map.section(form.TypedSection, 'main', 'ㅤ');
     section.anonymous = true;
 
     // getServiceStatus
     const singboxStatus = await execService('sing-box', 'status');
+    const kernelVersion = await getKernelVersion();
+    const uiVersion = await getSingboxUiVersion();
+    const singboxVersion = await getSingBoxVersion();
 
     // isServiceActive
     const healthAutoupdaterServiceEnabled = await isServiceActive('singbox-ui-health-autoupdater-service');
     const autoupdaterServiceEnabled = await isServiceActive('singbox-ui-autoupdater-service');
     const memdocServiceEnabled = await isServiceActive('singbox-ui-memdoc-service');
+    const tproxyConfigPresent = await isTproxyConfigPresent();
+    const tproxyActive = tproxyConfigPresent || await isTproxyTablePresent();
     
-    //Singbox Management Tab
-    const singboxManagmentTab = 'singbox-management'
-    section.tab(singboxManagmentTab, 'Singbox');
+    //Overview Tab
+    const overviewTab = 'overview'
+    section.tab(overviewTab, 'Dashboard');
 
-    createServiceStatusDisplay(section, singboxManagmentTab,singboxStatus);
-    createDashboardButton(section, singboxManagmentTab, singboxStatus);
-    await createServiceButton(section, singboxManagmentTab, singboxStatus);
+    createOverviewCards(section, overviewTab, {
+      singboxStatus,
+      kernelVersion,
+      uiVersion,
+      singboxVersion,
+      tproxyActive
+    });
+
+    createDashboardButton(section, overviewTab, singboxStatus);
+    await createServiceButton(section, overviewTab, singboxStatus);
  
     //Configs Management Tab
     const configs = [
@@ -744,6 +924,11 @@ return view.extend({
     await createToggleAutoupdaterServiceButton(section, serviceManagementTab, configs[0], autoupdaterServiceEnabled, healthAutoupdaterServiceEnabled);
     await createToggleHealthAutoupdaterServiceButton(section, serviceManagementTab, configs[0], healthAutoupdaterServiceEnabled, autoupdaterServiceEnabled);
     await createToggleMemdocServiceButton(section, serviceManagementTab, memdocServiceEnabled);
+
+    //Logs Tab
+    const logsTab = 'logs'
+    section.tab(logsTab, 'Logs');
+    await createLogsPanel(section, logsTab);
     
     return map.render();
   }

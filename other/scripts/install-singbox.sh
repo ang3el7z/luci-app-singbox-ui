@@ -1,162 +1,24 @@
 #!/bin/sh
 
-# Цветовая палитра / Color palette
-FG_ACCENT='\033[38;5;85m'
-FG_SUCCESS='\033[38;5;41m'
-FG_ERROR='\033[38;5;203m'
-RESET='\033[0m'
-FG_USER_COLOR='\033[38;5;117m'
+BRANCH="${BRANCH:-main}"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+UI_LIB="$SCRIPT_DIR/lib/ui.sh"
 
-# Символы оформления / UI symbols
-SEP_CHAR="-"
-ARROW="▸"
-ARROW_CLEAR=">"
-CHECK="✓"
-CROSS="✗"
-INDENT="  "
-
-# Прогресс / Progress
-show_progress() {
-    echo -e "${INDENT}${ARROW} ${FG_ACCENT}$1${RESET}"
-}
-
-# Успех / Success
-show_success() {
-    echo -e "${INDENT}${CHECK} ${FG_SUCCESS}$1${RESET}\n"
-}
-
-# Ошибка / Error
-show_error() {
-    echo -e "${INDENT}${CROSS} ${FG_ERROR}$1${RESET}\n"
-}
-
-# Сообщение / Message
-show_message() {
-    echo -e "${FG_USER_COLOR}${INDENT}${ARROW} $1${RESET}"
-}
-
-# Ввод / Input
-read_input() {
-    echo -ne "${FG_USER_COLOR}${INDENT}${ARROW_CLEAR} $1${RESET} "
-    if [ -n "$2" ]; then
-        read -r "$2" 
-    else
-        read -r REPLY 
+if [ ! -f "$UI_LIB" ]; then
+    mkdir -p "$SCRIPT_DIR/lib"
+    if command -v wget >/dev/null 2>&1; then
+        wget -O "$UI_LIB" "https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/$BRANCH/other/scripts/lib/ui.sh" >/dev/null 2>&1
+    elif command -v curl >/dev/null 2>&1; then
+        curl -fsSL "https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/$BRANCH/other/scripts/lib/ui.sh" -o "$UI_LIB" >/dev/null 2>&1
     fi
-}
+fi
 
-# Разделитель / Separator
-separator() {
-    local text="$1"
+if [ ! -f "$UI_LIB" ]; then
+    echo "Failed to load UI helpers. Please check network or script path."
+    exit 1
+fi
 
-    get_terminal_width() {
-        local w
-        w=$(tput cols 2>/dev/null)
-        if [ -n "$w" ]; then
-            echo "$w"
-            return
-        fi
-        if [ -n "$COLUMNS" ]; then
-            echo "$COLUMNS"
-            return
-        fi
-        w=$(stty size 2>/dev/null | awk '{print $2}')
-        if [ -n "$w" ]; then
-            echo "$w"
-            return
-        fi
-        echo 100
-    }
-
-    local width
-    width=$(get_terminal_width)
-
-    SEP_CHAR=${SEP_CHAR:-"o"}
-    FG_ACCENT=${FG_ACCENT:-"\033[38;5;85m"}
-    RESET=${RESET:-"\033[0m"}
-
-    if [ -z "$text" ]; then
-        local line=$(printf "%${width}s" " " | tr ' ' "${SEP_CHAR}")
-        echo -e "${FG_ACCENT}${line}${RESET}"
-        return
-    fi
-
-    local clean_text
-    clean_text=$(echo -n "$text" | sed 's/\x1b\[[0-9;]*m//g')
-
-    local text_area=$((width / 2))
-    local side_width=$((width / 4))
-
-    if [ ${#clean_text} -le "$text_area" ]; then
-        local padding_needed=$((text_area - ${#clean_text}))
-        local left_padding=$((padding_needed / 2))
-        local right_padding=$((padding_needed - left_padding))
-
-        local side_part=$(printf "%${side_width}s" " " | tr ' ' "${SEP_CHAR}")
-        local left_text_pad=$(printf "%${left_padding}s" " ")
-        local right_text_pad=$(printf "%${right_padding}s" " ")
-
-        echo -e "${FG_ACCENT}${side_part}${RESET}${left_text_pad}${text}${right_text_pad}${FG_ACCENT}${side_part}${RESET}"
-    else
-        local remaining_text="$clean_text"
-        local side_part=$(printf "%${side_width}s" " " | tr ' ' "${SEP_CHAR}")
-
-        while [ ${#remaining_text} -gt 0 ]; do
-            local line_text=""
-            local line_length=0
-
-            if [ ${#remaining_text} -le "$text_area" ]; then
-                line_text="$remaining_text"
-                line_length=${#remaining_text}
-                remaining_text=""
-            else
-                local cut_pos="$text_area"
-                local i=$((text_area - 1))
-                while [ $i -gt $((text_area / 2)) ]; do
-                    local char=$(echo "$remaining_text" | cut -c$i)
-                    if [ "$char" = " " ]; then
-                        cut_pos=$i
-                        break
-                    fi
-                    i=$((i - 1))
-                done
-
-                line_text=$(echo "$remaining_text" | cut -c1-$cut_pos)
-                line_length=${#line_text}
-                remaining_text=$(echo "$remaining_text" | cut -c$((cut_pos + 1))-)
-                remaining_text=$(echo "$remaining_text" | sed 's/^[[:space:]]*//')
-            fi
-
-            local padding_needed=$((text_area - line_length))
-            local left_padding=$((padding_needed / 2))
-            local right_padding=$((padding_needed - left_padding))
-
-            local left_text_pad=$(printf "%${left_padding}s" " ")
-            local right_text_pad=$(printf "%${right_padding}s" " ")
-
-            echo -e "${FG_ACCENT}${side_part}${RESET}${left_text_pad}${line_text}${right_text_pad}${FG_ACCENT}${side_part}${RESET}"
-        done
-    fi
-}
-
-# Запуск шагов с разделителями / Run steps with separators
-run_steps_with_separator() {
-    for step in "$@"; do
-        case "$step" in
-            ::*)
-                text="${step#::}"
-                separator
-                separator "$text"
-                separator
-                ;;
-            *)
-                $step
-                separator
-                printf "\n"
-                ;;
-        esac
-    done
-}
+. "$UI_LIB"
 
 # Инициализация языка / Language initialization
 init_language() {
@@ -239,6 +101,11 @@ init_language() {
             MSG_TPROXY_NFT_INSTALL="Установка nftables (nft) для TPROXY..."
             MSG_TPROXY_NFT_INSTALLED="nftables успешно установлен"
             MSG_TPROXY_NFT_ERROR="Не удалось установить nftables"
+            MSG_TPROXY_MOD_INSTALL="Установка модулей ядра для TPROXY..."
+            MSG_TPROXY_MOD_INSTALLED="Модули TPROXY установлены"
+            MSG_TPROXY_MOD_ERROR="Не удалось установить модули TPROXY"
+            MSG_TPROXY_SYSCTL_APPLY="Применение sysctl для TPROXY..."
+            MSG_TPROXY_SYSCTL_APPLIED="sysctl для TPROXY применен"
             MSG_INSTALLING_TUN_MODE="Установка TUN режима..."
             MSG_UNINSTALLING_TUN_MODE="Удаление TUN режима..."
             MSG_TUN_DEPS_INSTALL="Установка зависимостей для TUN режима..."
@@ -343,6 +210,11 @@ init_language() {
             MSG_TPROXY_NFT_INSTALL="Installing nftables (nft) for TPROXY..."
             MSG_TPROXY_NFT_INSTALLED="nftables installed successfully"
             MSG_TPROXY_NFT_ERROR="Failed to install nftables"
+            MSG_TPROXY_MOD_INSTALL="Installing kernel modules for TPROXY..."
+            MSG_TPROXY_MOD_INSTALLED="TPROXY modules installed"
+            MSG_TPROXY_MOD_ERROR="Failed to install TPROXY modules"
+            MSG_TPROXY_SYSCTL_APPLY="Applying sysctl for TPROXY..."
+            MSG_TPROXY_SYSCTL_APPLIED="TPROXY sysctl applied"
             MSG_INSTALLING_TUN_MODE="Installing TUN mode..."
             MSG_UNINSTALLING_TUN_MODE="Uninstalling TUN mode..."
             MSG_TUN_DEPS_INSTALL="Installing TUN mode dependencies..."
@@ -425,6 +297,51 @@ ensure_nft_available() {
     exit 1
 }
 
+install_tproxy_modules() {
+    local modules="kmod-nft-tproxy kmod-nft-socket"
+    local missing=""
+
+    for mod in $modules; do
+        if ! opkg list-installed | grep -q "^${mod} "; then
+            missing="$missing $mod"
+        fi
+    done
+
+    if [ -z "$missing" ]; then
+        show_success "$MSG_TPROXY_MOD_INSTALLED"
+        return 0
+    fi
+
+    show_progress "$MSG_TPROXY_MOD_INSTALL"
+    if opkg install $missing; then
+        show_success "$MSG_TPROXY_MOD_INSTALLED"
+        return 0
+    fi
+
+    show_error "$MSG_TPROXY_MOD_ERROR"
+    exit 1
+}
+
+apply_tproxy_sysctl() {
+    local sysctl_file="/etc/sysctl.d/99-singbox-tproxy.conf"
+
+    show_progress "$MSG_TPROXY_SYSCTL_APPLY"
+    cat << 'EOF' > "$sysctl_file"
+net.ipv4.conf.all.route_localnet=1
+net.ipv4.conf.all.rp_filter=0
+net.ipv4.conf.default.rp_filter=0
+net.ipv4.conf.lo.rp_filter=0
+EOF
+
+    sysctl -p "$sysctl_file" >/dev/null 2>&1 || true
+    show_success "$MSG_TPROXY_SYSCTL_APPLIED"
+}
+
+cleanup_tproxy_sysctl() {
+    local sysctl_file="/etc/sysctl.d/99-singbox-tproxy.conf"
+    rm -f "$sysctl_file"
+}
+
 install_mode_deps() {
     case $MODE in
         1)
@@ -442,6 +359,8 @@ install_mode_deps() {
             ;;
         2)
             ensure_nft_available
+            install_tproxy_modules
+            apply_tproxy_sysctl
             ;;
     esac
 }
@@ -909,8 +828,35 @@ uninstall_existing_files(){
 # Установка правил nft / Install nft rules
 install_nft_rule() {
     nft_rule_file="/etc/nftables.d/singbox.nft"
-
     mkdir -p /etc/nftables.d
+
+    get_lan_ifaces() {
+        local ifaces
+        ifaces=$(uci -q get network.lan.device)
+        if [ -z "$ifaces" ]; then
+            ifaces=$(uci -q get network.lan.ifname)
+        fi
+        echo "$ifaces"
+    }
+
+    format_nft_ifaces() {
+        local ifaces="$1"
+        local formatted=""
+        for iface in $ifaces; do
+            if [ -n "$formatted" ]; then
+                formatted="${formatted}, "
+            fi
+            formatted="${formatted}\"${iface}\""
+        done
+        echo "$formatted"
+    }
+
+    local lan_ifaces
+    local lan_set
+    lan_ifaces=$(get_lan_ifaces)
+    if [ -n "$lan_ifaces" ]; then
+        lan_set=$(format_nft_ifaces "$lan_ifaces")
+    fi
 
     cat << 'EOF' > "$nft_rule_file"
 define RESERVED_IP = {
@@ -925,22 +871,28 @@ define RESERVED_IP = {
     240.0.0.0/4,
     255.255.255.255/32
 }
+EOF
 
+    if [ -n "$lan_set" ]; then
+        echo "define LAN_IFACES = { $lan_set }" >> "$nft_rule_file"
+        echo "" >> "$nft_rule_file"
+    fi
+
+    cat << 'EOF' >> "$nft_rule_file"
 table ip singbox {
     chain prerouting {
         type filter hook prerouting priority mangle; policy accept;
+EOF
+
+    if [ -n "$lan_set" ]; then
+        echo "        iifname != \$LAN_IFACES return" >> "$nft_rule_file"
+    fi
+
+    cat << 'EOF' >> "$nft_rule_file"
         ip daddr $RESERVED_IP return
         ip saddr $RESERVED_IP return
         ip protocol tcp tproxy to 127.0.0.1:2080 meta mark set 1
         ip protocol udp tproxy to 127.0.0.1:2080 meta mark set 1
-    }
-    chain output {
-        type route hook output priority mangle; policy accept;
-        ip daddr $RESERVED_IP return
-        ip saddr $RESERVED_IP return
-        meta mark 2 return
-        ip protocol tcp meta mark set 1
-        ip protocol udp meta mark set 1
     }
 }
 EOF
@@ -1036,6 +988,7 @@ uninstalled_tproxy_mode() {
     show_progress "$MSG_UNINSTALLING_TPROXY_MODE"
     uninstall_nft_rule
     cleanup_tproxy_routing
+    cleanup_tproxy_sysctl
 }
 
 # Выбор режима установки / Choose install mode

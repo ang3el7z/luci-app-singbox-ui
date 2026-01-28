@@ -1,0 +1,101 @@
+.singbox-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.singbox-card {
+  background: #16191e;
+  border: 1px solid #2b2f36;
+  border-radius: 8px;
+  padding: 12px;
+  color: #d8dee9;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.04);
+}
+
+.singbox-card__title {
+  font-weight: 600;
+  margin-bottom: 10px;
+  color: #e6edf3;
+}
+
+.singbox-card__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 0;
+}
+
+.singbox-card__hint {
+  color: #9aa4b2;
+  font-size: 12px;
+}
+
+.singbox-mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 12px;
+}
+
+.singbox-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  text-transform: uppercase;
+}
+
+.singbox-badge--ok {
+  background: rgba(46, 160, 67, 0.16);
+  color: #3fb950;
+}
+
+.singbox-badge--warn {
+  background: rgba(187, 128, 9, 0.18);
+  color: #d29922;
+}
+
+.singbox-badge--err {
+  background: rgba(248, 81, 73, 0.2);
+  color: #f85149;
+}
+
+.singbox-badge--muted {
+  background: rgba(148, 163, 184, 0.2);
+  color: #94a3b8;
+}
+
+.singbox-log {
+  background: #0f1115;
+  border: 1px solid #2b2f36;
+  border-radius: 8px;
+  padding: 10px;
+}
+
+.singbox-log__toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.singbox-log__hint {
+  color: #8b949e;
+  font-size: 11px;
+}
+
+.singbox-log__output {
+  background: #0c0f13;
+  border: 1px solid #1f242c;
+  border-radius: 6px;
+  padding: 10px;
+  color: #9ef17a;
+  font-size: 12px;
+  line-height: 1.4;
+  max-height: 420px;
+  overflow: auto;
+  white-space: pre-wrap;
+}
