@@ -53,24 +53,31 @@ if [ "$USE_COLOR" -eq 0 ]; then
     RESET=""
 fi
 
+# Состояние вывода / Output state
+LAST_SEPARATOR=0
+
 # Прогресс / Progress
 show_progress() {
     echo -e "${INDENT}${ARROW} ${FG_ACCENT}$1${RESET}"
+    LAST_SEPARATOR=0
 }
 
 # Успех / Success
 show_success() {
     echo -e "${INDENT}${CHECK} ${FG_SUCCESS}$1${RESET}"
+    LAST_SEPARATOR=0
 }
 
 # Ошибка / Error
 show_error() {
     echo -e "${INDENT}${CROSS} ${FG_ERROR}$1${RESET}"
+    LAST_SEPARATOR=0
 }
 
 # Предупреждение / Warning
 show_warning() {
     echo -e "${INDENT}! ${FG_WARNING}$1${RESET}"
+    LAST_SEPARATOR=0
 }
 
 # Сообщение / Message
@@ -99,6 +106,7 @@ show_message() {
     else
         printf "%b\n" "${FG_USER_COLOR}${INDENT}${BULLET} ${msg}${RESET}"
     fi
+    LAST_SEPARATOR=0
 }
 
 # Ввод / Input
@@ -107,6 +115,9 @@ read_input() {
     while [ "${prompt% }" != "$prompt" ]; do
         prompt="${prompt% }"
     done
+    if [ "${PROMPT_SPACER:-1}" -ne 0 ] && [ "$LAST_SEPARATOR" -eq 0 ]; then
+        printf "\n"
+    fi
     echo -ne "${FG_USER_COLOR}${INDENT}${ARROW_CLEAR} ${prompt}${RESET} "
     if [ -n "$2" ]; then
         read -r "$2"
@@ -121,6 +132,9 @@ read_input_secret() {
     while [ "${prompt% }" != "$prompt" ]; do
         prompt="${prompt% }"
     done
+    if [ "${PROMPT_SPACER:-1}" -ne 0 ] && [ "$LAST_SEPARATOR" -eq 0 ]; then
+        printf "\n"
+    fi
     echo -ne "${FG_USER_COLOR}${INDENT}${ARROW_CLEAR} ${prompt}${RESET} "
     if [ -n "$2" ]; then
         read -s "$2"
@@ -139,10 +153,14 @@ separator() {
     RESET=${RESET:-"\033[0m"}
 
     if [ -z "$text" ]; then
+        if [ "$LAST_SEPARATOR" -eq 1 ]; then
+            return
+        fi
         local line_len="${SEPARATOR_LINE_LEN:-48}"
         local line
         line=$(printf "%${line_len}s" " " | tr ' ' "=")
         echo -e "${FG_ACCENT}${line}${RESET}"
+        LAST_SEPARATOR=1
         return
     fi
 
@@ -154,6 +172,7 @@ separator() {
     local tail
     tail=$(printf "%${fixed_len}s" " " | tr ' ' "=")
     echo -e "${FG_ACCENT}${prefix}${tail}${RESET}"
+    LAST_SEPARATOR=0
 }
 
 # Запуск шагов с разделителями / Run steps with separators

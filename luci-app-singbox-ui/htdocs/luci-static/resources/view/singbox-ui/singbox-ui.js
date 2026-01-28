@@ -956,6 +956,7 @@ return view.extend({
     const memdocServiceEnabled = await isServiceActive('singbox-ui-memdoc-service');
     const tproxyConfigPresent = await isTproxyConfigPresent();
     const tproxyActive = tproxyConfigPresent || await isTproxyTablePresent();
+    const activeMode = await getActiveMode();
     
     //Overview Tab
     const overviewTab = 'overview'
