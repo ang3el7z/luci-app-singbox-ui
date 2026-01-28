@@ -117,7 +117,7 @@ update_pkgs() {
     show_progress "$MSG_UPDATE_PKGS"
 
     if opkg list-installed | grep -q "^openssh-sftp-server "; then
-        echo "$MSG_SFTP_ALREADY_INSTALLED"
+        show_message "$MSG_SFTP_ALREADY_INSTALLED"
         SFTP_SERVER="n"
     else
         while true; do

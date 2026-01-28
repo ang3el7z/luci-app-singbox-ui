@@ -11,12 +11,47 @@ RESET='\033[0m'
 FG_USER_COLOR='\033[38;5;117m'
 
 # Символы оформления / UI symbols
-SEP_CHAR="-"
+SEP_CHAR="─"
 ARROW="▸"
-ARROW_CLEAR=">"
+ARROW_CLEAR="❯"
+BULLET="•"
 CHECK="✓"
 CROSS="✗"
-INDENT="  "
+INDENT="   "
+
+# Поддержка терминала / Terminal support
+USE_COLOR=1
+if [ -n "$NO_COLOR" ] || [ "$TERM" = "dumb" ]; then
+    USE_COLOR=0
+fi
+
+USE_UNICODE=1
+case "${LC_ALL:-}${LC_CTYPE:-}${LANG:-}" in
+    *UTF-8*|*utf8*)
+        USE_UNICODE=1
+        ;;
+    *)
+        USE_UNICODE=0
+        ;;
+esac
+
+if [ "$USE_UNICODE" -eq 0 ]; then
+    SEP_CHAR="-"
+    ARROW=">"
+    ARROW_CLEAR=">"
+    BULLET="*"
+    CHECK="+"
+    CROSS="x"
+fi
+
+if [ "$USE_COLOR" -eq 0 ]; then
+    FG_ACCENT=""
+    FG_WARNING=""
+    FG_SUCCESS=""
+    FG_ERROR=""
+    FG_USER_COLOR=""
+    RESET=""
+fi
 
 # Прогресс / Progress
 show_progress() {
@@ -40,7 +75,26 @@ show_warning() {
 
 # Сообщение / Message
 show_message() {
-    echo -e "${FG_USER_COLOR}${INDENT}${ARROW} $1${RESET}"
+    local msg="$1"
+    local num=""
+    local rest=""
+
+    case "$msg" in
+        [0-9]*") "*)
+            num="${msg%%)*}"
+            rest="${msg#*) }"
+            ;;
+        [0-9]*". "*)
+            num="${msg%%.*}"
+            rest="${msg#*. }"
+            ;;
+    esac
+
+    if [ -n "$num" ]; then
+        printf "%b\n" "${FG_USER_COLOR}${INDENT}${BULLET} [${num}] ${rest}${RESET}"
+    else
+        printf "%b\n" "${FG_USER_COLOR}${INDENT}${BULLET} ${msg}${RESET}"
+    fi
 }
 
 # Ввод / Input
@@ -51,6 +105,17 @@ read_input() {
     else
         read -r REPLY
     fi
+}
+
+# Ввод скрытый / Input hidden
+read_input_secret() {
+    echo -ne "${FG_USER_COLOR}${INDENT}${ARROW_CLEAR} $1${RESET} "
+    if [ -n "$2" ]; then
+        read -s "$2"
+    else
+        read -s REPLY
+    fi
+    echo
 }
 
 # Разделитель / Separator
@@ -79,7 +144,7 @@ separator() {
     local width
     width=$(get_terminal_width)
 
-    SEP_CHAR=${SEP_CHAR:-"o"}
+    SEP_CHAR=${SEP_CHAR:-"-"}
     FG_ACCENT=${FG_ACCENT:-"\033[38;5;85m"}
     RESET=${RESET:-"\033[0m"}
 
@@ -93,66 +158,23 @@ separator() {
     local clean_text
     clean_text=$(echo -n "$text" | sed 's/\x1b\[[0-9;]*m//g')
 
-    local text_area=$((width / 2))
-    local side_width=$((width / 4))
+    local text_block=" ${clean_text} "
+    local text_len=${#text_block}
+    local remaining=$((width - text_len))
 
-    if [ ${#clean_text} -le "$text_area" ]; then
-        local padding_needed=$((text_area - ${#clean_text}))
-        local left_padding=$((padding_needed / 2))
-        local right_padding=$((padding_needed - left_padding))
-
-        local side_part
-        side_part=$(printf "%${side_width}s" " " | tr ' ' "${SEP_CHAR}")
-        local left_text_pad
-        left_text_pad=$(printf "%${left_padding}s" " ")
-        local right_text_pad
-        right_text_pad=$(printf "%${right_padding}s" " ")
-
-        echo -e "${FG_ACCENT}${side_part}${RESET}${left_text_pad}${text}${right_text_pad}${FG_ACCENT}${side_part}${RESET}"
-    else
-        local remaining_text="$clean_text"
-        local side_part
-        side_part=$(printf "%${side_width}s" " " | tr ' ' "${SEP_CHAR}")
-
-        while [ ${#remaining_text} -gt 0 ]; do
-            local line_text=""
-            local line_length=0
-
-            if [ ${#remaining_text} -le "$text_area" ]; then
-                line_text="$remaining_text"
-                line_length=${#remaining_text}
-                remaining_text=""
-            else
-                local cut_pos="$text_area"
-                local i=$((text_area - 1))
-                while [ $i -gt $((text_area / 2)) ]; do
-                    local char
-                    char=$(echo "$remaining_text" | cut -c$i)
-                    if [ "$char" = " " ]; then
-                        cut_pos=$i
-                        break
-                    fi
-                    i=$((i - 1))
-                done
-
-                line_text=$(echo "$remaining_text" | cut -c1-$cut_pos)
-                line_length=${#line_text}
-                remaining_text=$(echo "$remaining_text" | cut -c$((cut_pos + 1))-)
-                remaining_text=$(echo "$remaining_text" | sed 's/^[[:space:]]*//')
-            fi
-
-            local padding_needed=$((text_area - line_length))
-            local left_padding=$((padding_needed / 2))
-            local right_padding=$((padding_needed - left_padding))
-
-            local left_text_pad
-            left_text_pad=$(printf "%${left_padding}s" " ")
-            local right_text_pad
-            right_text_pad=$(printf "%${right_padding}s" " ")
-
-            echo -e "${FG_ACCENT}${side_part}${RESET}${left_text_pad}${line_text}${right_text_pad}${FG_ACCENT}${side_part}${RESET}"
-        done
+    if [ $remaining -lt 2 ]; then
+        echo -e "${FG_ACCENT}${text}${RESET}"
+        return
     fi
+
+    local left=$((remaining / 2))
+    local right=$((remaining - left))
+    local left_line
+    local right_line
+    left_line=$(printf "%${left}s" " " | tr ' ' "${SEP_CHAR}")
+    right_line=$(printf "%${right}s" " " | tr ' ' "${SEP_CHAR}")
+
+    echo -e "${FG_ACCENT}${left_line}${RESET} ${text} ${FG_ACCENT}${right_line}${RESET}"
 }
 
 # Запуск шагов с разделителями / Run steps with separators
@@ -161,9 +183,9 @@ run_steps_with_separator() {
         case "$step" in
             ::*)
                 text="${step#::}"
-                separator
+                printf "\n"
                 separator "$text"
-                separator
+                printf "\n"
                 ;;
             *)
                 $step

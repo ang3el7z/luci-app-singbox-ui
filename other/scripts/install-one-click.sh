@@ -20,18 +20,6 @@ fi
 
 . "$UI_LIB"
 
-# Ввод скрытый / Input hidden
-read_input_secret() {
-    echo -ne "${FG_USER_COLOR}${INDENT}${ARROW_CLEAR} $1${RESET} "
-    if [ -n "$2" ]; then
-        read -s "$2" 
-    else
-        read -s REPLY 
-    fi
-    echo
-}
-
-
 # Инициализация языка / Language initialization
 init_language() {
     local script_name="install-one-click.sh"
