@@ -29,7 +29,7 @@ init_language() {
             show_message "Выберите язык / Select language [1/2]:"
             show_message "1. Русский (Russian)"
             show_message "2. English (Английский)"
-            read_input " Ваш выбор / Your choice [1/2]: " LANG
+            read_input "Ваш выбор / Your choice [1/2]:" LANG
             case "$LANG" in
                 1|2)
                     break
@@ -61,7 +61,7 @@ init_language() {
         MSG_INSTALL_SINGBOX_UI="1. Singbox-ui"
         MSG_INSTALL_SINGBOX="2. Singbox"
         MSG_INSTALL_SINGBOX_UI_AND_SINGBOX="3. Singbox and singbox-ui"
-        MSG_INSTALL_ACTION_CHOICE=" Ваш выбор: "
+        MSG_INSTALL_ACTION_CHOICE="Ваш выбор:"
         MSG_OPERATION="Выберите тип операции:"
         MSG_OPERATION_INSTALL="1. Установка"
         MSG_OPERATION_DELETE="2. Удаление"

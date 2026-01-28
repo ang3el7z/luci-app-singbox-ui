@@ -29,7 +29,7 @@ init_language() {
             show_message "Выберите язык / Select language [1/2]:"
             show_message "1. Русский (Russian)"
             show_message "2. English (Английский)"
-            read_input " Ваш выбор / Your choice [1/2]: " LANG
+            read_input "Ваш выбор / Your choice [1/2]:" LANG
             case "$LANG" in
                 1|2)
                     break

@@ -29,7 +29,7 @@ init_language() {
             show_message "Выберите язык / Select language [1/2]:"
             show_message "1. Русский (Russian)"
             show_message "2. English (Английский)"
-            read_input " Ваш выбор / Your choice [1/2]: " LANG
+            read_input "Ваш выбор / Your choice [1/2]:" LANG
             case "$LANG" in
                 1|2)
                     break
@@ -65,7 +65,7 @@ init_language() {
             MSG_INSTALL_LATEST="Устанавливается последняя доступная сборка (latest)..."
             MSG_DOWNLOAD_ERROR="Ошибка загрузки файла. Установка прервана."
             MSG_WAITING="Ожидание %d сек"
-            MSG_YOUR_CHOICE="Ваш выбор: "
+            MSG_YOUR_CHOICE="Ваш выбор:"
             MSG_COMPLETE="Выполнено! ($script_name)"
             MSG_CONFIG_PROMPT="Введите URL конфигурации (Enter для ручного ввода): "
             MSG_CONFIG_LOADING="Загрузка конфигурации с %s (Попытка %s из %s)"
@@ -82,7 +82,7 @@ init_language() {
             MSG_OPERATION_INSTALL="1. Установка"
             MSG_OPERATION_DELETE="2. Удаление"
             MSG_OPERATION_REINSTALL_UPDATE="3. Переустановка/Обновление"
-            MSG_OPERATION_CHOICE=" Ваш выбор: "
+            MSG_OPERATION_CHOICE="Ваш выбор:"
             MSG_ALREADY_INSTALLED="Ошибка: Пакет уже установлен. Если устанавливали этим скриптом - выберите переустановку (3). Иначе выполните сброс роутера."
             MSG_UNINSTALLING="Удаление singbox-ui..."
             MSG_UNINSTALL_SUCCESS="Удаление завершено"
@@ -116,7 +116,7 @@ init_language() {
             MSG_INSTALL_LATEST="Installing stable version latest"
             MSG_DOWNLOAD_ERROR="Download failed. Installation aborted."
             MSG_WAITING="Waiting %d sec"
-            MSG_YOUR_CHOICE="Your choice: "
+            MSG_YOUR_CHOICE="Your choice:"
             MSG_COMPLETE="Completed! ($script_name)"
             MSG_CONFIG_PROMPT="Enter Configuration subscription URL (Enter for manual input): "
             MSG_CONFIG_LOADING="Loading configuration from %s (Attempt %s of %s)"
@@ -133,7 +133,7 @@ init_language() {
             MSG_OPERATION_INSTALL="1. Install"
             MSG_OPERATION_DELETE="2. Delete"
             MSG_OPERATION_REINSTALL_UPDATE="3. Reinstall/Update"
-            MSG_OPERATION_CHOICE="Your choice: "
+            MSG_OPERATION_CHOICE="Your choice:"
             MSG_ALREADY_INSTALLED="Error: Package already installed. If installed via this script - choose reinstall (3). Otherwise reset the router."
             MSG_UNINSTALLING="Uninstalling singbox-ui..."
             MSG_UNINSTALL_SUCCESS="Uninstall completed"
@@ -300,7 +300,7 @@ choose_install_version() {
 
             local i=1
             for file in $runner_files; do
-                show_message "  [$i] $file"
+                show_message "[$i] $file"
                 eval RUNNER_$i="'$file'"
                 i=$((i+1))
             done

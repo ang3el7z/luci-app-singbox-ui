@@ -60,17 +60,17 @@ show_progress() {
 
 # Успех / Success
 show_success() {
-    echo -e "${INDENT}${CHECK} ${FG_SUCCESS}$1${RESET}\n"
+    echo -e "${INDENT}${CHECK} ${FG_SUCCESS}$1${RESET}"
 }
 
 # Ошибка / Error
 show_error() {
-    echo -e "${INDENT}${CROSS} ${FG_ERROR}$1${RESET}\n"
+    echo -e "${INDENT}${CROSS} ${FG_ERROR}$1${RESET}"
 }
 
 # Предупреждение / Warning
 show_warning() {
-    echo -e "${INDENT}! ${FG_WARNING}$1${RESET}\n"
+    echo -e "${INDENT}! ${FG_WARNING}$1${RESET}"
 }
 
 # Сообщение / Message
@@ -78,6 +78,10 @@ show_message() {
     local msg="$1"
     local num=""
     local rest=""
+
+    if [ -z "$msg" ]; then
+        return 0
+    fi
 
     case "$msg" in
         [0-9]*") "*)
@@ -99,7 +103,11 @@ show_message() {
 
 # Ввод / Input
 read_input() {
-    echo -ne "${FG_USER_COLOR}${INDENT}${ARROW_CLEAR} $1${RESET} "
+    local prompt="$1"
+    while [ "${prompt% }" != "$prompt" ]; do
+        prompt="${prompt% }"
+    done
+    echo -ne "${FG_USER_COLOR}${INDENT}${ARROW_CLEAR} ${prompt}${RESET} "
     if [ -n "$2" ]; then
         read -r "$2"
     else
@@ -109,7 +117,11 @@ read_input() {
 
 # Ввод скрытый / Input hidden
 read_input_secret() {
-    echo -ne "${FG_USER_COLOR}${INDENT}${ARROW_CLEAR} $1${RESET} "
+    local prompt="$1"
+    while [ "${prompt% }" != "$prompt" ]; do
+        prompt="${prompt% }"
+    done
+    echo -ne "${FG_USER_COLOR}${INDENT}${ARROW_CLEAR} ${prompt}${RESET} "
     if [ -n "$2" ]; then
         read -s "$2"
     else
@@ -146,18 +158,27 @@ separator() {
 
 # Запуск шагов с разделителями / Run steps with separators
 run_steps_with_separator() {
-    for step in "$@"; do
+    while [ $# -gt 0 ]; do
+        step="$1"
+        next="$2"
         case "$step" in
             ::*)
                 text="${step#::}"
-                printf "\n"
                 separator "$text"
                 ;;
             *)
                 $step
-                separator
-                printf "\n"
+                case "$step" in
+                    choose_*|input_*|clear_*|wait_*)
+                        ;;
+                    *)
+                        if [ "${next#::}" = "$next" ]; then
+                            separator
+                        fi
+                        ;;
+                esac
                 ;;
         esac
+        shift
     done
 }

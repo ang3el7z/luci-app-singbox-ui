@@ -29,7 +29,7 @@ init_language() {
             show_message "Выберите язык / Select language [1/2]:"
             show_message "1. Русский (Russian)"
             show_message "2. English (Английский)"
-            read_input " Ваш выбор / Your choice [1/2]: " LANG
+            read_input "Ваш выбор / Your choice [1/2]:" LANG
             case "$LANG" in
                 1|2)
                     break
@@ -74,7 +74,7 @@ init_language() {
             MSG_INSTALL="1. Установка"
             MSG_DELETE="2. Удаление"
             MSG_REINSTALL_UPDATE="3. Переустановка/Обновление"
-            MSG_CHOICE=" Ваш выбор: "
+            MSG_CHOICE="Ваш выбор:"
             MSG_ALREADY_INSTALLED="Ошибка: Пакет уже установлен. Для переустановки выберите опцию 3"
             MSG_INSTALLING="Установка..."
             MSG_INSTALL_SUCCESS="Установка завершена"
