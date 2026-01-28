@@ -122,35 +122,14 @@ read_input_secret() {
 separator() {
     local text="$1"
 
-    get_terminal_width() {
-        local w
-        w=$(tput cols 2>/dev/null)
-        if [ -n "$w" ]; then
-            echo "$w"
-            return
-        fi
-        if [ -n "$COLUMNS" ]; then
-            echo "$COLUMNS"
-            return
-        fi
-        w=$(stty size 2>/dev/null | awk '{print $2}')
-        if [ -n "$w" ]; then
-            echo "$w"
-            return
-        fi
-        echo 100
-    }
-
-    local width
-    width=$(get_terminal_width)
-
     SEP_CHAR=${SEP_CHAR:-"-"}
     FG_ACCENT=${FG_ACCENT:-"\033[38;5;85m"}
     RESET=${RESET:-"\033[0m"}
 
     if [ -z "$text" ]; then
+        local line_len="${SEPARATOR_LINE_LEN:-48}"
         local line
-        line=$(printf "%${width}s" " " | tr ' ' "${SEP_CHAR}")
+        line=$(printf "%${line_len}s" " " | tr ' ' "=")
         echo -e "${FG_ACCENT}${line}${RESET}"
         return
     fi
@@ -158,23 +137,11 @@ separator() {
     local clean_text
     clean_text=$(echo -n "$text" | sed 's/\x1b\[[0-9;]*m//g')
 
-    local text_block=" ${clean_text} "
-    local text_len=${#text_block}
-    local remaining=$((width - text_len))
-
-    if [ $remaining -lt 2 ]; then
-        echo -e "${FG_ACCENT}${text}${RESET}"
-        return
-    fi
-
-    local left=$((remaining / 2))
-    local right=$((remaining - left))
-    local left_line
-    local right_line
-    left_line=$(printf "%${left}s" " " | tr ' ' "${SEP_CHAR}")
-    right_line=$(printf "%${right}s" " " | tr ' ' "${SEP_CHAR}")
-
-    echo -e "${FG_ACCENT}${left_line}${RESET} ${text} ${FG_ACCENT}${right_line}${RESET}"
+    local prefix="=== ${clean_text} "
+    local fixed_len="${SEPARATOR_FIXED_LEN:-36}"
+    local tail
+    tail=$(printf "%${fixed_len}s" " " | tr ' ' "=")
+    echo -e "${FG_ACCENT}${prefix}${tail}${RESET}"
 }
 
 # Запуск шагов с разделителями / Run steps with separators
@@ -185,7 +152,6 @@ run_steps_with_separator() {
                 text="${step#::}"
                 printf "\n"
                 separator "$text"
-                printf "\n"
                 ;;
             *)
                 $step
