@@ -231,6 +231,18 @@ choose_install_version() {
     local url_latest="https://github.com/ang3el7z/luci-app-singbox-ui/releases/latest/download/luci-app-singbox-ui.ipk"
     local url_lite="https://github.com/ang3el7z/luci-app-singbox-ui/releases/download/v1.2.1/luci-app-singbox-ui.ipk"
 
+    get_release_url_by_branch() {
+        local prerelease_flag="$1"
+        curl -s https://api.github.com/repos/ang3el7z/luci-app-singbox-ui/releases | \
+            jq -r --arg branch "$BRANCH" --argjson prerelease "$prerelease_flag" '
+              map(select(.target_commitish==$branch and .prerelease==$prerelease))
+              | sort_by(.published_at)
+              | last
+              | .assets[]?
+              | select(.name|test("luci-app-singbox-ui.*\\.ipk$"))
+              | .browser_download_url' | head -n 1
+    }
+
     while true; do
         show_message "$MSG_CHOOSE_VERSION"
         show_message "$MSG_OPTION_1"
@@ -241,7 +253,10 @@ choose_install_version() {
 
         case "$VERSION_CHOICE" in
         1)
-            DOWNLOAD_URL="$url_latest"
+            DOWNLOAD_URL=$(get_release_url_by_branch false)
+            if [ -z "$DOWNLOAD_URL" ]; then
+                DOWNLOAD_URL="$url_latest"
+            fi
             break
             ;;
         2)
@@ -249,21 +264,18 @@ choose_install_version() {
             break
             ;;
         3)
-            # Получаем ссылку на последнюю pre-release сборку / Fetch latest pre-release build  
-            DOWNLOAD_URL=$(curl -s https://api.github.com/repos/ang3el7z/luci-app-singbox-ui/releases | \
-            grep -A 20 '"prerelease": true' | \
-            grep "browser_download_url.*luci-app-singbox-ui.ipk" | \
-            head -n 1 | \
-            sed -E 's/.*"browser_download_url": *"([^"]+)".*/\1/')
-
+            DOWNLOAD_URL=$(get_release_url_by_branch true)
             if [ -z "$DOWNLOAD_URL" ]; then
                 show_error "$MSG_NO_PRE_RELEASE"
+                DOWNLOAD_URL=$(get_release_url_by_branch false)
+            fi
+            if [ -z "$DOWNLOAD_URL" ]; then
                 DOWNLOAD_URL="$url_latest"
             fi
             break
             ;;
         4)
-            local runner_base_url="https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/artifacts"
+            local runner_base_url="https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/${BRANCH}/artifacts"
             local index_url="$runner_base_url/index.txt"
 
             show_progress "$MSG_SELECT_RUNNER"
