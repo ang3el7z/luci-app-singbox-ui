@@ -97,6 +97,7 @@ init_language() {
             MSG_ACTIVE_MODE="Выберите активный режим сейчас:"
             MSG_ACTIVE_TUN="1. Активировать TUN"
             MSG_ACTIVE_TPROXY="2. Активировать TPROXY"
+            MSG_MODE_FOUND_BOTH="Найдены TUN и TPROXY режимы"
             MSG_MODE_CHOICE="Ваш выбор: "
             MSG_INSTALLING_TPROXY_MODE="Установка TPROXY режима..."
             MSG_UNINSTALLING_TPROXY_MODE="Удаление TPROXY режима..."
@@ -210,6 +211,7 @@ init_language() {
             MSG_ACTIVE_MODE="Choose active mode now:"
             MSG_ACTIVE_TUN="1. Activate TUN"
             MSG_ACTIVE_TPROXY="2. Activate TPROXY"
+            MSG_MODE_FOUND_BOTH="Both TUN and TPROXY modes found"
             MSG_MODE_CHOICE="Your choice: "
             MSG_INSTALLING_TPROXY_MODE="Installing TPROXY mode..."
             MSG_UNINSTALLING_TPROXY_MODE="Uninstalling TPROXY mode..."
@@ -987,10 +989,23 @@ choose_active_mode() {
 }
 
 definition_mode() {
+    local has_tproxy=0
+    local has_tun=0
+
     if [ -f /etc/nftables.d/singbox.nft ]; then
+        has_tproxy=1
+    fi
+    if uci -q get network.proxy.device | grep -q "singtun0"; then
+        has_tun=1
+    fi
+
+    if [ "$has_tproxy" -eq 1 ] && [ "$has_tun" -eq 1 ]; then
+        show_progress "$MSG_MODE_FOUND_BOTH"
+        MODE=3
+    elif [ "$has_tproxy" -eq 1 ]; then
         show_progress "$MSG_MODE_FOUND_TPROXY"
         MODE=2
-    elif uci -q get network.proxy.device | grep -q "singtun0"; then
+    elif [ "$has_tun" -eq 1 ]; then
         show_progress "$MSG_MODE_FOUND_TUN"
         MODE=1
     else
@@ -1071,6 +1086,10 @@ perform_uninstall_mode() {
             ;;
         2)
             uninstalled_tproxy_mode
+            ;;
+        3)
+            uninstalled_tproxy_mode
+            uninstalled_tun_mode
             ;;
         *)
             show_error "$MSG_INVALID_MODE"
