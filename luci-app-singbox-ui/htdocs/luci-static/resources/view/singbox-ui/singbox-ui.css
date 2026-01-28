@@ -6,18 +6,17 @@
 }
 
 .singbox-card {
-  background: #16191e;
-  border: 1px solid #2b2f36;
+  background: rgba(127, 127, 127, 0.06);
+  border: 1px solid rgba(127, 127, 127, 0.2);
   border-radius: 8px;
   padding: 12px;
-  color: #d8dee9;
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.04);
+  color: inherit;
 }
 
 .singbox-card__title {
   font-weight: 600;
   margin-bottom: 10px;
-  color: #e6edf3;
+  color: inherit;
 }
 
 .singbox-card__row {
@@ -29,7 +28,7 @@
 }
 
 .singbox-card__hint {
-  color: #9aa4b2;
+  color: #6b7280;
   font-size: 12px;
 }
 
@@ -49,28 +48,28 @@
 }
 
 .singbox-badge--ok {
-  background: rgba(46, 160, 67, 0.16);
+  background: rgba(46, 160, 67, 0.18);
   color: #3fb950;
 }
 
 .singbox-badge--warn {
-  background: rgba(187, 128, 9, 0.18);
+  background: rgba(187, 128, 9, 0.2);
   color: #d29922;
 }
 
 .singbox-badge--err {
-  background: rgba(248, 81, 73, 0.2);
+  background: rgba(248, 81, 73, 0.22);
   color: #f85149;
 }
 
 .singbox-badge--muted {
-  background: rgba(148, 163, 184, 0.2);
-  color: #94a3b8;
+  background: rgba(148, 163, 184, 0.22);
+  color: #6b7280;
 }
 
 .singbox-log {
-  background: #0f1115;
-  border: 1px solid #2b2f36;
+  background: rgba(127, 127, 127, 0.06);
+  border: 1px solid rgba(127, 127, 127, 0.2);
   border-radius: 8px;
   padding: 10px;
 }
@@ -83,16 +82,16 @@
 }
 
 .singbox-log__hint {
-  color: #8b949e;
+  color: #6b7280;
   font-size: 11px;
 }
 
 .singbox-log__output {
-  background: #0c0f13;
-  border: 1px solid #1f242c;
+  background: rgba(0, 0, 0, 0.04);
+  border: 1px solid rgba(127, 127, 127, 0.2);
   border-radius: 6px;
   padding: 10px;
-  color: #9ef17a;
+  color: #2f6f2f;
   font-size: 12px;
   line-height: 1.4;
   max-height: 420px;

@@ -93,6 +93,10 @@ init_language() {
             MSG_MODE="Выберите режим установки:"
             MSG_TUN="1. TUN"
             MSG_TPROXY="2. TPROXY"
+            MSG_BOTH="3. TUN + TPROXY (установить оба)"
+            MSG_ACTIVE_MODE="Выберите активный режим сейчас:"
+            MSG_ACTIVE_TUN="1. Активировать TUN"
+            MSG_ACTIVE_TPROXY="2. Активировать TPROXY"
             MSG_MODE_CHOICE="Ваш выбор: "
             MSG_INSTALLING_TPROXY_MODE="Установка TPROXY режима..."
             MSG_UNINSTALLING_TPROXY_MODE="Удаление TPROXY режима..."
@@ -202,6 +206,10 @@ init_language() {
             MSG_MODE="Select mode:"
             MSG_TUN="1. TUN"
             MSG_TPROXY="2. TPROXY"
+            MSG_BOTH="3. TUN + TPROXY (install both)"
+            MSG_ACTIVE_MODE="Choose active mode now:"
+            MSG_ACTIVE_TUN="1. Activate TUN"
+            MSG_ACTIVE_TPROXY="2. Activate TPROXY"
             MSG_MODE_CHOICE="Your choice: "
             MSG_INSTALLING_TPROXY_MODE="Installing TPROXY mode..."
             MSG_UNINSTALLING_TPROXY_MODE="Uninstalling TPROXY mode..."
@@ -358,6 +366,23 @@ install_mode_deps() {
             fi
             ;;
         2)
+            ensure_nft_available
+            install_tproxy_modules
+            apply_tproxy_sysctl
+            ;;
+        3)
+            show_progress "$MSG_TUN_DEPS_INSTALL"
+            if opkg list-installed | grep -q "^kmod-tun "; then
+                show_success "$MSG_TUN_DEPS_ALREADY"
+            else
+                if opkg install kmod-tun; then
+                    show_success "$MSG_TUN_DEPS_INSTALLED"
+                else
+                    show_error "$MSG_TUN_DEPS_ERROR"
+                    exit 1
+                fi
+            fi
+
             ensure_nft_available
             install_tproxy_modules
             apply_tproxy_sysctl
@@ -928,8 +953,28 @@ choose_mode() {
             show_message "$MSG_MODE"
             show_message "$MSG_TUN"
             show_message "$MSG_TPROXY"
+            show_message "$MSG_BOTH"
             read_input "$MSG_MODE_CHOICE" MODE
             case "$MODE" in
+                1|2|3)
+                    break
+                    ;;
+                *)
+                    show_error "$MSG_INVALID_MODE. $MSG_REPEAT_INPUT"
+                    ;;
+            esac
+        done
+    fi
+}
+
+choose_active_mode() {
+    if [ -z "$ACTIVE_MODE" ]; then
+        while true; do
+            show_message "$MSG_ACTIVE_MODE"
+            show_message "$MSG_ACTIVE_TUN"
+            show_message "$MSG_ACTIVE_TPROXY"
+            read_input "$MSG_MODE_CHOICE" ACTIVE_MODE
+            case "$ACTIVE_MODE" in
                 1|2)
                     break
                     ;;
@@ -999,6 +1044,17 @@ perform_install_mode() {
             ;;
         2)
             installed_tproxy_mode
+            ;;
+        3)
+            choose_active_mode
+            case $ACTIVE_MODE in
+                1)
+                    installed_tun_mode
+                    ;;
+                2)
+                    installed_tproxy_mode
+                    ;;
+            esac
             ;;
         *)
             show_error "$MSG_INVALID_MODE"

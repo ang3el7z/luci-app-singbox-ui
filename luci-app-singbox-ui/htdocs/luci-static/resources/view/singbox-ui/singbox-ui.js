@@ -78,6 +78,29 @@ async function isTproxyTablePresent() {
   }
 }
 
+async function isTunConfigured() {
+  try {
+    const { stdout } = await fs.exec('/sbin/uci', ['get', 'network.proxy.device']);
+    return stdout.trim() === 'singtun0';
+  } catch {
+    return false;
+  }
+}
+
+async function getActiveMode() {
+  const [tproxyFile, tproxyTable, tun] = await Promise.all([
+    isTproxyConfigPresent(),
+    isTproxyTablePresent(),
+    isTunConfigured()
+  ]);
+
+  const tproxy = tproxyFile || tproxyTable;
+  if (tproxy && tun) return 'mixed';
+  if (tproxy) return 'tproxy';
+  if (tun) return 'tun';
+  return 'none';
+}
+
 async function disableTproxy() {
   try {
     await runNft(['delete', 'table', 'ip', 'singbox']);
@@ -318,8 +341,7 @@ async function createServiceButton(section, singboxManagmentTab, singboxStatus) 
     const singboxRunning = (singboxStatus === 'running');
     const healthAutoupdaterServiceTempFlag = await setUciOption('health_autoupdater_service_state', 'read', 'state');
     const autoupdaterServiceTempFlag = await setUciOption('autoupdater_service_state', 'read', 'state');
-    const tproxyConfigPresent = await isTproxyConfigPresent();
-    const tproxyActive = tproxyConfigPresent || await isTproxyTablePresent();
+    const activeMode = await getActiveMode();
   
     function getServiceNames() {
       const names = ['Sing‑Box'];
@@ -589,9 +611,13 @@ function createOverviewCards(section, overviewTab, info) {
         ? 'Stopped'
         : 'Error';
     const statusBadge = getBadge(info.singboxStatus, statusLabel);
-    const tproxyBadge = info.tproxyActive
-      ? '<span class="singbox-badge singbox-badge--ok">Enabled</span>'
-      : '<span class="singbox-badge singbox-badge--muted">Disabled</span>';
+    const modeBadge = info.activeMode === 'tproxy'
+      ? '<span class="singbox-badge singbox-badge--ok">TPROXY</span>'
+      : info.activeMode === 'tun'
+        ? '<span class="singbox-badge singbox-badge--ok">TUN</span>'
+        : info.activeMode === 'mixed'
+          ? '<span class="singbox-badge singbox-badge--warn">MIXED</span>'
+          : '<span class="singbox-badge singbox-badge--muted">NONE</span>';
 
     return `
       <div class="singbox-grid">
@@ -606,8 +632,8 @@ function createOverviewCards(section, overviewTab, info) {
             <span class="singbox-mono">${info.singboxVersion}</span>
           </div>
           <div class="singbox-card__row">
-            <span>TPROXY</span>
-            ${tproxyBadge}
+            <span>Mode</span>
+            ${modeBadge}
           </div>
         </div>
         <div class="singbox-card">
@@ -628,6 +654,54 @@ function createOverviewCards(section, overviewTab, info) {
       </div>
     `;
   };
+}
+
+async function createModeSwitchButtons(section, overviewTab, activeMode) {
+  const switcherPath = '/usr/bin/singbox-ui/singbox-ui-mode';
+  try {
+    await fs.stat(switcherPath);
+  } catch {
+    return;
+  }
+
+  const canSwitchToTun = activeMode !== 'tun';
+  const canSwitchToTproxy = activeMode !== 'tproxy';
+
+  if (canSwitchToTun) {
+    const btn = section.taboption(overviewTab, form.Button, 'switch_mode_tun', 'Switch to TUN');
+    btn.inputstyle = 'apply';
+    btn.title = 'Activate TUN mode';
+    btn.inputtitle = 'Switch to TUN';
+    btn.onclick = async () => {
+      try {
+        const { stdout, stderr, code } = await fs.exec(switcherPath, ['tun']);
+        if (code !== 0) return notify('error', stderr || stdout || 'Switch failed');
+        notify('info', 'TUN mode activated');
+      } catch (e) {
+        notify('error', 'Switch failed: ' + e.message);
+      } finally {
+        reloadPage();
+      }
+    };
+  }
+
+  if (canSwitchToTproxy) {
+    const btn = section.taboption(overviewTab, form.Button, 'switch_mode_tproxy', 'Switch to TPROXY');
+    btn.inputstyle = 'apply';
+    btn.title = 'Activate TPROXY mode';
+    btn.inputtitle = 'Switch to TPROXY';
+    btn.onclick = async () => {
+      try {
+        const { stdout, stderr, code } = await fs.exec(switcherPath, ['tproxy']);
+        if (code !== 0) return notify('error', stderr || stdout || 'Switch failed');
+        notify('info', 'TPROXY mode activated');
+      } catch (e) {
+        notify('error', 'Switch failed: ' + e.message);
+      } finally {
+        reloadPage();
+      }
+    };
+  }
 }
 
 async function createLogsPanel(section, logsTab) {
@@ -892,11 +966,12 @@ return view.extend({
       kernelVersion,
       uiVersion,
       singboxVersion,
-      tproxyActive
+      activeMode
     });
 
     createDashboardButton(section, overviewTab, singboxStatus);
     await createServiceButton(section, overviewTab, singboxStatus);
+    await createModeSwitchButtons(section, overviewTab, activeMode);
  
     //Configs Management Tab
     const configs = [

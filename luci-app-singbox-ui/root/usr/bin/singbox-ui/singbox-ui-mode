@@ -1,0 +1,209 @@
+#!/bin/sh
+
+MODE="$1"
+TPROXY_RULE_FILE="/etc/nftables.d/singbox.nft"
+SYSCTL_FILE="/etc/sysctl.d/99-singbox-tproxy.conf"
+
+log() {
+    logger -t singbox-ui-mode "$1"
+}
+
+ensure_nft() {
+    if command -v nft >/dev/null 2>&1; then
+        return 0
+    fi
+    if [ -x /usr/sbin/nft ] || [ -x /sbin/nft ]; then
+        return 0
+    fi
+    return 1
+}
+
+is_tun() {
+    uci -q get network.proxy.device 2>/dev/null | grep -q "singtun0"
+}
+
+is_tproxy() {
+    [ -f "$TPROXY_RULE_FILE" ] && return 0
+    nft list table ip singbox >/dev/null 2>&1 && return 0
+    return 1
+}
+
+remove_tun() {
+    uci -q delete network.proxy
+    uci commit network >/dev/null 2>&1
+
+    local zone_id
+    zone_id=$(uci -q show firewall | grep -E "firewall\.@zone\[.*\].name='proxy'" | cut -d'[' -f2 | cut -d']' -f1)
+    [ -n "$zone_id" ] && uci -q delete firewall.@zone[$zone_id]
+
+    local fwd_id
+    fwd_id=$(uci -q show firewall | grep -E "firewall\.@forwarding\[.*\].dest='proxy'" | cut -d'[' -f2 | cut -d']' -f1)
+    [ -n "$fwd_id" ] && uci -q delete firewall.@forwarding[$fwd_id]
+
+    uci commit firewall >/dev/null 2>&1
+}
+
+remove_tproxy() {
+    nft delete table ip singbox >/dev/null 2>&1 || true
+    rm -f "$TPROXY_RULE_FILE"
+    ip rule del fwmark 1 table 100 2>/dev/null || true
+    ip route flush table 100 2>/dev/null || true
+}
+
+apply_tun() {
+    remove_tproxy
+
+    uci set network.proxy=interface
+    uci set network.proxy.proto="none"
+    uci set network.proxy.device="singtun0"
+    uci set network.proxy.defaultroute="0"
+    uci set network.proxy.delegate="0"
+    uci set network.proxy.peerdns="0"
+    uci set network.proxy.auto="1"
+    uci commit network >/dev/null 2>&1
+
+    if ! uci -q get firewall.proxy >/dev/null; then
+        uci add firewall zone >/dev/null
+        uci set firewall.@zone[-1].name="proxy"
+        uci set firewall.@zone[-1].forward="REJECT"
+        uci set firewall.@zone[-1].output="ACCEPT"
+        uci set firewall.@zone[-1].input="ACCEPT"
+        uci set firewall.@zone[-1].masq="1"
+        uci set firewall.@zone[-1].mtu_fix="1"
+        uci set firewall.@zone[-1].device="singtun0"
+        uci set firewall.@zone[-1].family="ipv4"
+        uci add_list firewall.@zone[-1].network="singtun0"
+    fi
+
+    if ! uci -q get firewall.@forwarding[-1].dest="proxy" >/dev/null; then
+        uci add firewall forwarding >/dev/null
+        uci set firewall.@forwarding[-1].dest="proxy"
+        uci set firewall.@forwarding[-1].src="lan"
+        uci set firewall.@forwarding[-1].family="ipv4"
+    fi
+
+    uci commit firewall >/dev/null 2>&1
+    /etc/init.d/firewall reload >/dev/null 2>&1
+    /etc/init.d/network reload >/dev/null 2>&1
+    ifup proxy 2>/dev/null || true
+
+    /etc/init.d/sing-box enable >/dev/null 2>&1
+    /etc/init.d/sing-box start >/dev/null 2>&1
+}
+
+apply_tproxy() {
+    remove_tun
+
+    if [ -f "$SYSCTL_FILE" ]; then
+        sysctl -p "$SYSCTL_FILE" >/dev/null 2>&1 || true
+    fi
+
+    if ! ensure_nft; then
+        log "nft not found"
+        echo "nft not found"
+        exit 1
+    fi
+
+    ip rule add fwmark 1 table 100 2>/dev/null || true
+    ip route add local 0.0.0.0/0 dev lo table 100 2>/dev/null || true
+
+    mkdir -p /etc/nftables.d
+
+    get_lan_ifaces() {
+        local ifaces
+        ifaces=$(uci -q get network.lan.device)
+        if [ -z "$ifaces" ]; then
+            ifaces=$(uci -q get network.lan.ifname)
+        fi
+        echo "$ifaces"
+    }
+
+    format_nft_ifaces() {
+        local ifaces="$1"
+        local formatted=""
+        for iface in $ifaces; do
+            if [ -n "$formatted" ]; then
+                formatted="${formatted}, "
+            fi
+            formatted="${formatted}\"${iface}\""
+        done
+        echo "$formatted"
+    }
+
+    local lan_ifaces
+    local lan_set
+    lan_ifaces=$(get_lan_ifaces)
+    if [ -n "$lan_ifaces" ]; then
+        lan_set=$(format_nft_ifaces "$lan_ifaces")
+    fi
+
+    cat << 'EOF' > "$TPROXY_RULE_FILE"
+define RESERVED_IP = {
+    10.0.0.0/8,
+    100.64.0.0/10,
+    127.0.0.0/8,
+    169.254.0.0/16,
+    172.16.0.0/12,
+    192.168.0.0/16,
+    192.0.0.0/24,
+    224.0.0.0/4,
+    240.0.0.0/4,
+    255.255.255.255/32
+}
+EOF
+
+    if [ -n "$lan_set" ]; then
+        echo "define LAN_IFACES = { $lan_set }" >> "$TPROXY_RULE_FILE"
+        echo "" >> "$TPROXY_RULE_FILE"
+    fi
+
+    cat << 'EOF' >> "$TPROXY_RULE_FILE"
+table ip singbox {
+    chain prerouting {
+        type filter hook prerouting priority mangle; policy accept;
+EOF
+
+    if [ -n "$lan_set" ]; then
+        echo "        iifname != \$LAN_IFACES return" >> "$TPROXY_RULE_FILE"
+    fi
+
+    cat << 'EOF' >> "$TPROXY_RULE_FILE"
+        ip daddr $RESERVED_IP return
+        ip saddr $RESERVED_IP return
+        ip protocol tcp tproxy to 127.0.0.1:2080 meta mark set 1
+        ip protocol udp tproxy to 127.0.0.1:2080 meta mark set 1
+    }
+}
+EOF
+
+    nft -f "$TPROXY_RULE_FILE" >/dev/null 2>&1
+
+    /etc/init.d/sing-box enable >/dev/null 2>&1
+    /etc/init.d/sing-box start >/dev/null 2>&1
+}
+
+case "$MODE" in
+    tun)
+        log "switching to tun"
+        apply_tun
+        ;;
+    tproxy)
+        log "switching to tproxy"
+        apply_tproxy
+        ;;
+    status)
+        if is_tproxy; then
+            echo "tproxy"
+            exit 0
+        fi
+        if is_tun; then
+            echo "tun"
+            exit 0
+        fi
+        echo "none"
+        ;;
+    *)
+        echo "Usage: singbox-ui-mode {tun|tproxy|status}"
+        exit 1
+        ;;
+esac
