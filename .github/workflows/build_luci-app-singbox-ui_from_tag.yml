@@ -14,6 +14,23 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4.2.2
+        with:
+          fetch-depth: 0
+
+      - name: Detect target branch from tag
+        id: detect_branch
+        run: |
+          set -e
+          git fetch origin "+refs/heads/*:refs/remotes/origin/*"
+
+          BRANCH=$(git branch -r --contains "$GITHUB_SHA" | grep -v "origin/HEAD" | head -n 1 | sed "s#origin/##")
+          if [ -z "$BRANCH" ]; then
+            BRANCH="${DEFAULT_BRANCH}"
+          fi
+
+          echo "TARGET_BRANCH=$BRANCH" >> "$GITHUB_ENV"
+        env:
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
 
       - name: Check version and sync with tag
         run: |
@@ -38,7 +55,6 @@ jobs:
       - name: Commit updated Makefile version (if changed)
         run: |
           TAG_VERSION=${GITHUB_REF#refs/tags/v}
-          TARGET_BRANCH=${TARGET_BRANCH:-TPROXY}
 
           if git diff --quiet; then
             echo "ℹ No changes to commit."
