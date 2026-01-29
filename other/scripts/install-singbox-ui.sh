@@ -1,4 +1,5 @@
 #!/bin/sh
+BRANCH="${BRANCH:-main}"
 
 # Цветовая палитра (приглушенные тона) / Color palette (muted tones)
 FG_ACCENT='\033[38;5;85m'
@@ -387,12 +388,31 @@ choose_install_version() {
             break
             ;;
         3)
-            # Получаем ссылку на последнюю pre-release сборку / Fetch latest pre-release build  
+            # Получаем ссылку на последнюю pre-release сборку для ветки / Fetch latest pre-release build for branch
             DOWNLOAD_URL=$(curl -s https://api.github.com/repos/ang3el7z/luci-app-singbox-ui/releases | \
-            grep -A 20 '"prerelease": true' | \
-            grep "browser_download_url.*luci-app-singbox-ui.ipk" | \
-            head -n 1 | \
-            sed -E 's/.*"browser_download_url": *"([^"]+)".*/\1/')
+            awk -v branch="$BRANCH" '
+                /"prerelease": true/ { prerelease=1 }
+                /"target_commitish":/ {
+                    tc=$0
+                    gsub(/.*"target_commitish": *"|"[,].*/, "", tc)
+                    if (prerelease && tc != branch) prerelease=0
+                }
+                prerelease && /"browser_download_url":/ && /luci-app-singbox-ui\.ipk/ {
+                    url=$0
+                    gsub(/.*"browser_download_url": *"|"[,].*/, "", url)
+                    print url
+                    exit
+                }
+            ')
+
+            if [ -z "$DOWNLOAD_URL" ]; then
+                # fallback: любой pre-release / any prerelease
+                DOWNLOAD_URL=$(curl -s https://api.github.com/repos/ang3el7z/luci-app-singbox-ui/releases | \
+                grep -A 20 '"prerelease": true' | \
+                grep "browser_download_url.*luci-app-singbox-ui.ipk" | \
+                head -n 1 | \
+                sed -E 's/.*"browser_download_url": *"([^"]+)".*/\1/')
+            fi
 
             if [ -z "$DOWNLOAD_URL" ]; then
                 show_error "$MSG_NO_PRE_RELEASE"
@@ -401,7 +421,7 @@ choose_install_version() {
             break
             ;;
         4)
-            local runner_base_url="https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/artifacts"
+            local runner_base_url="https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/${BRANCH}/artifacts"
             local index_url="$runner_base_url/index.txt"
 
             show_progress "$MSG_SELECT_RUNNER"
