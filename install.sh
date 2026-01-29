@@ -6,6 +6,11 @@ UI_PATH="$SCRIPT_DIR/lib/ui.sh"
 UI_DOWNLOADED=0
 cleanup_ui_library() {
     if [ "${UI_DOWNLOADED:-0}" -eq 1 ]; then
+        if command -v show_progress >/dev/null 2>&1; then
+            show_progress "Cleaning UI library..."
+        else
+            echo "Cleaning UI library..."
+        fi
         rm -f -- "$UI_PATH"
         rmdir -- "$SCRIPT_DIR/lib" 2>/dev/null || true
     fi
