@@ -400,6 +400,7 @@ choose_install_version() {
                 prerelease && /"browser_download_url":/ && /luci-app-singbox-ui\.ipk/ {
                     url=$0
                     gsub(/.*"browser_download_url": *"|"[,].*/, "", url)
+                    gsub(/"$/, "", url)
                     print url
                     exit
                 }
@@ -411,7 +412,8 @@ choose_install_version() {
                 grep -A 20 '"prerelease": true' | \
                 grep "browser_download_url.*luci-app-singbox-ui.ipk" | \
                 head -n 1 | \
-                sed -E 's/.*"browser_download_url": *"([^"]+)".*/\1/')
+                sed -E 's/.*"browser_download_url": *"([^"]+)".*/\1/' | \
+                sed -E 's/"$//')
             fi
 
             if [ -z "$DOWNLOAD_URL" ]; then
