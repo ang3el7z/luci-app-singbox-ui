@@ -125,6 +125,11 @@ init_language() {
             MSG_TPROXY_NFT_INSTALL="Установка nftables (nft) для TPROXY..."
             MSG_TPROXY_NFT_INSTALLED="nftables успешно установлен"
             MSG_TPROXY_NFT_ERROR="Не удалось установить nftables"
+            MSG_TPROXY_FW4_REQUIRED="Для TPROXY требуется firewall4 (fw4). Обновите OpenWrt и установите firewall4."
+            MSG_PKG_INSTALLING="Установка пакета: %s..."
+            MSG_PKG_INSTALLED="Пакет установлен: %s"
+            MSG_PKG_INSTALL_ERROR="Не удалось установить пакет: %s"
+            MSG_TPROXY_RULE_APPLY_ERROR="Не удалось применить nft правила для TPROXY"
             MSG_INSTALLING_TUN_MODE="Установка TUN режима..."
             MSG_UNINSTALLING_TUN_MODE="Удаление TUN режима..."
             MSG_TUN_DEPS_INSTALL="Установка зависимостей для TUN режима..."
@@ -230,6 +235,11 @@ init_language() {
             MSG_TPROXY_NFT_INSTALL="Installing nftables (nft) for TPROXY..."
             MSG_TPROXY_NFT_INSTALLED="nftables installed successfully"
             MSG_TPROXY_NFT_ERROR="Failed to install nftables"
+            MSG_TPROXY_FW4_REQUIRED="TPROXY requires firewall4 (fw4). Please upgrade OpenWrt and install firewall4."
+            MSG_PKG_INSTALLING="Installing package: %s..."
+            MSG_PKG_INSTALLED="Package installed: %s"
+            MSG_PKG_INSTALL_ERROR="Failed to install package: %s"
+            MSG_TPROXY_RULE_APPLY_ERROR="Failed to apply nft rules for TPROXY"
             MSG_INSTALLING_TUN_MODE="Installing TUN mode..."
             MSG_UNINSTALLING_TUN_MODE="Uninstalling TUN mode..."
             MSG_TUN_DEPS_INSTALL="Installing TUN mode dependencies..."
@@ -312,6 +322,37 @@ ensure_nft_available() {
     exit 1
 }
 
+ensure_fw4_available() {
+    if command -v fw4 >/dev/null 2>&1 || [ -x /sbin/fw4 ]; then
+        return 0
+    fi
+    show_error "$MSG_TPROXY_FW4_REQUIRED"
+    exit 1
+}
+
+ensure_pkg() {
+    local pkg="$1"
+    if opkg list-installed | grep -q "^${pkg} "; then
+        return 0
+    fi
+    show_progress "$(printf "$MSG_PKG_INSTALLING" "$pkg")"
+    if opkg install "$pkg"; then
+        show_success "$(printf "$MSG_PKG_INSTALLED" "$pkg")"
+        return 0
+    fi
+    show_error "$(printf "$MSG_PKG_INSTALL_ERROR" "$pkg")"
+    exit 1
+}
+
+ensure_tproxy_deps() {
+    ensure_fw4_available
+    ensure_nft_available
+    ensure_pkg ip-full
+    ensure_pkg kmod-nft-tproxy
+    ensure_pkg kmod-nft-socket
+    ensure_pkg kmod-inet-diag
+}
+
 install_mode_deps() {
     case $MODE in
         1)
@@ -328,7 +369,7 @@ install_mode_deps() {
             fi
             ;;
         2)
-            ensure_nft_available
+            ensure_tproxy_deps
             ;;
     esac
 }
@@ -800,7 +841,10 @@ install_nft_rule() {
     mkdir -p /etc/nftables.d
 
     cat << 'EOF' > "$nft_rule_file"
+define PROXY_FWMARK = 1
+define BYPASS_MARK = 2
 define RESERVED_IP = {
+    0.0.0.0/8,
     10.0.0.0/8,
     100.64.0.0/10,
     127.0.0.0/8,
@@ -808,6 +852,10 @@ define RESERVED_IP = {
     172.16.0.0/12,
     192.168.0.0/16,
     192.0.0.0/24,
+    192.0.2.0/24,
+    198.18.0.0/15,
+    198.51.100.0/24,
+    203.0.113.0/24,
     224.0.0.0/4,
     240.0.0.0/4,
     255.255.255.255/32
@@ -817,23 +865,18 @@ table ip singbox {
     chain prerouting {
         type filter hook prerouting priority mangle; policy accept;
         ip daddr $RESERVED_IP return
-        ip saddr $RESERVED_IP return
-        ip protocol tcp tproxy to 127.0.0.1:2080 meta mark set 1
-        ip protocol udp tproxy to 127.0.0.1:2080 meta mark set 1
-    }
-    chain output {
-        type route hook output priority mangle; policy accept;
-        ip daddr $RESERVED_IP return
-        ip saddr $RESERVED_IP return
-        meta mark 2 return
-        ip protocol tcp meta mark set 1
-        ip protocol udp meta mark set 1
+        meta mark $BYPASS_MARK return
+        ip protocol tcp tproxy to 127.0.0.1:2080 meta mark set $PROXY_FWMARK
+        ip protocol udp tproxy to 127.0.0.1:2080 meta mark set $PROXY_FWMARK
     }
 }
 EOF
 
     chmod +x "$nft_rule_file"
-    nft -f "$nft_rule_file"
+    if ! nft -f "$nft_rule_file"; then
+        show_error "$MSG_TPROXY_RULE_APPLY_ERROR"
+        exit 1
+    fi
 }
 
 # Удаление правил nft / Remove nft rules
@@ -854,6 +897,23 @@ cleanup_tproxy_routing() {
     show_progress "$MSG_TPROXY_ROUTE_CLEANUP"
     ip rule del fwmark 1 table 100 2>/dev/null || true
     ip route flush table 100 2>/dev/null || true
+}
+
+ensure_tproxy_firewall_include() {
+    local section="singbox_tproxy"
+    if ! uci -q get firewall.$section >/dev/null; then
+        uci set firewall.$section=include
+    fi
+    uci set firewall.$section.type="nftables"
+    uci set firewall.$section.path="/etc/nftables.d/singbox.nft"
+    uci set firewall.$section.enabled="1"
+    uci commit firewall
+}
+
+remove_tproxy_firewall_include() {
+    local section="singbox_tproxy"
+    uci -q delete firewall.$section
+    uci commit firewall
 }
 
 # Выбор режима / Choose mode
@@ -915,12 +975,16 @@ installed_tproxy_mode() {
     enable_singbox
     setup_tproxy_routing
     install_nft_rule
+    ensure_tproxy_firewall_include
+    restart_firewall
     network_check
 }
 
 # Удаление tproxy mode / Uninstall tproxy mode
 uninstalled_tproxy_mode() {
     show_progress "$MSG_UNINSTALLING_TPROXY_MODE"
+    remove_tproxy_firewall_include
+    restart_firewall
     uninstall_nft_rule
     cleanup_tproxy_routing
 }

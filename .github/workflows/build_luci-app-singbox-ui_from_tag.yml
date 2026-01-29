@@ -14,8 +14,25 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4.2.2
+        with:
+          fetch-depth: 0
 
-      - name: Check version and optionally fix mismatch
+      - name: Detect target branch from tag
+        id: detect_branch
+        run: |
+          set -e
+          git fetch origin "+refs/heads/*:refs/remotes/origin/*"
+
+          BRANCH=$(git branch -r --contains "$GITHUB_SHA" | grep -v "origin/HEAD" | head -n 1 | sed "s#origin/##")
+          if [ -z "$BRANCH" ]; then
+            BRANCH="${DEFAULT_BRANCH}"
+          fi
+
+          echo "TARGET_BRANCH=$BRANCH" >> "$GITHUB_ENV"
+        env:
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+
+      - name: Check version and sync with tag
         run: |
           set -e
 
@@ -27,9 +44,6 @@ jobs:
 
           if [ "$LUCI_APP_SINGBOX_UI_VERSION" != "$TAG_VERSION" ]; then
             echo "❌ Version mismatch detected!"
-            echo "⏳ Waiting 30 seconds to allow for manual cancellation..."
-            sleep 30
-
             echo "🔁 Updating Makefile version to match tag..."
             sed -i "s/^PKG_VERSION:=.*$/PKG_VERSION:=${TAG_VERSION}/" luci-app-singbox-ui/Makefile
 
@@ -42,16 +56,18 @@ jobs:
         run: |
           TAG_VERSION=${GITHUB_REF#refs/tags/v}
 
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-
           if git diff --quiet; then
             echo "ℹ No changes to commit."
           else
-            echo "📤 Committing updated Makefile..."
-            git add luci-app-singbox-ui/Makefile
-            git commit -m "github-actions[bot]: sync Makefile version with tag v${TAG_VERSION}"
-            git push origin HEAD:main
+            if git show-ref --verify --quiet "refs/remotes/origin/${TARGET_BRANCH}"; then
+              echo "📤 Committing updated Makefile to ${TARGET_BRANCH}..."
+              git add luci-app-singbox-ui/Makefile
+              git -c user.name="github-actions[bot]" -c user.email="github-actions[bot]@users.noreply.github.com" \
+                commit -m "github-actions[bot]: sync Makefile version with tag v${TAG_VERSION}"
+              git push origin HEAD:${TARGET_BRANCH}
+            else
+              echo "⚠️ Target branch '${TARGET_BRANCH}' not found on origin. Skipping push."
+            fi
           fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
