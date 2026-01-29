@@ -19,9 +19,6 @@
       "tag": "tproxy-in",
       "listen": "0.0.0.0",
       "listen_port": 2080,
-      "network": "tcp,udp",
-      "sniff": true,
-      "sniff_override_destination": true
     },
     {
       "type": "mixed",
