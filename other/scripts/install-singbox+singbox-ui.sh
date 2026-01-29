@@ -3,12 +3,30 @@ BRANCH="${BRANCH:-main}"
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "$0")" && pwd)"
 UI_PATH="$SCRIPT_DIR/lib/ui.sh"
-if [ -f "$UI_PATH" ]; then
+ensure_ui_library() {
+    if [ -f "$UI_PATH" ]; then
+        . "$UI_PATH"
+        return 0
+    fi
+
+    mkdir -p "$SCRIPT_DIR/lib" 2>/dev/null
+    ui_url="https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/$BRANCH/other/scripts/lib/ui.sh"
+    if command -v wget >/dev/null 2>&1; then
+        wget -O "$UI_PATH" "$ui_url" || return 1
+    elif command -v curl >/dev/null 2>&1; then
+        curl -fsSL -o "$UI_PATH" "$ui_url" || return 1
+    else
+        echo "Missing UI library and downloader (wget/curl)" >&2
+        return 1
+    fi
+
     . "$UI_PATH"
-else
+}
+
+ensure_ui_library || {
     echo "Missing UI library: $UI_PATH" >&2
     exit 1
-fi
+}
 
 # Инициализация языка / Language initialization
 init_language() {
