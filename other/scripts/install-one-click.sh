@@ -6,10 +6,11 @@ UI_PATH="$SCRIPT_DIR/lib/ui.sh"
 UI_DOWNLOADED=0
 cleanup_ui_library() {
     if [ "${UI_DOWNLOADED:-0}" -eq 1 ]; then
+        local cleanup_msg="${MSG_CLEANUP_UI:-Cleaning UI library...}"
         if command -v show_progress >/dev/null 2>&1; then
-            show_progress "Cleaning UI library..."
+            show_progress "$cleanup_msg"
         else
-            echo "Cleaning UI library..."
+            echo "$cleanup_msg"
         fi
         rm -f -- "$UI_PATH"
         rmdir -- "$SCRIPT_DIR/lib" 2>/dev/null || true
@@ -76,6 +77,7 @@ init_language() {
             MSG_REMOVE_KEY="Удаляем старый ключ хоста для"
             MSG_CONNECTING="Подключаемся к роутеру и выполняем установку..."
             MSG_COMPLETE="Выполнено! ($script_name)"
+            MSG_CLEANUP_UI="Очистка UI библиотеки..."
             MSG_CLEANUP="Очистка и удаление скрипта..."
             MSG_CLEANUP_DONE="Готово! Скрипт удален."
             MSG_SSH_ERROR="Ошибка подключения к роутеру"
@@ -103,6 +105,7 @@ init_language() {
             MSG_REMOVE_KEY="Removing old host key for"
             MSG_CONNECTING="Connecting to router and installing..."
             MSG_COMPLETE="Done! ($script_name)"
+            MSG_CLEANUP_UI="Cleaning UI library..."
             MSG_CLEANUP="Cleaning up and removing script..."
             MSG_CLEANUP_DONE="Done! Script removed."
             MSG_SSH_ERROR="Failed to connect to router"

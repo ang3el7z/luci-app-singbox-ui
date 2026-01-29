@@ -6,10 +6,11 @@ UI_PATH="$SCRIPT_DIR/lib/ui.sh"
 UI_DOWNLOADED=0
 cleanup_ui_library() {
     if [ "${UI_DOWNLOADED:-0}" -eq 1 ]; then
+        local cleanup_msg="${MSG_CLEANUP_UI:-Cleaning UI library...}"
         if command -v show_progress >/dev/null 2>&1; then
-            show_progress "Cleaning UI library..."
+            show_progress "$cleanup_msg"
         else
-            echo "Cleaning UI library..."
+            echo "$cleanup_msg"
         fi
         rm -f -- "$UI_PATH"
         rmdir -- "$SCRIPT_DIR/lib" 2>/dev/null || true
@@ -57,7 +58,7 @@ init_language() {
                     break
                     ;;
                 *)
-                    show_error "Invalid choice. Please enter 1 or 2."
+                    show_error "Неверный выбор / Invalid choice"
                     ;;
             esac
         done
@@ -75,15 +76,15 @@ init_language() {
             MSG_OPTION_2="2) Lite версия (~6 Кб) (Не поддерживается, старая версия, без новых фич)"
             MSG_OPTION_3="3) Pre-release (бета, возможны баги)"
             MSG_OPTION_4="4) Runner сборка из Pull Request (тестовая)"
-            MSG_INVALID_CHOICE="Некорректный выбор, выбрана версия Latest по умолчанию."
+            MSG_INVALID_CHOICE="Неверный выбор"
             MSG_INSTALL_COMPLETE="Установка завершена"
+            MSG_CLEANUP_UI="Очистка UI библиотеки..."
             MSG_CLEANUP="Очистка файлов..."
             MSG_CLEANUP_DONE="Файлы удалены!"
             MSG_SELECT_RUNNER="Выберите Runner сборку для установки:"
             MSG_NO_PRE_RELEASE="Не удалось получить pre-release, используем latest."
             MSG_RUNNER_INDEX_UNAVAILABLE="Не удалось загрузить список runner сборок (index.txt)."
             MSG_RUNNER_LIST_EMPTY="Список runner сборок пуст."
-            MSG_INVALID_CHOICE="Неверный выбор. Установлена последняя доступная сборка."
             MSG_INSTALL_LATEST="Устанавливается последняя доступная сборка (latest)..."
             MSG_DOWNLOAD_ERROR="Ошибка загрузки файла. Установка прервана."
             MSG_WAITING="Ожидание %d сек"
@@ -135,9 +136,10 @@ init_language() {
             MSG_NO_PRE_RELEASE="Failed to fetch pre-release, using latest."
             MSG_RUNNER_INDEX_UNAVAILABLE="Failed to load runner build list (index.txt)."
             MSG_RUNNER_LIST_EMPTY="Runner build list is empty."
-            MSG_INVALID_CHOICE="Invalid choice. Installing latest available build."
+            MSG_INVALID_CHOICE="Invalid choice"
             MSG_INSTALL_LATEST="Installing stable version latest"
             MSG_DOWNLOAD_ERROR="Download failed. Installation aborted."
+            MSG_CLEANUP_UI="Cleaning UI library..."
             MSG_WAITING="Waiting %d sec"
             MSG_YOUR_CHOICE="Your choice: "
             MSG_COMPLETE="Completed! ($script_name)"

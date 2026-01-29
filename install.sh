@@ -6,10 +6,11 @@ UI_PATH="$SCRIPT_DIR/lib/ui.sh"
 UI_DOWNLOADED=0
 cleanup_ui_library() {
     if [ "${UI_DOWNLOADED:-0}" -eq 1 ]; then
+        local cleanup_msg="${MSG_CLEANUP_UI:-Cleaning UI library...}"
         if command -v show_progress >/dev/null 2>&1; then
-            show_progress "Cleaning UI library..."
+            show_progress "$cleanup_msg"
         else
-            echo "Cleaning UI library..."
+            echo "$cleanup_msg"
         fi
         rm -f -- "$UI_PATH"
         rmdir -- "$SCRIPT_DIR/lib" 2>/dev/null || true
@@ -47,10 +48,20 @@ init_language() {
     local script_name="install.sh"
 
     if [ -z "$LANG" ]; then
-        show_message "Выберите язык / Select language [1/2]:"
-        show_message "1. Русский (Russian)"
-        show_message "2. English (Английский)"
-        read_input " Ваш выбор / Your choice [1/2]: " LANG
+        while true; do
+            show_message "Выберите язык / Select language [1/2]:"
+            show_message "1. Русский (Russian)"
+            show_message "2. English (Английский)"
+            read_input " Ваш выбор / Your choice [1/2]: " LANG
+            case "$LANG" in
+                1|2)
+                    break
+                    ;;
+                *)
+                    show_error "Неверный выбор / Invalid choice"
+                    ;;
+            esac
+        done
     fi
 
     case ${LANG:-2} in
@@ -59,6 +70,7 @@ init_language() {
         MSG_COMPLETE="Выполнено! ($script_name)"
         MSG_FINISHED="Все инструкции выполнены!"
         MSG_INSTALL="Переход к установочному скрипту..."
+        MSG_CLEANUP_UI="Очистка UI библиотеки..."
         MSG_CLEANUP="Очистка файлов..."
         MSG_CLEANUP_DONE="Файлы удалены!"
         MSG_WAITING="Ожидание %d сек"
@@ -68,6 +80,7 @@ init_language() {
         MSG_COMPLETE="Done! ($script_name)"
         MSG_FINISHED="All instructions completed!"
         MSG_INSTALL="Transition to the installation script..."
+        MSG_CLEANUP_UI="Cleaning UI library..."
         MSG_CLEANUP="Cleaning files..."
         MSG_CLEANUP_DONE="Files deleted!"
         MSG_WAITING="Waiting %d seconds"

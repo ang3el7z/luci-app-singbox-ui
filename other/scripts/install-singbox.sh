@@ -6,10 +6,11 @@ UI_PATH="$SCRIPT_DIR/lib/ui.sh"
 UI_DOWNLOADED=0
 cleanup_ui_library() {
     if [ "${UI_DOWNLOADED:-0}" -eq 1 ]; then
+        local cleanup_msg="${MSG_CLEANUP_UI:-Cleaning UI library...}"
         if command -v show_progress >/dev/null 2>&1; then
-            show_progress "Cleaning UI library..."
+            show_progress "$cleanup_msg"
         else
-            echo "Cleaning UI library..."
+            echo "$cleanup_msg"
         fi
         rm -f -- "$UI_PATH"
         rmdir -- "$SCRIPT_DIR/lib" 2>/dev/null || true
@@ -57,7 +58,7 @@ init_language() {
                     break
                     ;;
                 *)
-                    show_error "Invalid choice. Please enter 1 or 2."
+                    show_error "Неверный выбор / Invalid choice"
                     ;;
             esac
         done
@@ -84,6 +85,7 @@ init_language() {
             MSG_FIREWALL_APPLIED="Правила фаервола применены"
             MSG_RESTART_FIREWALL="Перезапуск firewall..."
             MSG_RESTART_NETWORK="Перезапуск network..."
+            MSG_CLEANUP_UI="Очистка UI библиотеки..."
             MSG_CLEANUP="Очистка файлов..."
             MSG_CLEANUP_DONE="Файлы удалены!"
             MSG_WAITING="Ожидание %d сек"
@@ -188,6 +190,7 @@ init_language() {
             MSG_FIREWALL_APPLIED="Firewall rules applied"
             MSG_RESTART_FIREWALL="Restarting firewall..."
             MSG_RESTART_NETWORK="Restarting network..."
+            MSG_CLEANUP_UI="Cleaning UI library..."
             MSG_CLEANUP="Cleaning up files..."
             MSG_CLEANUP_DONE="Files removed!"
             MSG_WAITING="Waiting %d sec"
