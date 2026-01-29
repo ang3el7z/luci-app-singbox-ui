@@ -1,1 +1,2 @@
 luci-app-singbox-ui-pr-59-tproxy-not-work-20260127-2234.ipk
+luci-app-singbox-ui-pr-60-tproxy-20260129-1930.ipk
