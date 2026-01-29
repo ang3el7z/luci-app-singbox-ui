@@ -3,6 +3,13 @@ BRANCH="${BRANCH:-main}"
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "$0")" && pwd)"
 UI_PATH="$SCRIPT_DIR/lib/ui.sh"
+UI_DOWNLOADED=0
+cleanup_ui_library() {
+    if [ "${UI_DOWNLOADED:-0}" -eq 1 ]; then
+        rm -f -- "$UI_PATH"
+        rmdir -- "$SCRIPT_DIR/lib" 2>/dev/null || true
+    fi
+}
 ensure_ui_library() {
     if [ -f "$UI_PATH" ]; then
         . "$UI_PATH"
@@ -20,6 +27,7 @@ ensure_ui_library() {
         return 1
     fi
 
+    UI_DOWNLOADED=1
     . "$UI_PATH"
 }
 
@@ -27,6 +35,7 @@ ensure_ui_library || {
     echo "Missing UI library: $UI_PATH" >&2
     exit 1
 }
+trap cleanup_ui_library EXIT HUP INT TERM
 
 # Инициализация языка / Language initialization
 init_language() {
