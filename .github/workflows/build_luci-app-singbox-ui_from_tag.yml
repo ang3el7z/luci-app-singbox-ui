@@ -15,7 +15,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4.2.2
 
-      - name: Check version and optionally fix mismatch
+      - name: Check version and sync with tag
         run: |
           set -e
 
@@ -27,9 +27,6 @@ jobs:
 
           if [ "$LUCI_APP_SINGBOX_UI_VERSION" != "$TAG_VERSION" ]; then
             echo "❌ Version mismatch detected!"
-            echo "⏳ Waiting 30 seconds to allow for manual cancellation..."
-            sleep 30
-
             echo "🔁 Updating Makefile version to match tag..."
             sed -i "s/^PKG_VERSION:=.*$/PKG_VERSION:=${TAG_VERSION}/" luci-app-singbox-ui/Makefile
 
@@ -41,17 +38,20 @@ jobs:
       - name: Commit updated Makefile version (if changed)
         run: |
           TAG_VERSION=${GITHUB_REF#refs/tags/v}
-
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          TARGET_BRANCH=${TARGET_BRANCH:-TPROXY}
 
           if git diff --quiet; then
             echo "ℹ No changes to commit."
           else
-            echo "📤 Committing updated Makefile..."
-            git add luci-app-singbox-ui/Makefile
-            git commit -m "github-actions[bot]: sync Makefile version with tag v${TAG_VERSION}"
-            git push origin HEAD:main
+            if git show-ref --verify --quiet "refs/remotes/origin/${TARGET_BRANCH}"; then
+              echo "📤 Committing updated Makefile to ${TARGET_BRANCH}..."
+              git add luci-app-singbox-ui/Makefile
+              git -c user.name="github-actions[bot]" -c user.email="github-actions[bot]@users.noreply.github.com" \
+                commit -m "github-actions[bot]: sync Makefile version with tag v${TAG_VERSION}"
+              git push origin HEAD:${TARGET_BRANCH}
+            else
+              echo "⚠️ Target branch '${TARGET_BRANCH}' not found on origin. Skipping push."
+            fi
           fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
