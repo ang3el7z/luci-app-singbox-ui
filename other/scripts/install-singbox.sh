@@ -116,7 +116,7 @@ init_language() {
             MSG_NETWORK_ERROR="Сеть не доступна после %s сек!"
             MSG_MODE="Выберите режим установки:"
             MSG_TUN="1. TUN"
-            MSG_TPROXY="2. TPROXY (в разработке)"
+            MSG_TPROXY="2. TPROXY"
             MSG_MODE_CHOICE="Ваш выбор: "
             MSG_INSTALLING_TPROXY_MODE="Установка TPROXY режима..."
             MSG_UNINSTALLING_TPROXY_MODE="Удаление TPROXY режима..."
@@ -226,7 +226,7 @@ init_language() {
             MSG_NETWORK_ERROR="Network not available after %s sec!"
             MSG_MODE="Select mode:"
             MSG_TUN="1. TUN"
-            MSG_TPROXY="2. TPROXY (in development)"
+            MSG_TPROXY="2. TPROXY"
             MSG_MODE_CHOICE="Your choice: "
             MSG_INSTALLING_TPROXY_MODE="Installing TPROXY mode..."
             MSG_UNINSTALLING_TPROXY_MODE="Uninstalling TPROXY mode..."
@@ -354,24 +354,18 @@ ensure_tproxy_deps() {
 }
 
 install_mode_deps() {
-    case $MODE in
-        1)
-            show_progress "$MSG_TUN_DEPS_INSTALL"
-            if opkg list-installed | grep -q "^kmod-tun "; then
-                show_success "$MSG_TUN_DEPS_ALREADY"
-                return 0
-            fi
-            if opkg install kmod-tun; then
-                show_success "$MSG_TUN_DEPS_INSTALLED"
-            else
-                show_error "$MSG_TUN_DEPS_ERROR"
-                exit 1
-            fi
-            ;;
-        2)
-            ensure_tproxy_deps
-            ;;
-    esac
+    show_progress "$MSG_TUN_DEPS_INSTALL"
+    if opkg list-installed | grep -q "^kmod-tun "; then
+        show_success "$MSG_TUN_DEPS_ALREADY"
+    else
+        if opkg install kmod-tun; then
+            show_success "$MSG_TUN_DEPS_INSTALLED"
+        else
+            show_error "$MSG_TUN_DEPS_ERROR"
+            exit 1
+        fi
+    fi
+    ensure_tproxy_deps
 }
 
 # Выбор операции установки / Choose install operation
@@ -1038,10 +1032,9 @@ install() {
 # Удаление / Uninstall
 uninstall() {
     show_progress "$MSG_UNINSTALLING"
-    definition_mode
     uninstall_singbox
-    perform_uninstall_mode
-    unset MODE
+    uninstalled_tun_mode
+    uninstalled_tproxy_mode
     remove_singbox_data
     uninstall_existing_files
     restore_ipv6
