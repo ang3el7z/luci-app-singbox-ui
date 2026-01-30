@@ -69,18 +69,67 @@ async function saveFile(path, val, msg) {
 }
 
 async function readLogs() {
-  const args = ['-e', 'sing-box'];
+  const tags = [
+    'sing-box',
+    'singbox-ui',
+    'singbox-ui-autoupdater-service',
+    'singbox-ui-health-autoupdater-service',
+    'singbox-ui-memdoc-service',
+    'singbox-ui-updater'
+  ];
+  const args = [];
   try {
     const { stdout } = await fs.exec('/sbin/logread', args);
-    return stdout || '';
+    const lines = (stdout || '').split('\n');
+    const filtered = lines.filter(line => tags.some(tag => line.includes(tag)));
+    return filtered.join('\n');
   } catch {
     try {
       const { stdout } = await fs.exec('logread', args);
-      return stdout || '';
+      const lines = (stdout || '').split('\n');
+      const filtered = lines.filter(line => tags.some(tag => line.includes(tag)));
+      return filtered.join('\n');
     } catch {
       return '';
     }
   }
+}
+
+function isNearBottom(el, threshold = 48) {
+  return el.scrollHeight - el.scrollTop - el.clientHeight <= threshold;
+}
+
+function setupLogsAutoRefresh(textarea) {
+  const refreshIntervalMs = 3000;
+  let paused = false;
+
+  textarea.addEventListener('wheel', () => { paused = true; });
+  textarea.addEventListener('touchstart', () => { paused = true; });
+  textarea.addEventListener('keydown', () => { paused = true; });
+  textarea.addEventListener('mousedown', () => { paused = true; });
+  textarea.addEventListener('mouseup', () => { paused = false; });
+  textarea.addEventListener('mouseleave', () => { paused = false; });
+
+  const tick = async () => {
+    try {
+      const before = textarea.value;
+      const wasNearBottom = isNearBottom(textarea);
+      const logs = (await readLogs()).trim();
+      textarea.value = logs || 'No logs found.';
+      if (!paused && wasNearBottom) {
+        textarea.scrollTop = textarea.scrollHeight;
+      }
+      // keep paused if user is reading older lines
+      if (before !== textarea.value && !wasNearBottom) {
+        paused = true;
+      }
+    } catch (e) {
+      console.warn('log refresh failed', e);
+    }
+  };
+
+  setInterval(tick, refreshIntervalMs);
+  tick();
 }
 
 async function execService(name, action) {
@@ -420,9 +469,22 @@ async function disableTproxyMode() {
   await execService('firewall', 'reload');
 }
 
+async function isTunConfigured() {
+  try {
+    const result = await fs.exec('/sbin/uci', ['get', 'network.proxy.device']);
+    return result.stdout.trim() === 'singtun0';
+  } catch {
+    return false;
+  }
+}
+
 async function getActiveProxyMode() {
-  const val = await getUciValue('proxy_mode', 'tun');
-  return val === 'tproxy' ? 'tproxy' : 'tun';
+  const val = await getUciValue('proxy_mode', '');
+  if (val === 'tun' || val === 'tproxy') return val;
+  if (await isTproxyConfigPresent()) return 'tproxy';
+  if (await isTproxyTablePresent()) return 'tproxy';
+  if (await isTunConfigured()) return 'tun';
+  return 'tun';
 }
 
 async function applyProxyMode(mode) {
@@ -730,40 +792,89 @@ async function getServiceTempFlags() {
   return { healthAutoupdaterServiceTempFlag, autoupdaterServiceTempFlag };
 }
 
-function buildButton(label, style, onclick, disabled = false) {
+function buildButton(label, style, onClick, disabled = false) {
   return E('button', {
     class: `cbi-button cbi-button-${style}`,
     disabled: disabled ? 'disabled' : null,
-    onclick
+    click: onClick
   }, [label]);
 }
 
 function buildCard(title, body) {
-  return E('div', {
-    style: 'border:1px solid #e5e5e5;border-radius:6px;padding:12px;margin:0 0 12px;background:#fff;'
-  }, [
-    E('div', { style: 'font-weight:600;margin:0 0 8px;' }, [title]),
-    body
+  return E('div', { class: 'cbi-section' }, [
+    E('h3', { class: 'cbi-section-title' }, [title]),
+    E('div', { class: 'cbi-section-node' }, [body])
   ]);
 }
 
+function buildGrid(children) {
+  return E('div', {
+    style: 'display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;align-items:start;'
+  }, children);
+}
+
+function buildStack(children) {
+  return E('div', { style: 'display:flex;flex-direction:column;gap:12px;' }, children);
+}
+
 function buildRow(children) {
-  return E('div', { style: 'display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:6px 0;' }, children);
+  return E('div', { style: 'display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:4px 0;' }, children);
 }
 
 function buildField(label, input) {
-  return E('div', { style: 'display:flex;flex-direction:column;gap:4px;min-width:240px;flex:1;' }, [
+  return E('div', { style: 'display:flex;flex-direction:column;gap:4px;min-width:200px;flex:1;' }, [
     E('label', { style: 'font-size:12px;color:#666;' }, [label]),
     input
   ]);
 }
 
+function buildFieldCompact(label, input, widthPx) {
+  return E('div', { style: `display:flex;flex-direction:column;gap:4px;width:${widthPx}px;flex:0 0 ${widthPx}px;` }, [
+    E('label', { style: 'font-size:12px;color:#666;' }, [label]),
+    input
+  ]);
+}
+
+function buildHelpIcon(text) {
+  const bubble = E('span', {
+    style: 'display:none;position:absolute;top:18px;left:0;z-index:10;max-width:260px;padding:6px 8px;border:1px solid #666;border-radius:4px;background:#111;color:#eee;font-size:12px;white-space:normal;'
+  }, [text]);
+
+  const icon = E('span', {
+    style: 'display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;border:1px solid #666;font-size:11px;line-height:1;opacity:.7;cursor:help;',
+    mouseover: () => { bubble.style.display = 'block'; },
+    mouseout: () => { bubble.style.display = 'none'; },
+    focus: () => { bubble.style.display = 'block'; },
+    blur: () => { bubble.style.display = 'none'; },
+    tabindex: '0'
+  }, ['?']);
+
+  return E('span', { style: 'position:relative;display:inline-flex;align-items:center;' }, [icon, bubble]);
+}
+
+function scheduleAceInit(editorId, content, attempt = 0) {
+  const maxAttempts = 20;
+  const delay = 100;
+  if (attempt >= maxAttempts) {
+    notify('error', `Editor mount timeout: ${editorId}`);
+    return;
+  }
+  setTimeout(() => {
+    const el = document.getElementById(editorId);
+    if (!el) {
+      scheduleAceInit(editorId, content, attempt + 1);
+      return;
+    }
+    initializeAceEditor(content, editorId);
+  }, delay);
+}
+
 async function buildConfigEditorBlock(config, editorId) {
   const content = await loadFile(`/etc/sing-box/${config.name}`);
   const container = E('div', { style: 'width:100%;' }, [
-    E('div', { id: editorId, style: 'height:520px;width:100%;border:1px solid #ccc;' })
+    E('div', { id: editorId, style: 'height:420px;width:100%;border:1px solid #ccc;' })
   ]);
-  await initializeAceEditor(content, editorId);
+  scheduleAceInit(editorId, content);
   return container;
 }
 
@@ -853,6 +964,7 @@ function renderProxyModeCard(activeProxyMode) {
   const applyBtn = buildButton('Apply Mode', 'apply', async () => {
     const value = document.getElementById(selectId)?.value;
     if (!value) return notify('error', 'Select a mode first');
+    if (value === activeProxyMode) return;
     try {
       await applyProxyMode(value);
       notify('info', `Mode switched to ${value.toUpperCase()}`);
@@ -862,6 +974,14 @@ function renderProxyModeCard(activeProxyMode) {
       reloadPage();
     }
   });
+
+  const updateApplyVisibility = () => {
+    const value = document.getElementById(selectId)?.value;
+    applyBtn.style.display = (value && value !== activeProxyMode) ? '' : 'none';
+  };
+
+  select.addEventListener('change', updateApplyVisibility);
+  setTimeout(updateApplyVisibility, 0);
 
   return buildCard('Proxy Mode', E('div', {}, [
     buildRow([
@@ -874,40 +994,80 @@ function renderProxyModeCard(activeProxyMode) {
 async function renderLogsCard() {
   const logs = (await readLogs()).trim();
   const content = logs || 'No logs found.';
+  const textareaId = 'singbox_logs';
   return buildCard('Logs', E('div', {}, [
     E('textarea', {
-      style: 'width:100%;height:220px;font-family:monospace;resize:vertical;',
+      id: textareaId,
+      style: 'width:100%;height:160px;font-family:monospace;resize:vertical;',
       readonly: 'readonly'
     }, [content]),
-    buildRow([buildButton('Refresh', 'reload', () => reloadPage())])
+    E('div', { style: 'font-size:12px;color:#888;margin-top:4px;' }, ['Auto-refresh every 3s'])
   ]));
 }
 
-async function renderMainConfigCard(config) {
-  const urlInputId = `singbox_url_${config.name}`;
-  const urlValue = await loadFile(`/etc/sing-box/url_${config.name}`);
-  const urlInput = E('input', { id: urlInputId, class: 'cbi-input-text', value: urlValue.trim() });
+async function renderConfigCard(configs) {
+  const selectId = 'singbox_config_select';
+  const urlInputId = 'singbox_config_url';
+  const editorId = 'editor_config';
 
-  const editorId = `editor_${config.name}`;
-  const editorBlock = await buildConfigEditorBlock(config, editorId);
+  const select = E('select', { id: selectId, class: 'cbi-input-select' }, configs.map((cfg, idx) => (
+    E('option', { value: cfg.name, selected: idx === 0 ? 'selected' : null }, [cfg.label])
+  )));
+
+  const urlInput = E('input', { id: urlInputId, class: 'cbi-input-text', value: '' });
+  const editorBlock = await buildConfigEditorBlock(configs[0], editorId);
+
+  const getSelectedConfig = () => {
+    const name = document.getElementById(selectId)?.value;
+    return configs.find(cfg => cfg.name === name) || configs[0];
+  };
+
+  const setEditorContent = (content) => {
+    try {
+      const aceEditor = ace.edit(editorId);
+      aceEditor.setValue(content, -1);
+    } catch {
+      scheduleAceInit(editorId, content);
+    }
+  };
+
+  const refreshConfigView = async () => {
+    const cfg = getSelectedConfig();
+    const urlValue = await loadFile(`/etc/sing-box/url_${cfg.name}`);
+    const configValue = await loadFile(`/etc/sing-box/${cfg.name}`);
+    urlInput.value = urlValue.trim();
+    setEditorContent(configValue);
+
+    if (setMainBtn) {
+      setMainBtn.style.display = cfg.isMain ? 'none' : '';
+    }
+  };
+
+  select.addEventListener('change', () => refreshConfigView());
 
   const saveUrlBtn = buildButton('Save URL', 'positive', async () => {
+    const cfg = getSelectedConfig();
     const url = document.getElementById(urlInputId)?.value.trim();
     if (!url) return notify('error', 'URL empty');
     if (!isValidUrl(url)) return notify('error', 'Invalid URL');
-    await saveFile(`/etc/sing-box/url_${config.name}`, url, 'URL saved');
+    await saveFile(`/etc/sing-box/url_${cfg.name}`, url, 'URL saved');
     reloadPage();
   });
 
   const updateBtn = buildButton('Update Config', 'reload', async () => {
-    const url = (await loadFile(`/etc/sing-box/url_${config.name}`)).trim();
+    const cfg = getSelectedConfig();
+    const url = (await loadFile(`/etc/sing-box/url_${cfg.name}`)).trim();
     if (!isValidUrl(url)) return notify('error', 'Invalid URL');
     try {
-      const r = await fs.exec('/usr/bin/singbox-ui/singbox-ui-updater', [`/etc/sing-box/url_${config.name}`, `/etc/sing-box/${config.name}`]);
+      const r = await fs.exec('/usr/bin/singbox-ui/singbox-ui-updater', [`/etc/sing-box/url_${cfg.name}`, `/etc/sing-box/${cfg.name}`]);
       if (r.code === 2) return notify('info', 'No changes detected');
       if (r.code !== 0) return notify('error', r.stderr || r.stdout || 'Unknown');
-      await execService('sing-box', 'reload');
-      notify('info', 'Main config reloaded');
+      if (cfg.isMain) {
+        await execService('sing-box', 'reload');
+        notify('info', 'Main config reloaded');
+      } else {
+        notify('info', `Updated ${cfg.label}`);
+      }
     } catch (e) {
       notify('error', 'Update failed: ' + e.message);
     } finally {
@@ -916,6 +1076,7 @@ async function renderMainConfigCard(config) {
   });
 
   const saveConfigBtn = buildButton('Save Config', 'positive', async () => {
+    const cfg = getSelectedConfig();
     let aceEditor = null;
     try {
       aceEditor = ace.edit(editorId);
@@ -926,21 +1087,49 @@ async function renderMainConfigCard(config) {
     const val = aceEditor.getValue();
     if (!val) return notify('error', 'Config is empty');
     if (!(await isValidConfigFile(val))) return;
-    await saveFile(`/etc/sing-box/${config.name}`, val, 'Config saved');
-    await execService('sing-box', 'reload');
-    notify('info', 'Sing‑Box reloaded');
+    await saveFile(`/etc/sing-box/${cfg.name}`, val, 'Config saved');
+    if (cfg.isMain) {
+      await execService('sing-box', 'reload');
+      notify('info', 'Sing‑Box reloaded');
+    }
     reloadPage();
   });
 
-  const clearBtn = buildButton('Clear All', 'negative', async () => {
+  const setMainBtn = buildButton('Set as Main', 'apply', async () => {
+    const cfg = getSelectedConfig();
+    if (cfg.isMain) return;
     try {
-      await saveFile(`/etc/sing-box/${config.name}`, '{}', 'Config cleared');
-      await saveFile(`/etc/sing-box/url_${config.name}`, '', 'URL cleared');
-      if (await isTproxyTablePresent()) await disableTproxy();
-      await execService('sing-box', 'stop');
-      await execServiceLifecycle('singbox-ui-autoupdater-service', 'stop');
-      await execServiceLifecycle('singbox-ui-health-autoupdater-service', 'stop');
-      notify('info', 'Services stopped');
+      const [nc, no, nu, ou] = await Promise.all([
+        loadFile(`/etc/sing-box/${cfg.name}`),
+        loadFile('/etc/sing-box/config.json'),
+        loadFile(`/etc/sing-box/url_${cfg.name}`),
+        loadFile('/etc/sing-box/url_config.json')
+      ]);
+      await saveFile('/etc/sing-box/config.json', nc, 'Main config set');
+      await saveFile(`/etc/sing-box/${cfg.name}`, no, 'Backup config updated');
+      await saveFile('/etc/sing-box/url_config.json', nu, 'Main URL set');
+      await saveFile(`/etc/sing-box/url_${cfg.name}`, ou, 'Backup URL set');
+      await execService('sing-box', 'reload');
+      notify('info', `${cfg.label} is now main`);
+    } catch (e) {
+      notify('error', `Failed to set main: ${e.message}`);
+    } finally {
+      reloadPage();
+    }
+  });
+
+  const clearBtn = buildButton('Clear All', 'negative', async () => {
+    const cfg = getSelectedConfig();
+    try {
+      await saveFile(`/etc/sing-box/${cfg.name}`, '{}', 'Config cleared');
+      await saveFile(`/etc/sing-box/url_${cfg.name}`, '', 'URL cleared');
+      if (cfg.isMain) {
+        if (await isTproxyTablePresent()) await disableTproxy();
+        await execService('sing-box', 'stop');
+        await execServiceLifecycle('singbox-ui-autoupdater-service', 'stop');
+        await execServiceLifecycle('singbox-ui-health-autoupdater-service', 'stop');
+        notify('info', 'Services stopped');
+      }
     } catch (e) {
       notify('error', `Clear failed: ${e.message}`);
     } finally {
@@ -948,93 +1137,33 @@ async function renderMainConfigCard(config) {
     }
   });
 
-  return buildCard('Main Configuration', E('div', {}, [
-    buildRow([buildField('Subscription URL', urlInput), saveUrlBtn, updateBtn]),
+  await refreshConfigView();
+
+  const configRow = E('div', {
+    style: 'display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px;margin:4px 0;'
+  }, [
+    buildFieldCompact('Select config', select, 220),
+    buildFieldCompact('Subscription URL', urlInput, 360),
+    E('div', { style: 'display:inline-flex;gap:8px;margin-left:auto;margin-bottom:2px;' }, [
+      saveUrlBtn,
+      updateBtn
+    ])
+  ]);
+
+  return buildCard('Configuration', E('div', {}, [
+    configRow,
     editorBlock,
-    buildRow([saveConfigBtn, clearBtn])
+    buildRow([saveConfigBtn, setMainBtn, clearBtn])
   ]));
-}
-
-async function renderBackupConfigsCard(configs) {
-  const blocks = await Promise.all(configs.map(async (config) => {
-    const urlInputId = `singbox_url_${config.name}`;
-    const urlValue = await loadFile(`/etc/sing-box/url_${config.name}`);
-    const urlInput = E('input', { id: urlInputId, class: 'cbi-input-text', value: urlValue.trim() });
-
-    const editorId = `editor_${config.name}`;
-    const editorBlock = await buildConfigEditorBlock(config, editorId);
-
-    const saveUrlBtn = buildButton('Save URL', 'positive', async () => {
-      const url = document.getElementById(urlInputId)?.value.trim();
-      if (!url) return notify('error', 'URL empty');
-      if (!isValidUrl(url)) return notify('error', 'Invalid URL');
-      await saveFile(`/etc/sing-box/url_${config.name}`, url, 'URL saved');
-      reloadPage();
-    });
-
-    const updateBtn = buildButton('Update Config', 'reload', async () => {
-      const url = (await loadFile(`/etc/sing-box/url_${config.name}`)).trim();
-      if (!isValidUrl(url)) return notify('error', 'Invalid URL');
-      try {
-        const r = await fs.exec('/usr/bin/singbox-ui/singbox-ui-updater', [`/etc/sing-box/url_${config.name}`, `/etc/sing-box/${config.name}`]);
-        if (r.code === 2) return notify('info', 'No changes detected');
-        if (r.code !== 0) return notify('error', r.stderr || r.stdout || 'Unknown');
-        notify('info', `Updated ${config.label}`);
-      } catch (e) {
-        notify('error', 'Update failed: ' + e.message);
-      } finally {
-        reloadPage();
-      }
-    });
-
-    const setMainBtn = buildButton('Set as Main', 'apply', async () => {
-      try {
-        const [nc, no, nu, ou] = await Promise.all([
-          loadFile(`/etc/sing-box/${config.name}`),
-          loadFile('/etc/sing-box/config.json'),
-          loadFile(`/etc/sing-box/url_${config.name}`),
-          loadFile('/etc/sing-box/url_config.json')
-        ]);
-        await saveFile('/etc/sing-box/config.json', nc, 'Main config set');
-        await saveFile(`/etc/sing-box/${config.name}`, no, 'Backup config updated');
-        await saveFile('/etc/sing-box/url_config.json', nu, 'Main URL set');
-        await saveFile(`/etc/sing-box/url_${config.name}`, ou, 'Backup URL set');
-        await execService('sing-box', 'reload');
-        notify('info', `${config.label} is now main`);
-      } catch (e) {
-        notify('error', `Failed to set main: ${e.message}`);
-      } finally {
-        reloadPage();
-      }
-    });
-
-    const clearBtn = buildButton('Clear All', 'negative', async () => {
-      try {
-        await saveFile(`/etc/sing-box/${config.name}`, '{}', 'Config cleared');
-        await saveFile(`/etc/sing-box/url_${config.name}`, '', 'URL cleared');
-      } catch (e) {
-        notify('error', `Clear failed: ${e.message}`);
-      } finally {
-        reloadPage();
-      }
-    });
-
-    return E('details', { style: 'margin:8px 0;' }, [
-      E('summary', { style: 'cursor:pointer;font-weight:600;' }, [config.label]),
-      buildRow([buildField('Subscription URL', urlInput), saveUrlBtn, updateBtn]),
-      editorBlock,
-      buildRow([setMainBtn, clearBtn])
-    ]);
-  }));
-
-  return buildCard('Backup Configurations', E('div', {}, blocks));
 }
 
 async function renderServicesCard(autoupdaterEnabled, healthAutoupdaterEnabled, memdocEnabled) {
   const buildServiceRow = (title, description, enabled, onClick) => {
-    return E('div', { style: 'margin:6px 0;' }, [
-      E('div', { style: 'font-weight:600;' }, [title]),
-      E('div', { style: 'font-size:12px;color:#666;margin:2px 0 6px;' }, [description]),
+    return E('div', { style: 'display:flex;align-items:center;justify-content:space-between;gap:8px;margin:6px 0;' }, [
+      E('div', { style: 'font-weight:600;display:flex;align-items:center;gap:6px;' }, [
+        title,
+        buildHelpIcon(description)
+      ]),
       buildButton(enabled ? 'Stop' : 'Start', enabled ? 'negative' : 'positive', onClick)
     ]);
   };
@@ -1329,25 +1458,33 @@ return view.extend({
     const autoupdaterServiceEnabled = await isServiceActive('singbox-ui-autoupdater-service');
     const memdocServiceEnabled = await isServiceActive('singbox-ui-memdoc-service');
 
-    const mainConfig = { name: 'config.json', label: 'Main Config' };
-    const backupConfigs = [
-      { name: 'config2.json', label: 'Backup Config #1' },
-      { name: 'config3.json', label: 'Backup Config #2' }
+    const configs = [
+      { name: 'config.json', label: 'Main Config', isMain: true },
+      { name: 'config2.json', label: 'Backup Config #1', isMain: false },
+      { name: 'config3.json', label: 'Backup Config #2', isMain: false }
     ];
 
     const configContent = (await loadFile('/etc/sing-box/config.json')).trim();
     const isInitialConfigValid = await isValidConfigFile(configContent);
     const activeProxyMode = await getActiveProxyMode();
 
-    const container = E('div', { style: 'max-width:1200px;' }, [
-      E('h2', { style: 'margin:0 0 12px;' }, ['VPN: Proxy Suite: Sing‑Box']),
+    const topRow = buildGrid([
       await renderServiceControls(singboxStatus, isInitialConfigValid),
       renderProxyModeCard(activeProxyMode),
-      await renderMainConfigCard(mainConfig),
-      await renderLogsCard(),
-      await renderBackupConfigsCard(backupConfigs),
       await renderServicesCard(autoupdaterServiceEnabled, healthAutoupdaterServiceEnabled, memdocServiceEnabled)
     ]);
+
+    const logsCard = await renderLogsCard();
+    const container = E('div', { class: 'cbi-map' }, [
+      topRow,
+      await renderConfigCard(configs),
+      logsCard
+    ]);
+
+    setTimeout(() => {
+      const textarea = document.getElementById('singbox_logs');
+      if (textarea) setupLogsAutoRefresh(textarea);
+    }, 0);
 
     return container;
   }
