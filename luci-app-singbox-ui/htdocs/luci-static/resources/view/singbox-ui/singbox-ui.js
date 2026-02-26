@@ -258,6 +258,36 @@ async function isServiceActive(name) {
     }
 }
 
+/** Get versions from packages: opkg/apk for luci-app-singbox-ui, sing-box version for binary. */
+async function getPackageVersions() {
+  let singboxUi = '—';
+  let singbox = '—';
+  try {
+    const { stdout: sbOut } = await fs.exec('/usr/bin/sing-box', ['version']);
+    const m = sbOut && sbOut.match(/(\d+\.\d+\.\d+(?:-\S+)?)/);
+    if (m) singbox = m[1];
+  } catch (_) {}
+  try {
+    const { stdout: opkgOut } = await fs.exec('/bin/opkg', ['list-installed', 'luci-app-singbox-ui']);
+    const v = opkgOut && opkgOut.match(/luci-app-singbox-ui[^\d]*([\d.]+(?:-\d+)?)/);
+    if (v) singboxUi = v[1];
+  } catch (_) {
+    try {
+      const { stdout: apkOut } = await fs.exec('/usr/bin/apk', ['info', '-e', 'luci-app-singbox-ui']);
+      const v = apkOut && apkOut.match(/luci-app-singbox-ui-([\d.]+(?:-r\d+)?)/);
+      if (v) singboxUi = v[1];
+    } catch (_) {}
+  }
+  return { singboxUi, singbox };
+}
+
+function createVersionDisplay(section, singboxManagmentTab, versions) {
+  const text = `singbox-ui ${versions.singboxUi} · sing-box ${versions.singbox}`;
+  const o = section.taboption(singboxManagmentTab, form.DummyValue, '_versions', '');
+  o.rawhtml = true;
+  o.cfgvalue = () => `<div class="cbi-value-description" style="margin-top:0.5em;color:var(--muted)">${text}</div>`;
+}
+
 async function createServiceButton(section, singboxManagmentTab, singboxStatus) {
     const configPath = `/etc/sing-box/config.json`;
     const configContent = (await loadFile(configPath)).trim();
@@ -771,7 +801,9 @@ return view.extend({
     createServiceStatusDisplay(section, singboxManagmentTab,singboxStatus);
     createDashboardButton(section, singboxManagmentTab, singboxStatus);
     await createServiceButton(section, singboxManagmentTab, singboxStatus);
- 
+    const versions = await getPackageVersions();
+    createVersionDisplay(section, singboxManagmentTab, versions);
+
     //Configs Management Tab
     const configs = [
       { name: 'config.json', label: 'Main Config' },
