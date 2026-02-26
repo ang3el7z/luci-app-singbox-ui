@@ -1,18 +1,25 @@
 #!/bin/sh
 # Package manager abstraction for OpenWrt: opkg (23.05, 24.10) vs apk (25.x).
 # Source this after ui.sh. Sets PKG_IS_APK (0|1) and PKG_EXT (ipk|apk).
+# Style aligned with itdoginfo/podkop.
 
 detect_pkg_manager() {
-    if command -v opkg >/dev/null 2>&1; then
-        PKG_IS_APK=0
-        PKG_EXT="ipk"
-    elif command -v apk >/dev/null 2>&1; then
-        PKG_IS_APK=1
+    PKG_IS_APK=0
+    command -v apk >/dev/null 2>&1 && PKG_IS_APK=1
+
+    if [ "$PKG_IS_APK" -eq 1 ]; then
         PKG_EXT="apk"
+        PKG_MODE_LABEL="apk (.apk) — OpenWrt 25"
+    elif command -v opkg >/dev/null 2>&1; then
+        PKG_EXT="ipk"
+        PKG_MODE_LABEL="opkg (.ipk) — OpenWrt 23/24"
     else
         echo "No package manager (opkg/apk) found." >&2
         return 1
     fi
+
+    # Показать режим наглядно (show_message из ui.sh, подключается до pkg.sh)
+    [ -n "$PKG_MODE_LABEL" ] && show_message "Package manager: $PKG_MODE_LABEL" 2>/dev/null || true
 }
 
 pkg_is_installed() {
