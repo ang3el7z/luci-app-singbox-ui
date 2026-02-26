@@ -213,6 +213,7 @@ waiting() {
 }
 
 # Обновление репозиториев и установка зависимостей / Update repos and install dependencies
+# Повтор при ошибке встроен в pkg.sh (pkg_list_update, pkg_install)
 update_pkgs() {
     show_progress "$MSG_UPDATE_PKGS"
     if pkg_list_update && \

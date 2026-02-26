@@ -40,39 +40,72 @@ pkg_remove() {
     fi
 }
 
+# Update package lists. Retries on failure (transient SSL/EOF on OpenWrt).
 pkg_list_update() {
-    if [ "$PKG_IS_APK" -eq 1 ]; then
-        apk update
-    else
-        opkg update
-    fi
+    local max="${PKG_UPDATE_RETRIES:-3}"
+    local delay="${PKG_RETRY_DELAY:-3}"
+    local attempt=1
+    while [ "$attempt" -le "$max" ]; do
+        if [ "$PKG_IS_APK" -eq 1 ]; then
+            apk update && return 0
+        else
+            opkg update && return 0
+        fi
+        attempt=$((attempt + 1))
+        [ "$attempt" -le "$max" ] && sleep "$delay"
+    done
+    return 1
 }
 
-# Install package(s) from repo. Args: pkg1 [pkg2 ...]
+# Install package(s) from repo. Retries once on failure (transient SSL/EOF).
 pkg_install() {
-    if [ "$PKG_IS_APK" -eq 1 ]; then
-        apk add "$@"
-    else
-        opkg install "$@"
-    fi
+    local max="${PKG_INSTALL_RETRIES:-2}"
+    local delay="${PKG_RETRY_DELAY:-3}"
+    local attempt=1
+    while [ "$attempt" -le "$max" ]; do
+        if [ "$PKG_IS_APK" -eq 1 ]; then
+            apk add "$@" && return 0
+        else
+            opkg install "$@" && return 0
+        fi
+        attempt=$((attempt + 1))
+        [ "$attempt" -le "$max" ] && sleep "$delay"
+    done
+    return 1
 }
 
-# Install with force-reinstall (opkg) / reinstall (apk). Args: pkg1 [pkg2 ...]
+# Install with force-reinstall (opkg) / reinstall (apk). Retries once on failure.
 pkg_install_force() {
-    if [ "$PKG_IS_APK" -eq 1 ]; then
-        apk add --force-overwrite "$@"
-    else
-        opkg install --force-reinstall "$@"
-    fi
+    local max="${PKG_INSTALL_RETRIES:-2}"
+    local delay="${PKG_RETRY_DELAY:-3}"
+    local attempt=1
+    while [ "$attempt" -le "$max" ]; do
+        if [ "$PKG_IS_APK" -eq 1 ]; then
+            apk add --force-overwrite "$@" && return 0
+        else
+            opkg install --force-reinstall "$@" && return 0
+        fi
+        attempt=$((attempt + 1))
+        [ "$attempt" -le "$max" ] && sleep "$delay"
+    done
+    return 1
 }
 
-# Install from local file (.ipk or .apk). Path must be exact.
+# Install from local file (.ipk or .apk). Retries once on failure.
 # For apk, uses --allow-untrusted (self-built / third-party packages).
 pkg_install_file() {
     local path="$1"
-    if [ "$PKG_IS_APK" -eq 1 ]; then
-        apk add --allow-untrusted "$path"
-    else
-        opkg install "$path"
-    fi
+    local max="${PKG_INSTALL_RETRIES:-2}"
+    local delay="${PKG_RETRY_DELAY:-3}"
+    local attempt=1
+    while [ "$attempt" -le "$max" ]; do
+        if [ "$PKG_IS_APK" -eq 1 ]; then
+            apk add --allow-untrusted "$path" && return 0
+        else
+            opkg install "$path" && return 0
+        fi
+        attempt=$((attempt + 1))
+        [ "$attempt" -le "$max" ] && sleep "$delay"
+    done
+    return 1
 }

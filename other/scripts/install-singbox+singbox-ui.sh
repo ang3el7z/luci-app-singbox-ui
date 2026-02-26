@@ -273,7 +273,7 @@ install_singbox_script() {
 
     wget -O /root/install-singbox.sh https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/$BRANCH/other/scripts/install-singbox.sh &&
     chmod 0755 /root/install-singbox.sh &&
-    LANG="$LANG" OPERATION="$OPERATION" sh /root/install-singbox.sh
+    LANG="$LANG" OPERATION="$OPERATION" BRANCH="$BRANCH" sh /root/install-singbox.sh
 
     show_warning "$MSG_SINGBOX_RETURN"
 }
@@ -284,7 +284,7 @@ install_singbox_ui_script() {
 
     wget -O /root/install-singbox-ui.sh https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/$BRANCH/other/scripts/install-singbox-ui.sh &&
     chmod 0755 /root/install-singbox-ui.sh &&
-    LANG="$LANG" OPERATION="$OPERATION" sh /root/install-singbox-ui.sh
+    LANG="$LANG" OPERATION="$OPERATION" BRANCH="$BRANCH" sh /root/install-singbox-ui.sh
 
     show_warning "$MSG_SINGBOX_RETURN"
 }
