@@ -17,7 +17,7 @@ jobs:
 
     steps:
       - name: Checkout PR code
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@v5.0.0
         with:
           ref: ${{ github.event.pull_request.head.ref }}
           fetch-depth: 0
@@ -72,19 +72,19 @@ jobs:
 
     steps:
       - name: Checkout main branch
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@v5.0.0
         with:
           ref: main
           fetch-depth: 0
 
       - name: Download ipk artifact
-        uses: actions/download-artifact@v4.3.0
+        uses: actions/download-artifact@v4
         with:
           name: built-ipk
           path: ./new-ipk/
 
       - name: Download apk artifact
-        uses: actions/download-artifact@v4.3.0
+        uses: actions/download-artifact@v4
         with:
           name: built-apk
           path: ./new-apk/
