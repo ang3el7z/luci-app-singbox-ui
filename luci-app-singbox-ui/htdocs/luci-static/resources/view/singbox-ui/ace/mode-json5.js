@@ -272,12 +272,13 @@ oop.inherits(FoldMode, BaseFoldMode);
 
 });
 
-ace.define("ace/mode/json5",["require","exports","module","ace/lib/oop","ace/mode/text","ace/mode/json5_highlight_rules","ace/mode/matching_brace_outdent","ace/mode/folding/cstyle"], function(require, exports, module){"use strict";
+ace.define("ace/mode/json5",["require","exports","module","ace/lib/oop","ace/mode/text","ace/mode/json5_highlight_rules","ace/mode/matching_brace_outdent","ace/mode/folding/cstyle","ace/worker/worker_client"], function(require, exports, module){"use strict";
 var oop = require("../lib/oop");
 var TextMode = require("./text").Mode;
 var HighlightRules = require("./json5_highlight_rules").Json5HighlightRules;
 var MatchingBraceOutdent = require("./matching_brace_outdent").MatchingBraceOutdent;
 var CStyleFoldMode = require("./folding/cstyle").FoldMode;
+var WorkerClient = require("../worker/worker_client").WorkerClient;
 var Mode = function () {
     this.HighlightRules = HighlightRules;
     this.$outdent = new MatchingBraceOutdent();
@@ -293,6 +294,13 @@ oop.inherits(Mode, TextMode);
     };
     this.autoOutdent = function (state, doc, row) {
         this.$outdent.autoOutdent(doc, row);
+    };
+    this.createWorker = function (session) {
+        var worker = new WorkerClient(["ace"], "ace/mode/json_worker", "Json5Worker");
+        worker.attachToDocument(session.getDocument());
+        worker.on("annotate", function (e) { session.setAnnotations(e.data); });
+        worker.on("terminate", function () { session.clearAnnotations(); });
+        return worker;
     };
     this.$id = "ace/mode/json5";
 }).call(Mode.prototype);

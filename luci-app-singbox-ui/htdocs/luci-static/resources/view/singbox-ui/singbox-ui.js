@@ -165,6 +165,33 @@ async function isValidConfigFile(content) {
   return result;
 }
 
+/** Format config via sing-box format -c (write temp file, format -w, read back). */
+async function formatConfigWithSingBox(content) {
+  const tmpPath = '/tmp/singbox-format.json';
+  if (!content || !content.trim()) return null;
+  try {
+    await fs.write(tmpPath, content);
+  } catch (e) {
+    notify('error', 'Failed to write temp config: ' + e.message);
+    return null;
+  }
+  try {
+    const formatResult = await fs.exec('/usr/bin/sing-box', ['format', '-w', '-c', tmpPath]);
+    if (formatResult.code !== 0) {
+      let err = (formatResult.stderr || formatResult.stdout || '').trim();
+      if (err.includes(tmpPath)) err = err.substring(err.indexOf(tmpPath) + tmpPath.length + 1).trim();
+      notify('error', 'Format failed: ' + (err || 'Unknown error'));
+      return null;
+    }
+    return await loadFile(tmpPath);
+  } catch (e) {
+    notify('error', 'Format error: ' + e.message);
+    return null;
+  } finally {
+    try { await fs.remove(tmpPath); } catch (_) {}
+  }
+}
+
 function loadScript(src) {
   return new Promise((resolve, reject) => {
       const script = document.createElement('script');
@@ -495,6 +522,7 @@ function createServiceStatusDisplay(section,singboxManagmentTab, singboxStatus) 
 
 async function initializeAceEditor(content, key) {
   await loadScript('/luci-static/resources/view/singbox-ui/ace/ace.js');
+  // ext-language_tools: autocomplete (Ctrl+Space), live completions; required for enableBasicAutocompletion/enableLiveAutocompletion
   await loadScript('/luci-static/resources/view/singbox-ui/ace/ext-language_tools.js');
 
   ace.config.set('basePath', '/luci-static/resources/view/singbox-ui/ace/');
@@ -535,6 +563,31 @@ async function createConfigEditor(section, tab, config, key) {
     ]);
     initializeAceEditor(await loadFile(`/etc/sing-box/${config.name}`), key);
     return container;
+  };
+}
+
+function createFormatConfigButton(section, tab, config, key) {
+  const btn = section.taboption(tab, form.Button, `format_config_${config.name}`, 'Format');
+  btn.inputstyle = 'apply';
+  btn.title = 'Format config with sing-box format -c';
+  btn.inputtitle = 'Format';
+  btn.onclick = async () => {
+    try {
+      const ed = ace.edit(key);
+      const val = ed.getValue();
+      if (!val || !val.trim()) {
+        notify('info', 'Nothing to format');
+        return;
+      }
+      const formatted = await formatConfigWithSingBox(val);
+      if (formatted != null) {
+        ed.setValue(formatted, -1);
+        ed.clearSelection();
+        notify('info', 'Formatted');
+      }
+    } catch (e) {
+      notify('error', 'Editor not ready: ' + (e.message || e));
+    }
   };
 }
 
@@ -687,6 +740,7 @@ function createClearConfigButton(section, configTab, config) {
 async function createHolderConfigEditorViews(section, configTab, config) {
     const editorKey = `editor_${config.name}`;
     await createConfigEditor(section, configTab, config, editorKey);
+    createFormatConfigButton(section, configTab, config, editorKey);
     createSaveConfigButton(section, configTab, config, editorKey);
 }
 
