@@ -117,6 +117,8 @@ init_language() {
             MSG_NETWORK_ERROR="Сеть не доступна после %s сек!"
             MSG_RELOAD_SERVICE="Обновить конфигурацию sing-box..."
             MSG_SERVICE_RELOADED="Конфигурация sing-box обновлена"
+            MSG_BACKUP_CONFIGS="Сохранение резервных конфигов..."
+            MSG_RESTORE_CONFIGS="Восстановление резервных конфигов..."
             ;;
         *)
             MSG_INSTALL_TITLE="Starting! ($script_name)"
@@ -170,6 +172,8 @@ init_language() {
             MSG_NETWORK_ERROR="Network not available after %s sec!"
             MSG_RELOAD_SERVICE="Reload configuration sing-box..."
             MSG_SERVICE_RELOADED="Configuration sing-box reloaded"
+            MSG_BACKUP_CONFIGS="Backing up backup configs..."
+            MSG_RESTORE_CONFIGS="Restoring backup configs..."
             ;;
     esac
 }
@@ -456,6 +460,27 @@ get_config() {
     fi
 }
 
+# Сохранение всех конфигов в /tmp / Backup all configs to /tmp (preserve on reinstall)
+backup_backup_configs() {
+    show_progress "$MSG_BACKUP_CONFIGS"
+    mkdir -p /tmp
+    for f in config.json config2.json config3.json url_config.json url_config2.json url_config3.json; do
+        [ -f "/etc/sing-box/$f" ] && cp -f "/etc/sing-box/$f" "/tmp/singbox-ui-backup-$f"
+    done
+}
+
+# Восстановление конфигов из /tmp в /etc/sing-box, затем удаление tmp / Restore from /tmp into /etc/sing-box, then remove tmp
+restore_backup_configs() {
+    show_progress "$MSG_RESTORE_CONFIGS"
+    mkdir -p /etc/sing-box
+    for f in config.json config2.json config3.json url_config.json url_config2.json url_config3.json; do
+        if [ -f "/tmp/singbox-ui-backup-$f" ]; then
+            cat "/tmp/singbox-ui-backup-$f" > "/etc/sing-box/$f"
+            rm -f "/tmp/singbox-ui-backup-$f"
+        fi
+    done
+}
+
 # Удаление существующих файлов / Remove existing files
 uninstall_existing_files(){
     show_progress "$MSG_UNINSTALL_EXISTING_FILES"
@@ -516,10 +541,12 @@ perform_operation() {
         ;;
         3)  
             if check_installed; then
+                backup_backup_configs
                 uninstall
             fi
             update_pkgs
             install
+            restore_backup_configs
             ;;
         *)
             show_error "$MSG_INVALID_OPERATION"
