@@ -6,6 +6,9 @@ on:
     tags:
       - 'v*'
 
+permissions:
+  contents: write
+
 jobs:
   build:
     name: Build (${{ matrix.pkg_type }})
@@ -21,16 +24,31 @@ jobs:
         with:
           fetch-depth: 0
 
+      # Determine branch to push Makefile update: same branch the tag was created from.
+      # Prefer non-default branch when commit is on multiple (e.g. tag from fix-issue → update fix-issue).
       - name: Detect target branch from tag
         id: detect_branch
         run: |
           set -e
           git fetch origin "+refs/heads/*:refs/remotes/origin/*"
-          BRANCH=$(git branch -r --contains "$GITHUB_SHA" | grep -v "origin/HEAD" | head -n 1 | sed "s#origin/##")
+          BRANCH=""
+          for b in $(git branch -r --contains "$GITHUB_SHA" | grep -v "origin/HEAD" | sed "s#origin/##"); do
+            [ -z "$b" ] && continue
+            # Prefer the branch that is NOT default (tag was likely created on feature branch)
+            if [ "$b" != "${DEFAULT_BRANCH}" ]; then
+              BRANCH="$b"
+              break
+            fi
+          done
+          # If all containing branches were default or only default contains, use default
+          if [ -z "$BRANCH" ]; then
+            BRANCH=$(git branch -r --contains "$GITHUB_SHA" | grep -v "origin/HEAD" | head -n 1 | sed "s#origin/##")
+          fi
           if [ -z "$BRANCH" ]; then
             BRANCH="${DEFAULT_BRANCH}"
           fi
           echo "TARGET_BRANCH=$BRANCH" >> "$GITHUB_ENV"
+          echo "📌 Will push Makefile version sync to branch: $BRANCH"
         env:
           DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
 
