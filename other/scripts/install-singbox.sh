@@ -193,13 +193,16 @@ init_language() {
             MSG_SINGBOX_USE_STORE="Использовать магазин"
             MSG_SINGBOX_EXIT="Выйти"
             MSG_SINGBOX_ERROR_CHOICE="Ваш выбор [1-3]: "
-            MSG_SINGBOX_DOWNLOAD_MENU_OPTION1="1) Скачать sing-box_1.11.15 автоматически в /tmp"
+            MSG_SINGBOX_DOWNLOAD_MENU_OPTION1="1) Скачать sing-box из списка репозитория в /tmp"
             MSG_SINGBOX_DOWNLOAD_MENU_OPTION2="2) $MSG_SINGBOX_USE_STORE"
             MSG_SINGBOX_DOWNLOAD_MENU_OPTION3="3) Повторить поиск файла (ручная загрузка)"
             MSG_SINGBOX_DOWNLOAD_PROMPT="Выберите действие [1-3]: "
-            MSG_SINGBOX_DOWNLOAD_START="Загрузка sing-box_1.11.15 в /tmp..."
-            MSG_SINGBOX_DOWNLOAD_SUCCESS="Файл sing-box_1.11.15 успешно загружен в /tmp."
-            MSG_SINGBOX_DOWNLOAD_ERROR="Не удалось скачать файл sing-box_1.11.15. Проверьте подключение к интернету."
+            MSG_SINGBOX_LIST_UNAVAILABLE="Список пакетов недоступен (ветка или сеть). Проверьте BRANCH и интернет."
+            MSG_SINGBOX_SELECT_PKG="Доступные пакеты sing-box (ветка: $BRANCH):"
+            MSG_SINGBOX_LIST_EMPTY="Нет подходящих пакетов sing-box в репозитории."
+            MSG_SINGBOX_DOWNLOADING="Загрузка '%s' в /tmp..."
+            MSG_SINGBOX_DOWNLOAD_SUCCESS_FILE="Файл '%s' успешно загружен в /tmp."
+            MSG_SINGBOX_DOWNLOAD_ERROR_FILE="Не удалось скачать '%s'. Проверьте подключение к интернету."
             MSG_INVALID_INPUT="Ошибка: Некорректный ввод"
             MSG_REPEAT_INPUT="Повторите ввод"
             ;;
@@ -303,13 +306,16 @@ init_language() {
             MSG_SINGBOX_USE_STORE="Use store"
             MSG_SINGBOX_EXIT="Exit"
             MSG_SINGBOX_ERROR_CHOICE="Your choice [1-3]: "
-            MSG_SINGBOX_DOWNLOAD_MENU_OPTION1="1) Download sing-box_1.11.15 automatically to /tmp"
+            MSG_SINGBOX_DOWNLOAD_MENU_OPTION1="1) Download sing-box from repository list to /tmp"
             MSG_SINGBOX_DOWNLOAD_MENU_OPTION2="2) $MSG_SINGBOX_USE_STORE"
             MSG_SINGBOX_DOWNLOAD_MENU_OPTION3="3) Retry file search (manual upload)"
             MSG_SINGBOX_DOWNLOAD_PROMPT="Choose action [1-3]: "
-            MSG_SINGBOX_DOWNLOAD_START="Downloading sing-box_1.11.15 to /tmp..."
-            MSG_SINGBOX_DOWNLOAD_SUCCESS="sing-box_1.11.15 downloaded to /tmp successfully."
-            MSG_SINGBOX_DOWNLOAD_ERROR="Failed to download sing-box_1.11.15. Please check your internet connection."
+            MSG_SINGBOX_LIST_UNAVAILABLE="Package list unavailable (branch or network). Check BRANCH and internet."
+            MSG_SINGBOX_SELECT_PKG="Available sing-box packages (branch: $BRANCH):"
+            MSG_SINGBOX_LIST_EMPTY="No suitable sing-box packages in repository."
+            MSG_SINGBOX_DOWNLOADING="Downloading '%s' to /tmp..."
+            MSG_SINGBOX_DOWNLOAD_SUCCESS_FILE="File '%s' downloaded to /tmp successfully."
+            MSG_SINGBOX_DOWNLOAD_ERROR_FILE="Failed to download '%s'. Please check your internet connection."
             MSG_INVALID_INPUT="Error: Invalid input"
             MSG_REPEAT_INPUT="Repeat input"
             ;;
@@ -502,9 +508,7 @@ install_singbox() {
 # Ручная установка sing-box / Manual sing-box installation
 manual_singbox_install() {
     # Параметры дефолтной версии для авто-скачивания (ipk/apk по платформе)
-    local SINGBOX_DEFAULT_PKG_NAME="sing-box_1.11.15_openwrt_aarch64_cortex-a53.${PKG_EXT}"
-    local SINGBOX_DEFAULT_PKG_URL="https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/pkg/${PKG_EXT}/${SINGBOX_DEFAULT_PKG_NAME}"
-    local SINGBOX_DEFAULT_PKG_DST="/tmp/${SINGBOX_DEFAULT_PKG_NAME}"
+    local singbox_pkg_base="https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/${BRANCH}/other/pkg/${PKG_EXT}"
 
     while true; do
         show_message ""
@@ -536,18 +540,55 @@ manual_singbox_install() {
                 read_input "$MSG_SINGBOX_DOWNLOAD_PROMPT" RETRY_CHOICE
                 case $RETRY_CHOICE in
                     1)
-                        show_progress "$MSG_SINGBOX_DOWNLOAD_START"
-
-                        # удалить старый, если был
-                        [ -f "$SINGBOX_DEFAULT_PKG_DST" ] && rm -f "$SINGBOX_DEFAULT_PKG_DST"
-
-                        if wget -O "$SINGBOX_DEFAULT_PKG_DST" "$SINGBOX_DEFAULT_PKG_URL"; then
-                            show_success "$MSG_SINGBOX_DOWNLOAD_SUCCESS"
-                            # после загрузки вернуться в начало цикла — теперь файл найдётся
+                        # Список sing-box пакетов из репо (ветка $BRANCH) / List from repo branch
+                        local api_url="https://api.github.com/repos/ang3el7z/luci-app-singbox-ui/contents/other/pkg/${PKG_EXT}?ref=${BRANCH}"
+                        local list_json=""
+                        list_json=$(curl -sL "$api_url" 2>/dev/null) || true
+                        local pkg_names=""
+                        if [ -n "$list_json" ]; then
+                            pkg_names=$(echo "$list_json" | grep -o '"name"[[:space:]]*:[[:space:]]*"[^"]*\.'"${PKG_EXT}"'"' | sed -n 's/.*:[[:space:]]*"\([^"]*\)".*/\1/p')
+                            # только sing-box*.ext / only sing-box*.ext
+                            pkg_names=$(echo "$pkg_names" | grep -E '^sing-box.*\.'"${PKG_EXT}"'$' || true)
+                        fi
+                        if [ -z "$pkg_names" ]; then
+                            show_error "$MSG_SINGBOX_LIST_UNAVAILABLE"
+                            break
+                        fi
+                        show_message "$MSG_SINGBOX_SELECT_PKG"
+                        local idx=1
+                        local num_to_name=""
+                        local total_pkg=0
+                        while IFS= read -r name; do
+                            [ -z "$name" ] && continue
+                            show_message "  [$idx] $name"
+                            eval SINGBOX_PKG_${idx}="\$name"
+                            idx=$((idx + 1))
+                            total_pkg=$((total_pkg + 1))
+                        done <<EOF
+$pkg_names
+EOF
+                        if [ "$total_pkg" -eq 0 ]; then
+                            show_error "$MSG_SINGBOX_LIST_EMPTY"
+                            break
+                        fi
+                        local choice_pkg=""
+                        while true; do
+                            read_input "$MSG_SINGBOX_SELECT_FILE" choice_pkg
+                            if [ "$choice_pkg" -ge 1 ] 2>/dev/null && [ "$choice_pkg" -le "$total_pkg" ] 2>/dev/null; then
+                                break
+                            fi
+                            show_error "$MSG_INVALID_INPUT. $MSG_REPEAT_INPUT"
+                        done
+                        eval "local selected_pkg_name=\"\$SINGBOX_PKG_${choice_pkg}\""
+                        local download_url="${singbox_pkg_base}/${selected_pkg_name}"
+                        local dst_file="/tmp/${selected_pkg_name}"
+                        show_progress "$(printf "$MSG_SINGBOX_DOWNLOADING" "$selected_pkg_name")"
+                        if wget -O "$dst_file" "$download_url"; then
+                            show_success "$(printf "$MSG_SINGBOX_DOWNLOAD_SUCCESS_FILE" "$selected_pkg_name")"
                             break
                         else
-                            show_error "$MSG_SINGBOX_DOWNLOAD_ERROR"
-                            # вернуться к ручной загрузке/поиску
+                            show_error "$(printf "$MSG_SINGBOX_DOWNLOAD_ERROR_FILE" "$selected_pkg_name")"
+                            [ -f "$dst_file" ] && rm -f "$dst_file"
                             break
                         fi
                         ;;
