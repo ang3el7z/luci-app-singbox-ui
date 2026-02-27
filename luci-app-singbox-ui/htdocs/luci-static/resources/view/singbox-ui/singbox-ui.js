@@ -23,6 +23,7 @@ const getInputValueByKey = (key) => {
 };
 
 const TPROXY_RULE_FILE = '/etc/nftables.d/singbox.nft';
+const CARD_STYLE = 'margin-bottom:1rem;padding:1rem 1.25rem;background:var(--card-bg-color, #1e1e1e);border-radius:10px;border:1px solid var(--border-color, #333);box-sizing:border-box;width:100%;';
 
 async function loadFile(path) {
   try { return (await fs.read(path)) || ''; }
@@ -210,7 +211,7 @@ async function setUciOption(option, mode, value = null) {
   
   if (mode === 'read') {
     try {
-      // Читаем через fs.exec
+      // Р§РёС‚Р°РµРј С‡РµСЂРµР· fs.exec
       const result = await fs.exec('/sbin/uci', ['get', `${config}.${section}.${option}`]);
       const out = (result && result.stdout != null) ? String(result.stdout) : '';
       return out.trim() === '1';
@@ -223,7 +224,7 @@ async function setUciOption(option, mode, value = null) {
     try {
       const val = value ? '1' : '0';
       
-      // Используем прямую команду uci
+      // РСЃРїРѕР»СЊР·СѓРµРј РїСЂСЏРјСѓСЋ РєРѕРјР°РЅРґСѓ uci
       await fs.exec('/sbin/uci', ['set', `${config}.${section}.${option}=${val}`]);
       await fs.exec('/sbin/uci', ['commit', config]);
     } catch (e) {
@@ -264,8 +265,8 @@ async function isServiceActive(name) {
 
 /** Get versions from packages: opkg/apk for luci-app-singbox-ui, sing-box version for binary. */
 async function getPackageVersions() {
-  let singboxUi = '—';
-  let singbox = '—';
+  let singboxUi = 'вЂ”';
+  let singbox = 'вЂ”';
   try {
     const { stdout: sbOut } = await fs.exec('/usr/bin/sing-box', ['version']);
     const m = sbOut && sbOut.match(/(\d+\.\d+\.\d+(?:-\S+)?)/);
@@ -285,497 +286,382 @@ async function getPackageVersions() {
   return { singboxUi, singbox };
 }
 
-function createVersionDisplay(section, singboxManagmentTab, versions) {
-  const text = `singbox-ui ${versions.singboxUi} · sing-box ${versions.singbox}`;
-  const o = section.taboption(singboxManagmentTab, form.DummyValue, '_versions', '');
-  o.rawhtml = true;
-  o.cfgvalue = () => `<div class="cbi-value-description" style="margin-top:0.5em;color:var(--muted)">${text}</div>`;
+// === UI: Pure HTML rendering (no LuCI form system) ========================
+
+function buildPageCss() {
+  return `<style>
+.sbox-page { width: 100%; box-sizing: border-box; }
+.sbox-card {
+  background: var(--card-bg-color, #1a1a1a);
+  border: 1px solid var(--border-color, #2e2e2e);
+  border-radius: 10px;
+  padding: 1rem 1.25rem;
+  margin-bottom: 0.75rem;
+  box-sizing: border-box;
+  width: 100%;
+}
+.sbox-card-title {
+  font-size: 0.7em;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted, #666);
+  font-weight: 700;
+  margin-bottom: 0.55rem;
+}
+.sbox-version {
+  font-size: 0.8em;
+  color: var(--muted, #888);
+  margin-bottom: 0.55rem;
+}
+.sbox-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+.sbox-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4em;
+  font-weight: 600;
+  font-size: 0.9em;
+  white-space: nowrap;
+}
+.sbox-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.sbox-dot-running { background: #2ecc71; box-shadow: 0 0 6px rgba(46,204,113,0.5); }
+.sbox-dot-inactive { background: #e67e22; }
+.sbox-dot-error { background: #e74c3c; }
+.sbox-color-running { color: #2ecc71; }
+.sbox-color-inactive { color: #e67e22; }
+.sbox-color-error { color: #e74c3c; }
+.sbox-cfg-top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.55rem;
+  margin-bottom: 0.65rem;
+}
+.sbox-label {
+  font-size: 0.82em;
+  color: var(--muted, #aaa);
+  white-space: nowrap;
+  font-weight: 500;
+}
+.sbox-select {
+  padding: 0.35rem 0.55rem;
+  border-radius: 5px;
+  border: 1px solid var(--border-color, #333);
+  background: var(--input-bg, #242424);
+  color: inherit;
+  font-size: 0.9em;
+  outline: none;
+}
+.sbox-select:focus { border-color: var(--active-color, #4a9eff); }
+.sbox-input {
+  flex: 1;
+  min-width: 180px;
+  padding: 0.35rem 0.6rem;
+  border-radius: 5px;
+  border: 1px solid var(--border-color, #333);
+  background: var(--input-bg, #242424);
+  color: inherit;
+  font-size: 0.9em;
+  box-sizing: border-box;
+  outline: none;
+}
+.sbox-input:focus { border-color: var(--active-color, #4a9eff); }
+.sbox-editor {
+  width: 100%;
+  height: 450px;
+  border: 1px solid var(--border-color, #333);
+  border-radius: 6px;
+  margin: 0.65rem 0;
+  box-sizing: border-box;
+}
+.sbox-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+}
+</style>`;
 }
 
-async function createServiceButton(section, singboxManagmentTab, singboxStatus) {
-    const configPath = `/etc/sing-box/config.json`;
-    const configContent = (await loadFile(configPath)).trim();
-    const isInitialConfigValid = await isValidConfigFile(configContent);
-  
-    const singboxRunning = (singboxStatus === 'running');
-    const healthAutoupdaterServiceTempFlag = await setUciOption('health_autoupdater_service_state', 'read', 'state');
-    const autoupdaterServiceTempFlag = await setUciOption('autoupdater_service_state', 'read', 'state');
-    const tproxyConfigPresent = await isTproxyConfigPresent();
-    const tproxyActive = tproxyConfigPresent || await isTproxyTablePresent();
-  
-    function getServiceNames() {
-      const names = ['Sing‑Box'];
-  
-      if (healthAutoupdaterServiceTempFlag) {
-        names.push('Health Autoupdater');
-      } else if (autoupdaterServiceTempFlag) {
-        names.push('Autoupdater');
-      }
-  
-      return names.join(' and ');
-    }
-  
-    const label = singboxRunning 
-      ? `Stop ${getServiceNames()}`.trim()
-      : `Start ${getServiceNames()}`.trim();
-  
-    const btn = section.taboption(singboxManagmentTab, form.Button, 'svc_toggle_all', label);
-  
-    btn.inputstyle = singboxRunning ? 'remove' : 'apply';
-    btn.readonly = !isInitialConfigValid;
-    btn.title = label;
-    btn.inputtitle = label;
-  
-    const action = singboxRunning ? 'stop' : 'start';
-  
-    btn.onclick = async () => {
+function buildPageHtml(state, configs) {
+  const v = state.versions;
+  const dot = '\u00B7';
+  const proxyMode = state.tproxyConfigPresent ? 'tproxy mode' : 'tun mode';
+  const sk = state.singboxStatus === 'running' ? 'running' : state.singboxStatus === 'error' ? 'error' : 'inactive';
+  const statusLabel = sk === 'running' ? 'Running' : sk === 'error' ? 'Error' : 'Inactive';
+  const b = (cls, action, label, title) =>
+    `<button type="button" class="cbi-button cbi-button-${cls}" data-action="${action}"${title ? ` title="${title}"` : ''}>${label}</button>`;
+  const cb = (cls, action, label) =>
+    `<button type="button" class="cbi-button cbi-button-${cls}" data-config-action="${action}">${label}</button>`;
+
+  const svcNames = () => {
+    const n = ['Sing\u2011Box'];
+    if (state.healthAutoupdaterServiceTempFlag) n.push('Health Autoupdater');
+    else if (state.autoupdaterServiceTempFlag) n.push('Autoupdater');
+    return n.join(' & ');
+  };
+
+  const ctrlBtns = [
+    state.isInitialConfigValid
+      ? b(state.singboxRunning ? 'remove' : 'apply', 'startStop',
+          state.singboxRunning ? 'Stop' : 'Start',
+          (state.singboxRunning ? 'Stop ' : 'Start ') + svcNames())
+      : '',
+    state.singboxRunning && state.isInitialConfigValid
+      ? b('reload', 'restart', 'Restart') : '',
+    state.singboxRunning ? b('apply', 'dashboard', 'Dashboard') : ''
+  ].filter(Boolean).join('');
+
+  const svcBtns = [
+    state.mainConfigHasUrl && !state.healthAutoupdaterEnabled
+      ? b(state.autoupdaterEnabled ? 'negative' : 'positive', 'toggleAutoupdater',
+          state.autoupdaterEnabled ? 'Stop Autoupdater' : 'Autoupdater') : '',
+    state.mainConfigHasUrl && !state.autoupdaterEnabled
+      ? b(state.healthAutoupdaterEnabled ? 'negative' : 'positive', 'toggleHealthAutoupdater',
+          state.healthAutoupdaterEnabled ? 'Stop Health Autoupdater' : 'Health Autoupdater') : '',
+    b(state.memdocEnabled ? 'negative' : 'positive', 'toggleMemdoc',
+      state.memdocEnabled ? 'Stop Memdoc' : 'Memdoc')
+  ].filter(Boolean).join('');
+
+  const opts = configs.map(c => `<option value="${c.name}">${c.label}</option>`).join('');
+
+  return `
+<div class="sbox-card" id="sbox-control">
+  <div class="sbox-version">singbox-ui ${v.singboxUi} ${dot} sing-box ${v.singbox} ${dot} ${proxyMode}</div>
+  <div class="sbox-card-title">Control</div>
+  <div class="sbox-row">
+    <span class="sbox-status sbox-color-${sk}">
+      <span class="sbox-dot sbox-dot-${sk}"></span>${statusLabel}
+    </span>
+    ${ctrlBtns}
+  </div>
+</div>
+<div class="sbox-card" id="sbox-services">
+  <div class="sbox-card-title">Services</div>
+  <div class="sbox-row">${svcBtns}</div>
+</div>
+<div class="sbox-card" id="sbox-config">
+  <div class="sbox-card-title">Config</div>
+  <div class="sbox-cfg-top">
+    <select id="singbox-ui-config-select" class="sbox-select">${opts}</select>
+    <input type="url" id="singbox-ui-url" class="sbox-input" placeholder="Subscription URL: https://subscribe-url" />
+    ${cb('positive', 'saveUrl', 'Save URL')}
+    ${cb('reload', 'update', 'Update')}
+  </div>
+  <div id="singbox-ui-ace" class="sbox-editor"></div>
+  <div class="sbox-actions">
+    ${cb('apply', 'format', 'Format')}
+    ${cb('positive', 'save', 'Save')}
+    <button type="button" class="cbi-button cbi-button-apply" data-config-action="setAsMain" id="singbox-ui-set-main-btn" style="display:none">Set as Main</button>
+    ${cb('negative', 'clear', 'Clear All')}
+  </div>
+</div>`;
+}
+
+async function initPage(page, state, configs, mainContent, mainUrl) {
+  const barActions = {
+    async startStop() {
       try {
-        if (action === 'stop') {
-          const stoppedServices = [];
-  
-          if (singboxRunning) {
-            if (tproxyActive) {
-              await disableTproxy();
-            }
-            await execService('sing-box', 'stop');
-            stoppedServices.push('Sing‑Box');
-          }
-  
-          if (autoupdaterServiceTempFlag ) {
-            await execServiceLifecycle('singbox-ui-autoupdater-service', 'stop');
-            stoppedServices.push('Autoupdater');
-          } else if (healthAutoupdaterServiceTempFlag) {
-            await execServiceLifecycle('singbox-ui-health-autoupdater-service', 'stop');
-            stoppedServices.push('Health Autoupdater');
-          }
-  
-          notify('info', `${stoppedServices.join(' and ')} stopped`);
+        if (state.singboxRunning) {
+          if (state.tproxyActive) await disableTproxy();
+          await execService('sing-box', 'stop');
+          const stopped = ['Sing\u2011Box'];
+          if (state.autoupdaterServiceTempFlag) { await execServiceLifecycle('singbox-ui-autoupdater-service', 'stop'); stopped.push('Autoupdater'); }
+          else if (state.healthAutoupdaterServiceTempFlag) { await execServiceLifecycle('singbox-ui-health-autoupdater-service', 'stop'); stopped.push('Health Autoupdater'); }
+          notify('info', stopped.join(' & ') + ' stopped');
         } else {
-          const startedServices = [];
-  
           await execService('sing-box', 'start');
-          if (tproxyConfigPresent) {
-            await enableTproxy();
-          }
-          startedServices.push('Sing‑Box');
-  
-          if (autoupdaterServiceTempFlag ) {
-            await execServiceLifecycle('singbox-ui-autoupdater-service', 'start');
-            startedServices.push('Autoupdater');
-          } else if (healthAutoupdaterServiceTempFlag) {
-            await execServiceLifecycle('singbox-ui-health-autoupdater-service', 'start');
-            startedServices.push('Health Autoupdater');
-          }
-  
-          notify('info', `${startedServices.join(' and ')} started`);
+          if (state.tproxyConfigPresent) await enableTproxy();
+          const started = ['Sing\u2011Box'];
+          if (state.autoupdaterServiceTempFlag) { await execServiceLifecycle('singbox-ui-autoupdater-service', 'start'); started.push('Autoupdater'); }
+          else if (state.healthAutoupdaterServiceTempFlag) { await execServiceLifecycle('singbox-ui-health-autoupdater-service', 'start'); started.push('Health Autoupdater'); }
+          notify('info', started.join(' & ') + ' started');
         }
-      } catch (e) {
-        notify('error', 'Operation failed: ' + e.message);
-      } finally {
-        reloadPage();
-      }
-    };
-  
-    if (singboxRunning) {
-      const restartBtn = section.taboption(singboxManagmentTab, form.Button, 'svc_restart', 'Restart');
-  
-      const restartServicesNames = ['Sing‑Box'];
-      if (healthAutoupdaterServiceTempFlag) restartServicesNames.push('Health Autoupdater');
-      else if (autoupdaterServiceTempFlag) restartServicesNames.push('Autoupdater');
-  
-      restartBtn.inputstyle = 'reload';
-      restartBtn.readonly = !isInitialConfigValid;
-      restartBtn.title = `Restart ${restartServicesNames.join(' and ')}`;
-      restartBtn.inputtitle = `Restart ${restartServicesNames.join(' and ')}`;
-  
-      restartBtn.onclick = async () => {
-        try {
-          const restartedServices = [];
-  
-          await execService('sing-box', 'restart');
-          restartedServices.push('Sing‑Box');
-  
-          if (autoupdaterServiceTempFlag ) {
-            await execServiceLifecycle('singbox-ui-autoupdater-service', 'restart');
-            restartedServices.push('Autoupdater');
-          } else if (healthAutoupdaterServiceTempFlag) {
-            await execServiceLifecycle('singbox-ui-health-autoupdater-service', 'restart');
-            restartedServices.push('Health Autoupdater');
-          }
-  
-          notify('info', `${restartedServices.join(' and ')} restarted`);
-        } catch (e) {
-          notify('error', 'Restart failed: ' + e.message);
-        } finally {
-          reloadPage()
-        }
-      };
-    }
-}
-
-async function createToggleAutoupdaterServiceButton(section, serviceManagementTab, config, autoupdaterEnabled, healthAutoupdaterEnabled) {
-  if (healthAutoupdaterEnabled) return;
-
-  const urlPath = `/etc/sing-box/url_${config.name}`;
-  const urlContent = (await loadFile(urlPath)).trim();
-  if (!isValidUrl(urlContent)) return;
-
-  const btn = section.taboption(
-    serviceManagementTab, form.Button,
-    'toggle_autoupdater_service',
-    'Autoupdater Service'
-  );
-  btn.inputstyle = autoupdaterEnabled ? 'negative' : 'positive';
-  btn.title = 'Autoupdater Service';
-  btn.description = 'Automatically updates the main config every 60 minutes and reloads Sing‑Box if changes are detected.';
-  btn.inputtitle = autoupdaterEnabled ? 'Stop Service' : 'Start Service';
-
-  btn.onclick = async () => {
-    btn.inputstyle = 'loading';
-    try {
-      if (autoupdaterEnabled) {
-        await execServiceLifecycle('singbox-ui-autoupdater-service', 'stop');
-        await setUciOption('autoupdater_service_state', 'write', false);
-        notify('info', 'Autoupdater service stopped');
-      } else {
-        await execServiceLifecycle('singbox-ui-health-autoupdater-service', 'stop');
-        await setUciOption('health_autoupdater_service_state', 'write', false);
-
-        await setUciOption('autoupdater_service_state', 'write', true);
-        await execServiceLifecycle('singbox-ui-autoupdater-service', 'start');
-
-        notify('info', 'Autoupdater service started');
-      }
-    } catch (e) {
-      notify('error', 'Toggle failed: ' + e.message);
-    } finally {
-      reloadPage()
-    }
-  };
-}
-
-async function createToggleHealthAutoupdaterServiceButton(section, serviceManagementTab, config, healthAutoupdaterEnabled, autoupdaterEnabled) {
-  if (autoupdaterEnabled) return;
-
-  const urlPath = `/etc/sing-box/url_${config.name}`;
-  const urlContent = (await loadFile(urlPath)).trim();
-  if (!isValidUrl(urlContent)) return;
-
-  const btn = section.taboption(
-    serviceManagementTab, form.Button,
-    'toggle_health_autoupdater_service',
-    'Health Autoupdater Service'
-  );
-  btn.inputstyle = healthAutoupdaterEnabled ? 'negative' : 'positive';
-  btn.title = 'Health Autoupdater Service';
-  btn.description = 'Checks server health every 90 seconds. After 60 successful checks, updates config and reloads Sing‑Box. If the server goes down, stops Sing‑Box; when back online, restores config and restarts the service.';
-  btn.inputtitle = healthAutoupdaterEnabled ? 'Stop Service' : 'Start Service';
-
-  btn.onclick = async () => {
-    btn.inputstyle = 'loading';
-    try {
-      if (healthAutoupdaterEnabled) {
-        await execServiceLifecycle('singbox-ui-health-autoupdater-service', 'stop');
-        await setUciOption('health_autoupdater_service_state', 'write', false);
-        notify('info', 'Health Autoupdater service stopped');
-      } else {
-        await execServiceLifecycle('singbox-ui-autoupdater-service', 'stop');
-        await setUciOption('autoupdater_service_state', 'write', false);
- 
-        await setUciOption('health_autoupdater_service_state', 'write', true);
-        await execServiceLifecycle('singbox-ui-health-autoupdater-service', 'start');
-
-        notify('info', 'Health Autoupdater service started');
-      }
-    } catch (e) {
-      notify('error', 'Toggle failed: ' + e.message);
-    } finally {
-      reloadPage()
-    }
-  };
-}
-
-async function createToggleMemdocServiceButton(section, serviceManagementTab, memdocEnabled) {
-  const btn = section.taboption(
-    serviceManagementTab, form.Button,
-    'toggle_memdoc_service',
-    'Memdoc Service'
-  );
-  btn.inputstyle = memdocEnabled ? 'negative' : 'positive';
-  btn.title = 'Memory leak Service';
-  btn.description = 'Checks memory usage every 10 seconds. If memory usage exceeds 15 MB, restarts Sing‑Box.';
-  btn.inputtitle = memdocEnabled ? 'Stop Service' : 'Start Service';
-
-  btn.onclick = async () => {
-    btn.inputstyle = 'loading';
-    try {
-      if (memdocEnabled) {
-        await execServiceLifecycle('singbox-ui-memdoc-service', 'stop');
-        notify('info', 'Memory leak service stopped');
-      } else {
-        await execServiceLifecycle('singbox-ui-memdoc-service', 'start');
-        notify('info', 'Memory leak service started');
-      }
-    } catch (e) {
-      notify('error', 'Toggle failed: ' + e.message);
-    } finally {
-      reloadPage()
-    }
-  };  
-}
-
-function createDashboardButton(section, singboxManagmentTab, singboxStatus) {
-  if (singboxStatus !== 'running') return;
-
-  const btn = section.taboption(singboxManagmentTab, form.Button, 'dashboard', 'Dashboard');
-  btn.inputstyle = 'apply';
-  btn.title = 'Open Sing‑Box Web UI';
-  btn.inputtitle = 'Dashboard';
-
-  btn.onclick = () => {
-    const routerHost = window.location.hostname;
-    const dashboardUrl = `http://${routerHost}:9090/ui/`;
-    window.open(dashboardUrl, '_blank');
-  };
-}
-
-function createServiceStatusDisplay(section,singboxManagmentTab, singboxStatus) {
-  const dv = section.taboption(singboxManagmentTab, form.DummyValue, 'service_status', 'Service Status');
-  dv.rawhtml = true;
-  dv.cfgvalue = () => {
-    const col = { running: 'green', inactive: 'orange', error: 'red' };
-    const txt = singboxStatus === 'running' ? 'Running'
-              : singboxStatus === 'inactive' ? 'Inactive'
-              : singboxStatus === 'error' ? 'Error'
-              : singboxStatus;
-    return `<span style="color:${col[singboxStatus]||'orange'};font-weight:bold">${txt}</span>`;
-  };
-}
-
-// === Components ============================================
-
-async function initializeAceEditor(content, key) {
-  await loadScript('/luci-static/resources/view/singbox-ui/ace/ace.js');
-  // ext-language_tools: autocomplete (Ctrl+Space), live completions; required for enableBasicAutocompletion/enableLiveAutocompletion
-  await loadScript('/luci-static/resources/view/singbox-ui/ace/ext-language_tools.js');
-
-  ace.config.set('basePath', '/luci-static/resources/view/singbox-ui/ace/');
-  ace.config.set('workerPath', '/luci-static/resources/view/singbox-ui/ace/');
-
-  editor = ace.edit(key);
-
-  editor.setTheme("ace/theme/tomorrow_night_bright");
-  editor.session.setMode("ace/mode/json5");
-  editor.setValue(content, -1);
-  editor.clearSelection();
-  editor.session.setUseWorker(true);
-
-  editor.setOptions({
-      fontSize: "12px",
-      showPrintMargin: false,
-      wrap: true,
-      highlightActiveLine: true,
-      behavioursEnabled: true,
-      showFoldWidgets: true,
-      foldStyle: 'markbegin',
-      enableBasicAutocompletion: true,
-      enableLiveAutocompletion: true,
-      enableSnippets: false
-  });
-}
-
-async function createConfigEditor(section, tab, config, key) {
-  const option = section.taboption(tab, form.DummyValue, key, config.label);
-  option.description = 'Edit JSON configuration below';
-
-  option.render = async function () {
-    const container = E('div', { style: 'width: 100%; margin-bottom: 1em;' }, [
-      E('div', {
-        id: key,
-        style: 'height: 600px; width: 100%; border: 1px solid #ccc;',
-      }),
-    ]);
-    initializeAceEditor(await loadFile(`/etc/sing-box/${config.name}`), key);
-    return container;
-  };
-}
-
-function createFormatConfigButton(section, tab, config, key) {
-  const btn = section.taboption(tab, form.Button, `format_config_${config.name}`, 'Format');
-  btn.inputstyle = 'apply';
-  btn.title = 'Format config';
-  btn.inputtitle = 'Format';
-  btn.onclick = async () => {
-    try {
-      const ed = ace.edit(key);
-      const val = ed.getValue();
-      if (!val || !val.trim()) {
-        notify('info', 'Nothing to format');
-        return;
-      }
-      const formatted = await formatConfigWithSingBox(val);
-      if (formatted != null) {
-        ed.setValue(formatted, -1);
-        ed.clearSelection();
-        notify('info', 'Formatted');
-      }
-    } catch (e) {
-      notify('error', 'Editor not ready: ' + (e.message || e));
-    }
-  };
-}
-
-function createSaveConfigButton(section, tab, config, key) {
-  const btn = section.taboption(tab, form.Button, `save_config_${config.name}`, 'Save Config');
-
-  btn.inputstyle = 'positive';
-  btn.title = `Save config`;
-  btn.inputtitle = 'Save';
-
-  btn.onclick = async () => {
-    let editor = null;
-    try {
-      editor = ace.edit(key);
-    } catch {
-      notify('error', 'Editor is not initialized');
-      return;
-    }
-    const val = editor.getValue();
-
-    if (!val) return notify('error', 'Config is empty');
-    if (!(await isValidConfigFile(val))) return;
-
-    await saveFile(`/etc/sing-box/${config.name}`, val, 'Config saved');
-    if (config.name === 'config.json') {
-      await execService('sing-box', 'reload');
-      notify('info', 'Sing‑Box reloaded');
-    }
-    reloadPage()
-  };
-}
-
-function createSubscribeEditor(section, configTab, config) {
-  const key = `url_${config.name}`;
-  const fi = section.taboption(configTab, form.Value, key, 'Subscription URL');
-  fi.datatype = 'url';
-  fi.placeholder = 'https://example.com/subscribe';
-  fi.description = 'Valid subscription URL for auto-updates';
-  fi.rmempty = false;
-  fi.cfgvalue = () => loadFile(`/etc/sing-box/url_${config.name}`);
-}
-
-function createSaveUrlButton(section, configTab, config) {
-  const key = `url_${config.name}`;
-  const btn = section.taboption(configTab, form.Button, `save_url_${config.name}`, 'Save URL');
-  btn.inputstyle = 'positive';
-  btn.title = `Save subscription URL`;
-  btn.inputtitle = 'Save URL';
-
-  btn.onclick = async () => {
-    const url = getInputValueByKey(key);
-    if (!url) return notify('error', 'URL empty');
-    if (!isValidUrl(url)) return notify('error', 'Invalid URL');
-    await saveFile(`/etc/sing-box/url_${config.name}`, url, 'URL saved');
-    reloadPage()
-  };
-}
-
-async function createUpdateConfigButton(section, configTab, config) {
-    const urlPath = `/etc/sing-box/url_${config.name}`;
-    const urlContent = (await loadFile(urlPath)).trim();
-    if (!isValidUrl(urlContent)) return;
-  
-    const btn = section.taboption(configTab, form.Button, `update_cfg_${config.name}`, 'Update Config');
-    btn.inputstyle = 'reload';
-    btn.title = `Fetch & update from URL`;
-    btn.inputtitle = 'Update';
-  
-    btn.onclick = async () => {
+      } catch (e) { notify('error', 'Operation failed: ' + e.message); }
+      finally { reloadPage(); }
+    },
+    async restart() {
       try {
-        const r = await fs.exec(
-          '/usr/bin/singbox-ui/singbox-ui-updater',
-          [`/etc/sing-box/url_${config.name}`, `/etc/sing-box/${config.name}`]
-        );
+        await execService('sing-box', 'restart');
+        const restarted = ['Sing\u2011Box'];
+        if (state.autoupdaterServiceTempFlag) { await execServiceLifecycle('singbox-ui-autoupdater-service', 'restart'); restarted.push('Autoupdater'); }
+        else if (state.healthAutoupdaterServiceTempFlag) { await execServiceLifecycle('singbox-ui-health-autoupdater-service', 'restart'); restarted.push('Health Autoupdater'); }
+        notify('info', restarted.join(' & ') + ' restarted');
+      } catch (e) { notify('error', 'Restart failed: ' + e.message); }
+      finally { reloadPage(); }
+    },
+    dashboard() { window.open('http://' + window.location.hostname + ':9090/ui/', '_blank'); },
+    async toggleAutoupdater() {
+      try {
+        if (state.autoupdaterEnabled) {
+          await execServiceLifecycle('singbox-ui-autoupdater-service', 'stop');
+          await setUciOption('autoupdater_service_state', 'write', false);
+          notify('info', 'Autoupdater stopped');
+        } else {
+          await execServiceLifecycle('singbox-ui-health-autoupdater-service', 'stop');
+          await setUciOption('health_autoupdater_service_state', 'write', false);
+          await setUciOption('autoupdater_service_state', 'write', true);
+          await execServiceLifecycle('singbox-ui-autoupdater-service', 'start');
+          notify('info', 'Autoupdater started');
+        }
+      } catch (e) { notify('error', 'Toggle failed: ' + e.message); }
+      finally { reloadPage(); }
+    },
+    async toggleHealthAutoupdater() {
+      try {
+        if (state.healthAutoupdaterEnabled) {
+          await execServiceLifecycle('singbox-ui-health-autoupdater-service', 'stop');
+          await setUciOption('health_autoupdater_service_state', 'write', false);
+          notify('info', 'Health Autoupdater stopped');
+        } else {
+          await execServiceLifecycle('singbox-ui-autoupdater-service', 'stop');
+          await setUciOption('autoupdater_service_state', 'write', false);
+          await setUciOption('health_autoupdater_service_state', 'write', true);
+          await execServiceLifecycle('singbox-ui-health-autoupdater-service', 'start');
+          notify('info', 'Health Autoupdater started');
+        }
+      } catch (e) { notify('error', 'Toggle failed: ' + e.message); }
+      finally { reloadPage(); }
+    },
+    async toggleMemdoc() {
+      try {
+        if (state.memdocEnabled) { await execServiceLifecycle('singbox-ui-memdoc-service', 'stop'); notify('info', 'Memdoc stopped'); }
+        else { await execServiceLifecycle('singbox-ui-memdoc-service', 'start'); notify('info', 'Memdoc started'); }
+      } catch (e) { notify('error', 'Toggle failed: ' + e.message); }
+      finally { reloadPage(); }
+    }
+  };
+
+  page.querySelectorAll('button[data-action]').forEach(btn => {
+    const fn = barActions[btn.getAttribute('data-action')];
+    if (fn) btn.onclick = () => { if (fn.constructor.name === 'AsyncFunction') fn().catch(() => {}); else fn(); };
+  });
+
+  let currentConfig = configs[0];
+  const urlEl = page.querySelector('#singbox-ui-url');
+  const selectEl = page.querySelector('#singbox-ui-config-select');
+  const setMainBtn = page.querySelector('#singbox-ui-set-main-btn');
+  if (urlEl) urlEl.value = mainUrl || '';
+
+  const configActions = {
+    saveUrl: async () => {
+      const url = (urlEl && urlEl.value || '').trim();
+      if (!url) return notify('error', 'URL empty');
+      if (!isValidUrl(url)) return notify('error', 'Invalid URL');
+      await saveFile('/etc/sing-box/url_' + currentConfig.name, url, 'URL saved');
+      try {
+        const r = await fs.exec('/usr/bin/singbox-ui/singbox-ui-updater',
+          ['/etc/sing-box/url_' + currentConfig.name, '/etc/sing-box/' + currentConfig.name]);
+        if (r.code === 2) notify('info', 'No changes detected');
+        else if (r.code !== 0) notify('error', r.stderr || r.stdout || 'Unknown');
+        else {
+          if (currentConfig.name === 'config.json') await execService('sing-box', 'reload');
+          notify('info', currentConfig.name === 'config.json' ? 'Main config reloaded' : 'Updated ' + currentConfig.label);
+        }
+      } catch (e) { notify('error', 'Update failed: ' + e.message); }
+      reloadPage();
+    },
+    update: async () => {
+      try {
+        const r = await fs.exec('/usr/bin/singbox-ui/singbox-ui-updater',
+          ['/etc/sing-box/url_' + currentConfig.name, '/etc/sing-box/' + currentConfig.name]);
         if (r.code === 2) return notify('info', 'No changes detected');
         if (r.code !== 0) return notify('error', r.stderr || r.stdout || 'Unknown');
-        if (config.name === 'config.json') {
-          await execService('sing-box', 'reload');
-          notify('info', 'Main config reloaded');
-        } else {
-          notify('info', `Updated ${config.label}`);
+        if (currentConfig.name === 'config.json') await execService('sing-box', 'reload');
+        notify('info', currentConfig.name === 'config.json' ? 'Main config reloaded' : 'Updated ' + currentConfig.label);
+      } catch (e) { notify('error', 'Update failed: ' + e.message); }
+      finally { reloadPage(); }
+    },
+    format: async () => {
+      const ed = window.singboxEditor;
+      if (!ed) return notify('error', 'Editor not ready');
+      const val = ed.getValue();
+      if (!val || !val.trim()) return notify('info', 'Nothing to format');
+      const formatted = await formatConfigWithSingBox(val);
+      if (formatted != null) { ed.setValue(formatted, -1); ed.clearSelection(); notify('info', 'Formatted'); }
+    },
+    save: async () => {
+      const ed = window.singboxEditor;
+      if (!ed) return;
+      const val = ed.getValue();
+      if (!val) return notify('error', 'Config is empty');
+      if (!(await isValidConfigFile(val))) return;
+      await saveFile('/etc/sing-box/' + currentConfig.name, val, 'Config saved');
+      if (currentConfig.name === 'config.json') { await execService('sing-box', 'reload'); notify('info', 'Sing\u2011Box reloaded'); }
+      reloadPage();
+    },
+    setAsMain: async () => {
+      if (currentConfig.name === 'config.json') return;
+      try {
+        const [nc, no, nu, ou] = await Promise.all([
+          loadFile('/etc/sing-box/' + currentConfig.name), loadFile('/etc/sing-box/config.json'),
+          loadFile('/etc/sing-box/url_' + currentConfig.name), loadFile('/etc/sing-box/url_config.json')
+        ]);
+        await saveFile('/etc/sing-box/config.json', nc, 'Main config set');
+        await saveFile('/etc/sing-box/' + currentConfig.name, no, 'Backup config updated');
+        await saveFile('/etc/sing-box/url_config.json', nu, 'Main URL set');
+        await saveFile('/etc/sing-box/url_' + currentConfig.name, ou, 'Backup URL set');
+        await execService('sing-box', 'reload');
+        notify('info', currentConfig.label + ' is now main');
+      } catch (e) { notify('error', 'Failed to set main: ' + e.message); }
+      finally { reloadPage(); }
+    },
+    clear: async () => {
+      try {
+        await saveFile('/etc/sing-box/' + currentConfig.name, '{}', 'Config cleared');
+        await saveFile('/etc/sing-box/url_' + currentConfig.name, '', 'URL cleared');
+        if (currentConfig.name === 'config.json') {
+          if (await isTproxyTablePresent()) await disableTproxy();
+          await execService('sing-box', 'stop');
+          await execServiceLifecycle('singbox-ui-autoupdater-service', 'stop');
+          await execServiceLifecycle('singbox-ui-health-autoupdater-service', 'stop');
+          notify('info', 'Services stopped');
         }
-      } catch (e) {
-        notify('error', 'Update failed: ' + e.message);
-      } finally {
-        reloadPage()
-      }
-    };
-}
-
-function createSetAsMainConfigButton(section, configTab, config) {
-  if (config.name === 'config.json') return;
-
-  const btn = section.taboption(configTab, form.Button, `set_main_${config.name}`, 'Set as Main');
-  btn.inputstyle = 'apply';
-  btn.title = `Switch: ${config.label} to main config`;
-  btn.inputtitle = 'Set as Main';
-
-  btn.onclick = async () => {
-    try {
-      const [nc, no, nu, ou] = await Promise.all([
-        loadFile(`/etc/sing-box/${config.name}`),
-        loadFile('/etc/sing-box/config.json'),
-        loadFile(`/etc/sing-box/url_${config.name}`),
-        loadFile('/etc/sing-box/url_config.json')
-      ]);
-      await saveFile('/etc/sing-box/config.json', nc, 'Main config set');
-      await saveFile(`/etc/sing-box/${config.name}`, no, 'Backup config updated');
-      await saveFile('/etc/sing-box/url_config.json', nu, 'Main URL set');
-      await saveFile(`/etc/sing-box/url_${config.name}`, ou, 'Backup URL set');
-      await execService('sing-box', 'reload');
-      notify('info', `${config.label} is now main`);
-    } catch (e) {
-      notify('error', `Failed to set main: ${e.message}`);
-    } finally {
-      reloadPage()
+      } catch (e) { notify('error', 'Clear failed: ' + e.message); }
+      finally { reloadPage(); }
     }
   };
-}
 
-function createClearConfigButton(section, configTab, config) {
-  const btn = section.taboption(configTab, form.Button, `clear_config_${config.name}`, 'Clear All');
-  btn.inputstyle = 'negative';
-  btn.title = `Clear config and URL`;
-  btn.inputtitle = 'Clear All';
+  page.querySelectorAll('button[data-config-action]').forEach(btn => {
+    const fn = configActions[btn.getAttribute('data-config-action')];
+    if (fn) btn.onclick = () => { if (fn.constructor.name === 'AsyncFunction') fn().catch(() => {}); else fn(); };
+  });
 
-  btn.onclick = async () => {
-    try {
-      await saveFile(`/etc/sing-box/${config.name}`, '{}', 'Config cleared');
-      await saveFile(`/etc/sing-box/url_${config.name}`, '', 'URL cleared');
-      if (config.name === 'config.json') {
-        if (await isTproxyTablePresent()) {
-          await disableTproxy();
-        }
-        await execService('sing-box', 'stop');
-        await execServiceLifecycle('singbox-ui-autoupdater-service', 'stop');
-        await execServiceLifecycle('singbox-ui-health-autoupdater-service', 'stop');
-        notify('info', 'Services stopped');
-      }
-    } catch (e) {
-      notify('error', `Clear failed: ${e.message}`);
-    } finally {
-      reloadPage()
-    }
-  };
-}
+  if (selectEl) selectEl.addEventListener('change', async () => {
+    const config = configs.find(c => c.name === selectEl.value);
+    if (!config) return;
+    currentConfig = config;
+    const [content, url] = await Promise.all([
+      loadFile('/etc/sing-box/' + config.name),
+      loadFile('/etc/sing-box/url_' + config.name)
+    ]);
+    if (window.singboxEditor) { window.singboxEditor.setValue(content || '', -1); window.singboxEditor.clearSelection(); }
+    if (urlEl) urlEl.value = url || '';
+    if (setMainBtn) setMainBtn.style.display = config.name === 'config.json' ? 'none' : 'inline-block';
+  });
 
-// === Components view ============================================================
-
-async function createHolderConfigEditorViews(section, configTab, config) {
-    const editorKey = `editor_${config.name}`;
-    await createConfigEditor(section, configTab, config, editorKey);
-    createFormatConfigButton(section, configTab, config, editorKey);
-    createSaveConfigButton(section, configTab, config, editorKey);
+  const aceEl = page.querySelector('#singbox-ui-ace');
+  if (!aceEl) return;
+  await loadScript('/luci-static/resources/view/singbox-ui/ace/ace.js');
+  await loadScript('/luci-static/resources/view/singbox-ui/ace/ext-language_tools.js');
+  ace.config.set('basePath', '/luci-static/resources/view/singbox-ui/ace/');
+  ace.config.set('workerPath', '/luci-static/resources/view/singbox-ui/ace/');
+  editor = ace.edit(aceEl);
+  editor.setTheme('ace/theme/tomorrow_night_bright');
+  editor.session.setMode('ace/mode/json5');
+  editor.setValue(mainContent || '', -1);
+  editor.clearSelection();
+  editor.session.setUseWorker(true);
+  editor.setOptions({ fontSize: '13px', showPrintMargin: false, wrap: true, highlightActiveLine: true, behavioursEnabled: true, showFoldWidgets: true, foldStyle: 'markbegin', enableBasicAutocompletion: true, enableLiveAutocompletion: true, enableSnippets: false });
+  window.singboxEditor = editor;
 }
 
 // === Main View ============================================================
@@ -786,55 +672,66 @@ return view.extend({
   handleReset: null,
 
   async render() {
-    const map = new form.Map('singbox-ui', 'Sing‑Box UI Configuration');
-    const section = map.section(form.TypedSection, 'main', 'ㅤ');
-    section.anonymous = true;
-
-    // getServiceStatus
-    const singboxStatus = await execService('sing-box', 'status');
-
-    // isServiceActive
-    const healthAutoupdaterServiceEnabled = await isServiceActive('singbox-ui-health-autoupdater-service');
-    const autoupdaterServiceEnabled = await isServiceActive('singbox-ui-autoupdater-service');
-    const memdocServiceEnabled = await isServiceActive('singbox-ui-memdoc-service');
-    
-    //Singbox Management Tab
-    const singboxManagmentTab = 'singbox-management'
-    section.tab(singboxManagmentTab, 'Singbox');
-
-    createServiceStatusDisplay(section, singboxManagmentTab,singboxStatus);
-    createDashboardButton(section, singboxManagmentTab, singboxStatus);
-    await createServiceButton(section, singboxManagmentTab, singboxStatus);
-    const versions = await getPackageVersions();
-    createVersionDisplay(section, singboxManagmentTab, versions);
-
-    //Configs Management Tab
     const configs = [
       { name: 'config.json', label: 'Main Config' },
       { name: 'config2.json', label: 'Backup Config #1' },
       { name: 'config3.json', label: 'Backup Config #2' }
     ];
 
-    for (const config of configs) {
-        const configTab = config.name === 'config.json' ? 'main_config' : `config_${config.name}`;
-        section.tab(configTab, config.label);
+    const [
+      singboxStatus,
+      healthAutoupdaterServiceEnabled,
+      autoupdaterServiceEnabled,
+      memdocServiceEnabled,
+      versions,
+      configContent,
+      healthAutoupdaterServiceTempFlag,
+      autoupdaterServiceTempFlag,
+      tproxyConfigPresent,
+      mainConfigUrl,
+      mainContent,
+      mainUrl
+    ] = await Promise.all([
+      execService('sing-box', 'status'),
+      isServiceActive('singbox-ui-health-autoupdater-service'),
+      isServiceActive('singbox-ui-autoupdater-service'),
+      isServiceActive('singbox-ui-memdoc-service'),
+      getPackageVersions(),
+      loadFile('/etc/sing-box/config.json'),
+      setUciOption('health_autoupdater_service_state', 'read', 'state'),
+      setUciOption('autoupdater_service_state', 'read', 'state'),
+      isTproxyConfigPresent(),
+      loadFile('/etc/sing-box/url_config.json'),
+      loadFile('/etc/sing-box/config.json'),
+      loadFile('/etc/sing-box/url_config.json')
+    ]);
 
-        createSubscribeEditor(section, configTab, config);
-        createSaveUrlButton(section, configTab, config);
-        await createUpdateConfigButton(section, configTab, config);
-        await createHolderConfigEditorViews(section, configTab, config);
-        createSetAsMainConfigButton(section, configTab, config);
-        createClearConfigButton(section, configTab, config);
-    }
+    const tproxyActive = tproxyConfigPresent || await isTproxyTablePresent();
+    const isInitialConfigValid = await isValidConfigFile(configContent.trim());
 
-    //Service Management Tab
-    const serviceManagementTab = 'service-management'
-    section.tab(serviceManagementTab, 'Services');
+    const state = {
+      versions,
+      singboxStatus,
+      singboxRunning: singboxStatus === 'running',
+      isInitialConfigValid,
+      tproxyConfigPresent,
+      tproxyActive,
+      mainConfigHasUrl: isValidUrl(mainConfigUrl.trim()),
+      healthAutoupdaterServiceTempFlag,
+      autoupdaterServiceTempFlag,
+      autoupdaterEnabled: autoupdaterServiceEnabled,
+      healthAutoupdaterEnabled: healthAutoupdaterServiceEnabled,
+      memdocEnabled: memdocServiceEnabled
+    };
 
-    await createToggleAutoupdaterServiceButton(section, serviceManagementTab, configs[0], autoupdaterServiceEnabled, healthAutoupdaterServiceEnabled);
-    await createToggleHealthAutoupdaterServiceButton(section, serviceManagementTab, configs[0], healthAutoupdaterServiceEnabled, autoupdaterServiceEnabled);
-    await createToggleMemdocServiceButton(section, serviceManagementTab, memdocServiceEnabled);
-    
-    return map.render();
+    const page = document.createElement('div');
+    page.className = 'sbox-page';
+    page.innerHTML = buildPageCss() + buildPageHtml(state, configs);
+
+    setTimeout(() => initPage(page, state, configs, mainContent, mainUrl).catch(e => {
+      console.error('[singbox-ui] initPage error:', e);
+    }), 50);
+
+    return page;
   }
 });
