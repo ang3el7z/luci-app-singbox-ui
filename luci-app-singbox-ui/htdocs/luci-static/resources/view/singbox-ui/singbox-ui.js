@@ -40,7 +40,8 @@ async function saveFile(path, val, msg) {
 
 async function execService(name, action) {
   try {
-    const { stdout } = await fs.exec(`/etc/init.d/${name}`, [action]);
+    const result = await fs.exec(`/etc/init.d/${name}`, [action]);
+    const stdout = (result && result.stdout != null) ? String(result.stdout) : '';
     console.log(`[${name}] ${action} output: ${stdout.trim()}`);
     return stdout.trim();
   } catch (err) {
@@ -123,7 +124,8 @@ async function execServiceLifecycle(name, action) {
   }
 
   try {
-    const { stdout } = await fs.exec(path, ['status']);
+    const result = await fs.exec(path, ['status']);
+    const stdout = (result && result.stdout != null) ? String(result.stdout) : '';
     console.log(`[${name}] Final status: ${stdout.trim()}`);
   } catch (err) {
     console.error(`[${name}] Failed to get final status:`, err);
@@ -210,7 +212,8 @@ async function setUciOption(option, mode, value = null) {
     try {
       // Читаем через fs.exec
       const result = await fs.exec('/sbin/uci', ['get', `${config}.${section}.${option}`]);
-      return result.stdout.trim() === '1';
+      const out = (result && result.stdout != null) ? String(result.stdout) : '';
+      return out.trim() === '1';
     } catch {
       return false;
     }
@@ -247,7 +250,8 @@ async function isServiceActive(name) {
   
     try {
       console.log(`Checking status of service "${name}"...`);
-      const { stdout } = await fs.exec(`/etc/init.d/${name}`, ['status']);
+      const result = await fs.exec(`/etc/init.d/${name}`, ['status']);
+      const stdout = (result && result.stdout != null) ? String(result.stdout) : '';
       const running = stdout.trim().includes('running');
       console.log(`Service "${name}" status output: "${stdout.trim()}"`);
       console.log(`Service "${name}" is ${running ? 'running' : 'not running'}.`);
