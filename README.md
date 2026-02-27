@@ -13,7 +13,9 @@ Web interface for Sing-Box on **OpenWrt 23/24 and 25**
 
 ---
 
-## 📸 [Screenshots](./preview.md)
+## 📸 Screenshots
+
+<img width="1032" height="839" alt="image" src="https://github.com/user-attachments/assets/703a4cab-0bb1-4453-8095-71538fc9798c" />
 
 ---
 
