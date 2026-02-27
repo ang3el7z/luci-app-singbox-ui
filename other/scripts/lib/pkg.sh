@@ -64,7 +64,7 @@ _pkg_backoff() {
 
 # Update package lists. Retries on failure (transient SSL/EOF on OpenWrt).
 pkg_list_update() {
-    local max="${PKG_UPDATE_RETRIES:-5}"
+    local max="${PKG_UPDATE_RETRIES:-10}"
     local attempt=1
     while [ "$attempt" -le "$max" ]; do
         if [ "$PKG_IS_APK" -eq 1 ]; then
@@ -83,7 +83,7 @@ pkg_list_update() {
 
 # Install package(s) from repo. Retries on failure (transient SSL/EOF).
 pkg_install() {
-    local max="${PKG_INSTALL_RETRIES:-5}"
+    local max="${PKG_INSTALL_RETRIES:-10}"
     local attempt=1
     while [ "$attempt" -le "$max" ]; do
         if [ "$PKG_IS_APK" -eq 1 ]; then
@@ -102,7 +102,7 @@ pkg_install() {
 
 # Install with force-reinstall (opkg) / reinstall (apk). Retries on failure.
 pkg_install_force() {
-    local max="${PKG_INSTALL_RETRIES:-5}"
+    local max="${PKG_INSTALL_RETRIES:-10}"
     local attempt=1
     while [ "$attempt" -le "$max" ]; do
         if [ "$PKG_IS_APK" -eq 1 ]; then
@@ -123,7 +123,7 @@ pkg_install_force() {
 # For apk, uses --allow-untrusted (self-built / third-party packages).
 pkg_install_file() {
     local path="$1"
-    local max="${PKG_INSTALL_RETRIES:-5}"
+    local max="${PKG_INSTALL_RETRIES:-10}"
     local attempt=1
     while [ "$attempt" -le "$max" ]; do
         if [ "$PKG_IS_APK" -eq 1 ]; then
