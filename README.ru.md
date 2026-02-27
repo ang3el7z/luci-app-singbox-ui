@@ -2,7 +2,7 @@
 
 [Read in English](./README.md)
 
-Веб-интерфейс для Sing-Box под **OpenWrt 23/24**
+Веб-интерфейс для Sing-Box под **OpenWrt 23/24 и 25**
 
 **luci-app-singbox-ui** — это простой персональный веб-интерфейс для управления сервисом **Sing-Box** на OpenWRT.
 

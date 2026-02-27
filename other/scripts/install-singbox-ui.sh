@@ -3,16 +3,18 @@ BRANCH="${BRANCH:-main}"
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "$0")" && pwd)"
 UI_PATH="$SCRIPT_DIR/lib/ui.sh"
+PKG_PATH="$SCRIPT_DIR/lib/pkg.sh"
 UI_DOWNLOADED=0
-cleanup_ui_library() {
-    if [ "${UI_DOWNLOADED:-0}" -eq 1 ]; then
+PKG_DOWNLOADED=0
+cleanup_lib() {
+    if [ "${UI_DOWNLOADED:-0}" -eq 1 ] || [ "${PKG_DOWNLOADED:-0}" -eq 1 ]; then
         local cleanup_msg="${MSG_CLEANUP_UI:-Cleaning UI library...}"
         if command -v show_progress >/dev/null 2>&1; then
             show_progress "$cleanup_msg"
         else
             echo "$cleanup_msg"
         fi
-        rm -f -- "$UI_PATH"
+        rm -f -- "$UI_PATH" "$PKG_PATH"
         rmdir -- "$SCRIPT_DIR/lib" 2>/dev/null || true
     fi
 }
@@ -36,12 +38,38 @@ ensure_ui_library() {
     UI_DOWNLOADED=1
     . "$UI_PATH"
 }
+ensure_pkg_library() {
+    if [ -f "$PKG_PATH" ]; then
+        . "$PKG_PATH"
+        detect_pkg_manager || return 1
+        return 0
+    fi
+
+    mkdir -p "$SCRIPT_DIR/lib" 2>/dev/null
+    pkg_url="https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/$BRANCH/other/scripts/lib/pkg.sh"
+    if command -v wget >/dev/null 2>&1; then
+        wget -O "$PKG_PATH" "$pkg_url" || return 1
+    elif command -v curl >/dev/null 2>&1; then
+        curl -fsSL -o "$PKG_PATH" "$pkg_url" || return 1
+    else
+        echo "Missing pkg library and downloader (wget/curl)" >&2
+        return 1
+    fi
+
+    PKG_DOWNLOADED=1
+    . "$PKG_PATH"
+    detect_pkg_manager || return 1
+}
 
 ensure_ui_library || {
     echo "Missing UI library: $UI_PATH" >&2
     exit 1
 }
-trap cleanup_ui_library EXIT HUP INT TERM
+ensure_pkg_library || {
+    echo "Missing pkg library: $PKG_PATH" >&2
+    exit 1
+}
+trap cleanup_lib EXIT HUP INT TERM
 
 # Инициализация языка / Language initialization
 init_language() {
@@ -90,6 +118,10 @@ init_language() {
             MSG_WAITING="Ожидание %d сек"
             MSG_YOUR_CHOICE="Ваш выбор: "
             MSG_COMPLETE="Выполнено! ($script_name)"
+            MSG_CONFIG_MENU="Ввод конфигурации:"
+            MSG_CONFIG_MENU_1="1) Ввести URL конфигурации"
+            MSG_CONFIG_MENU_2="2) Пропустить"
+            MSG_CONFIG_MENU_CHOICE=" Ваш выбор: "
             MSG_CONFIG_PROMPT="Введите URL конфигурации (Enter для ручного ввода): "
             MSG_CONFIG_LOADING="Загрузка конфигурации с %s (Попытка %s из %s)"
             MSG_CONFIG_SUCCESS="Конфигурация успешно загружена"
@@ -117,6 +149,8 @@ init_language() {
             MSG_NETWORK_ERROR="Сеть не доступна после %s сек!"
             MSG_RELOAD_SERVICE="Обновить конфигурацию sing-box..."
             MSG_SERVICE_RELOADED="Конфигурация sing-box обновлена"
+            MSG_BACKUP_CONFIGS="Сохранение резервных конфигов..."
+            MSG_RESTORE_CONFIGS="Восстановление резервных конфигов..."
             ;;
         *)
             MSG_INSTALL_TITLE="Starting! ($script_name)"
@@ -143,7 +177,11 @@ init_language() {
             MSG_WAITING="Waiting %d sec"
             MSG_YOUR_CHOICE="Your choice: "
             MSG_COMPLETE="Completed! ($script_name)"
-            MSG_CONFIG_PROMPT="Enter Configuration subscription URL (Enter for manual input): "
+            MSG_CONFIG_MENU="Configuration input:"
+            MSG_CONFIG_MENU_1="1) Enter configuration URL"
+            MSG_CONFIG_MENU_2="2) Skip"
+            MSG_CONFIG_MENU_CHOICE=" Your choice: "
+            MSG_CONFIG_PROMPT="Enter configuration URL (Enter for manual input): "
             MSG_CONFIG_LOADING="Loading configuration from %s (Attempt %s of %s)"
             MSG_CONFIG_SUCCESS="Configuration loaded successfully"
             MSG_CONFIG_ERROR="Loading error: %s"
@@ -170,6 +208,8 @@ init_language() {
             MSG_NETWORK_ERROR="Network not available after %s sec!"
             MSG_RELOAD_SERVICE="Reload configuration sing-box..."
             MSG_SERVICE_RELOADED="Configuration sing-box reloaded"
+            MSG_BACKUP_CONFIGS="Backing up backup configs..."
+            MSG_RESTORE_CONFIGS="Restoring backup configs..."
             ;;
     esac
 }
@@ -181,12 +221,13 @@ waiting() {
 }
 
 # Обновление репозиториев и установка зависимостей / Update repos and install dependencies
+# Повтор при ошибке встроен в pkg.sh (pkg_list_update, pkg_install)
 update_pkgs() {
     show_progress "$MSG_UPDATE_PKGS"
-    if opkg update && \
-       opkg install --force-reinstall libcurl4 curl && \
-       opkg install jq && \
-       (opkg install nano || opkg install nano-full); then
+    if pkg_list_update && \
+       pkg_install_force libcurl4 curl && \
+       pkg_install jq && \
+       (pkg_install nano || pkg_install nano-full); then
         show_success "$MSG_DEPS_SUCCESS"
     else
         show_error "$MSG_DEPS_ERROR"
@@ -253,9 +294,9 @@ network_check() {
 
 # Выбор версии для установки / Version selection
 choose_install_version() {
-    # Ссылки на файлы для каждой версии / URLs for each version
-    local url_latest="https://github.com/ang3el7z/luci-app-singbox-ui/releases/latest/download/luci-app-singbox-ui.ipk"
-    local url_lite="https://github.com/ang3el7z/luci-app-singbox-ui/releases/download/v1.2.1/luci-app-singbox-ui.ipk"
+    # Ссылки на файлы для каждой версии (ipk для opkg, apk для OpenWrt 25) / URLs per version
+    local url_latest="https://github.com/ang3el7z/luci-app-singbox-ui/releases/latest/download/luci-app-singbox-ui.${PKG_EXT}"
+    local url_lite="https://github.com/ang3el7z/luci-app-singbox-ui/releases/download/v1.2.1/luci-app-singbox-ui.${PKG_EXT}"
 
     while true; do
         show_message "$MSG_CHOOSE_VERSION"
@@ -275,16 +316,16 @@ choose_install_version() {
             break
             ;;
         3)
-            # Получаем ссылку на последнюю pre-release сборку для ветки / Fetch latest pre-release build for branch
+            # Получаем ссылку на последнюю pre-release сборку для ветки (предпочитаем .apk/.ipk по платформе)
             DOWNLOAD_URL=$(curl -s https://api.github.com/repos/ang3el7z/luci-app-singbox-ui/releases | \
-            awk -v branch="$BRANCH" '
+            awk -v branch="$BRANCH" -v ext="$PKG_EXT" '
                 /"prerelease": true/ { prerelease=1 }
                 /"target_commitish":/ {
                     tc=$0
                     gsub(/.*"target_commitish": *"|"[,].*/, "", tc)
                     if (prerelease && tc != branch) prerelease=0
                 }
-                prerelease && /"browser_download_url":/ && /luci-app-singbox-ui\.ipk/ {
+                prerelease && /"browser_download_url":/ && index($0, "luci-app-singbox-ui." ext) {
                     url=$0
                     gsub(/.*"browser_download_url": *"|"[,].*/, "", url)
                     gsub(/"$/, "", url)
@@ -294,10 +335,10 @@ choose_install_version() {
             ')
 
             if [ -z "$DOWNLOAD_URL" ]; then
-                # fallback: любой pre-release / any prerelease
+                # fallback: ищем любой pre-release по расширению / any prerelease by extension
                 DOWNLOAD_URL=$(curl -s https://api.github.com/repos/ang3el7z/luci-app-singbox-ui/releases | \
                 grep -A 20 '"prerelease": true' | \
-                grep "browser_download_url.*luci-app-singbox-ui.ipk" | \
+                grep "browser_download_url.*luci-app-singbox-ui\.${PKG_EXT}" | \
                 head -n 1 | \
                 sed -E 's/.*"browser_download_url": *"([^"]+)".*/\1/' | \
                 sed -E 's/"$//')
@@ -310,12 +351,12 @@ choose_install_version() {
             break
             ;;
         4)
-            local runner_base_url="https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/${BRANCH}/artifacts"
+            local runner_base_url="https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/${BRANCH}/artifacts/${PKG_EXT}"
             local index_url="$runner_base_url/index.txt"
 
             show_progress "$MSG_SELECT_RUNNER"
 
-            # Получаем список runner сборок с проверкой / Get list of runner builds with validation
+            # Получаем список runner сборок (ipk или apk по платформе) / Get list of runner builds
             local http_code=$(curl -s -o /tmp/index.txt -w "%{http_code}" "$index_url")
             if [ "$http_code" != "200" ]; then
                 show_error "$MSG_RUNNER_INDEX_UNAVAILABLE"
@@ -324,7 +365,8 @@ choose_install_version() {
                 break
             fi
 
-            local runner_files=$(cat /tmp/index.txt)
+            local runner_files
+            runner_files=$(cat /tmp/index.txt)
 
             if [ -z "$runner_files" ]; then
                 show_error "$MSG_RUNNER_LIST_EMPTY"
@@ -363,21 +405,45 @@ choose_install_version() {
 # Установка singbox-ui / Install singbox-ui
 install_singbox_ui() {
     show_progress "$MSG_INSTALL_UI"
-    if ! wget -O /root/luci-app-singbox-ui.ipk "$DOWNLOAD_URL"; then
+    local pkg_file="/root/luci-app-singbox-ui.${PKG_EXT}"
+    if ! wget -O "$pkg_file" "$DOWNLOAD_URL"; then
         show_error "$MSG_DOWNLOAD_ERROR"
         exit 1
     fi
-    chmod 0755 /root/luci-app-singbox-ui.ipk
-    opkg update
-    opkg install /root/luci-app-singbox-ui.ipk
+    chmod 0755 "$pkg_file"
+    pkg_list_update
+    pkg_install_file "$pkg_file"
     /etc/init.d/uhttpd restart
     show_success "$MSG_INSTALL_COMPLETE"
 }
 
 # Получение конфигурации / Configuration download
 get_config() {
+    # При переустановке (операция 3) бэкап уже есть — пропускаем ввод конфигурации, восстановим в конце
+    if [ "$OPERATION" = "3" ] && [ -f "/tmp/singbox-ui-backup-config.json" ]; then
+        return 0
+    fi
     if [ -z "$CONFIG_URL" ]; then
-        read_input "${MSG_CONFIG_PROMPT}" CONFIG_URL
+        local config_choice
+        while true; do
+            show_message "$MSG_CONFIG_MENU"
+            show_message "$MSG_CONFIG_MENU_1"
+            show_message "$MSG_CONFIG_MENU_2"
+            read_input "$MSG_CONFIG_MENU_CHOICE" config_choice
+            case "${config_choice}" in
+                1)
+                    read_input "${MSG_CONFIG_PROMPT}" CONFIG_URL
+                    break
+                    ;;
+                2)
+                    CONFIG_URL=""
+                    break
+                    ;;
+                *)
+                    show_error "$MSG_INVALID_INPUT. $MSG_REPEAT_INPUT"
+                    ;;
+            esac
+        done
     fi
 
     local is_auto_config=0
@@ -471,14 +537,13 @@ reload_singbox() {
 
 # Проверка установки / Check installation
 check_installed() {
-    opkg list-installed | grep -q "luci-app-singbox-ui"
-    return $?
+    pkg_is_installed "luci-app-singbox-ui"
 }
 
 # Удаление singbox-ui / Uninstall singbox-ui
 uninstall_singbox_ui() {
     show_progress "$MSG_UNINSTALLING"
-    opkg remove luci-app-singbox-ui
+    pkg_remove luci-app-singbox-ui
     /etc/init.d/uhttpd restart
     show_success "$MSG_UNINSTALL_SUCCESS"
 }
@@ -531,7 +596,7 @@ perform_operation() {
 # Очистка / Cleanup
 cleanup() {
     show_progress "$MSG_CLEANUP"
-    rm -f /root/luci-app-singbox-ui.ipk
+    rm -f /root/luci-app-singbox-ui.ipk /root/luci-app-singbox-ui.apk
     rm -f -- "$0"
     show_success "$MSG_CLEANUP_DONE"
 }

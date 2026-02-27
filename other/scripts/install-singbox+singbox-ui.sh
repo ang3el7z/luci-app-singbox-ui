@@ -3,16 +3,18 @@ BRANCH="${BRANCH:-main}"
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "$0")" && pwd)"
 UI_PATH="$SCRIPT_DIR/lib/ui.sh"
+PKG_PATH="$SCRIPT_DIR/lib/pkg.sh"
 UI_DOWNLOADED=0
-cleanup_ui_library() {
-    if [ "${UI_DOWNLOADED:-0}" -eq 1 ]; then
+PKG_DOWNLOADED=0
+cleanup_lib() {
+    if [ "${UI_DOWNLOADED:-0}" -eq 1 ] || [ "${PKG_DOWNLOADED:-0}" -eq 1 ]; then
         local cleanup_msg="${MSG_CLEANUP_UI:-Cleaning UI library...}"
         if command -v show_progress >/dev/null 2>&1; then
             show_progress "$cleanup_msg"
         else
             echo "$cleanup_msg"
         fi
-        rm -f -- "$UI_PATH"
+        rm -f -- "$UI_PATH" "$PKG_PATH"
         rmdir -- "$SCRIPT_DIR/lib" 2>/dev/null || true
     fi
 }
@@ -36,12 +38,38 @@ ensure_ui_library() {
     UI_DOWNLOADED=1
     . "$UI_PATH"
 }
+ensure_pkg_library() {
+    if [ -f "$PKG_PATH" ]; then
+        . "$PKG_PATH"
+        detect_pkg_manager || return 1
+        return 0
+    fi
+
+    mkdir -p "$SCRIPT_DIR/lib" 2>/dev/null
+    pkg_url="https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/$BRANCH/other/scripts/lib/pkg.sh"
+    if command -v wget >/dev/null 2>&1; then
+        wget -O "$PKG_PATH" "$pkg_url" || return 1
+    elif command -v curl >/dev/null 2>&1; then
+        curl -fsSL -o "$PKG_PATH" "$pkg_url" || return 1
+    else
+        echo "Missing pkg library and downloader (wget/curl)" >&2
+        return 1
+    fi
+
+    PKG_DOWNLOADED=1
+    . "$PKG_PATH"
+    detect_pkg_manager || return 1
+}
 
 ensure_ui_library || {
     echo "Missing UI library: $UI_PATH" >&2
     exit 1
 }
-trap cleanup_ui_library EXIT HUP INT TERM
+ensure_pkg_library || {
+    echo "Missing pkg library: $PKG_PATH" >&2
+    exit 1
+}
+trap cleanup_lib EXIT HUP INT TERM
 
 # Инициализация языка / Language initialization
 init_language() {
@@ -91,6 +119,8 @@ init_language() {
         MSG_OPERATION_DELETE="2. Удаление"
         MSG_OPERATION_REINSTALL_UPDATE="3. Переустановка/Обновление"
         MSG_OPERATION_CHOICE="Ваш выбор: "
+        MSG_BACKUP_CONFIGS="Сохранение резервных конфигов..."
+        MSG_RESTORE_CONFIGS="Восстановление резервных конфигов..."
         MSG_INSTALL_SFTP_SERVER="Установить openssh-sftp-server? y/n (n - по умолчанию): "
         MSG_SFTP_ALREADY_INSTALLED="openssh-sftp-server уже установлен"
         MSG_INVALID_INPUT="Некорректный ввод"
@@ -122,6 +152,8 @@ init_language() {
         MSG_OPERATION_DELETE="2. Delete"
         MSG_OPERATION_REINSTALL_UPDATE="3. Reinstall/Update"
         MSG_OPERATION_CHOICE="Your choice: "
+        MSG_BACKUP_CONFIGS="Backing up configs..."
+        MSG_RESTORE_CONFIGS="Restoring backup configs..."
         MSG_INSTALL_SFTP_SERVER="Install openssh-sftp-server? y/n (n - by default): "
         MSG_SFTP_ALREADY_INSTALLED="openssh-sftp-server already installed"
         MSG_INVALID_INPUT="Invalid input"
@@ -141,7 +173,7 @@ waiting() {
 update_pkgs() {
     show_progress "$MSG_UPDATE_PKGS"
 
-    if opkg list-installed | grep -q "^openssh-sftp-server "; then
+    if pkg_is_installed "openssh-sftp-server"; then
         echo "$MSG_SFTP_ALREADY_INSTALLED"
         SFTP_SERVER="n"
     else
@@ -163,7 +195,7 @@ update_pkgs() {
 
     case $SFTP_SERVER in
     [Yy])
-        if opkg update && opkg install openssh-sftp-server; then
+        if pkg_list_update && pkg_install openssh-sftp-server; then
             show_success "$MSG_DEPS_SUCCESS"
         else
             show_error "$MSG_DEPS_ERROR"
@@ -171,7 +203,7 @@ update_pkgs() {
         fi
         ;;
     [Nn]|"")
-        if opkg update; then
+        if pkg_list_update; then
             show_success "$MSG_DEPS_SUCCESS"
         else
             show_error "$MSG_DEPS_ERROR"
@@ -239,13 +271,36 @@ network_check() {
     fi
 }
 
+# Сохранение конфигов в /tmp / Backup configs to /tmp (только при переустановке OPERATION=3)
+backup_backup_configs() {
+    [ "$OPERATION" != "3" ] && return 0
+    show_progress "$MSG_BACKUP_CONFIGS"
+    mkdir -p /tmp
+    for f in config.json config2.json config3.json url_config.json url_config2.json url_config3.json; do
+        [ -f "/etc/sing-box/$f" ] && cp -f "/etc/sing-box/$f" "/tmp/singbox-ui-backup-$f"
+    done
+}
+
+# Восстановление конфигов из /tmp / Restore configs from /tmp (только при переустановке OPERATION=3)
+restore_backup_configs() {
+    [ "$OPERATION" != "3" ] && return 0
+    show_progress "$MSG_RESTORE_CONFIGS"
+    mkdir -p /etc/sing-box
+    for f in config.json config2.json config3.json url_config.json url_config2.json url_config3.json; do
+        if [ -f "/tmp/singbox-ui-backup-$f" ]; then
+            cat "/tmp/singbox-ui-backup-$f" > "/etc/sing-box/$f"
+            rm -f "/tmp/singbox-ui-backup-$f"
+        fi
+    done
+}
+
 # Установка singbox / Install singbox
 install_singbox_script() {
     show_warning "$MSG_SINGBOX_INSTALL"
 
     wget -O /root/install-singbox.sh https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/$BRANCH/other/scripts/install-singbox.sh &&
     chmod 0755 /root/install-singbox.sh &&
-    LANG="$LANG" OPERATION="$OPERATION" sh /root/install-singbox.sh
+    LANG="$LANG" OPERATION="$OPERATION" BRANCH="$BRANCH" sh /root/install-singbox.sh
 
     show_warning "$MSG_SINGBOX_RETURN"
 }
@@ -256,7 +311,7 @@ install_singbox_ui_script() {
 
     wget -O /root/install-singbox-ui.sh https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/$BRANCH/other/scripts/install-singbox-ui.sh &&
     chmod 0755 /root/install-singbox-ui.sh &&
-    LANG="$LANG" OPERATION="$OPERATION" sh /root/install-singbox-ui.sh
+    LANG="$LANG" OPERATION="$OPERATION" BRANCH="$BRANCH" sh /root/install-singbox-ui.sh
 
     show_warning "$MSG_SINGBOX_RETURN"
 }
@@ -317,5 +372,7 @@ run_steps_with_separator \
     "::$MSG_INSTALL_TITLE" \
     update_pkgs \
     choose_install_operation \
+    backup_backup_configs \
     choose_action \
+    restore_backup_configs \
     complete_script

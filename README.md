@@ -2,7 +2,7 @@
 
 [Читать на русском](./README.ru.md)
 
-Web interface for Sing-Box on **OpenWrt 23/24**
+Web interface for Sing-Box on **OpenWrt 23/24 and 25**
 
 **luci-app-singbox-ui** is a simple personal web interface to manage the **Sing-Box** service on OpenWRT.
 

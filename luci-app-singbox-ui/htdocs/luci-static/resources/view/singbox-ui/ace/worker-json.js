@@ -1676,6 +1676,164 @@ define("ace/mode/json/json_parse",[], function(require, exports, module) {
     };
 });
 
+define("ace/mode/json5/json_parse",[], function(require, exports, module) {
+"use strict";
+
+var at, ch, text,
+    escapee = { '"': '"', "'": "'", '\\': '\\', '/': '/', b: '\b', f: '\f', n: '\n', r: '\r', t: '\t' };
+
+function error(m) { throw { name: 'SyntaxError', message: m, at: at, text: text }; }
+
+function next(c) {
+    if (c && c !== ch) error("Expected '" + c + "' instead of '" + ch + "'");
+    ch = text.charAt(at);
+    at += 1;
+    return ch;
+}
+
+function skipLineComment() {
+    while (ch && ch !== '\n' && ch !== '\r') next();
+}
+
+function skipBlockComment() {
+    while (ch) {
+        if (ch === '*') {
+            next();
+            if (ch === '/') { next(); return; }
+        } else next();
+    }
+    error("Unclosed block comment");
+}
+
+function white() {
+    while (ch) {
+        if (ch <= ' ') { next(); continue; }
+        if (ch === '/' && text.charAt(at) === '/') { next(); next(); skipLineComment(); continue; }
+        if (ch === '/' && text.charAt(at) === '*') { next(); next(); skipBlockComment(); continue; }
+        break;
+    }
+}
+
+function number() {
+    var s = '';
+    if (ch === '-') { s += ch; next('-'); }
+    while (ch >= '0' && ch <= '9') { s += ch; next(); }
+    if (ch === '.') { s += ch; while (next() && ch >= '0' && ch <= '9') s += ch; }
+    if (ch === 'e' || ch === 'E') {
+        s += ch; next();
+        if (ch === '-' || ch === '+') { s += ch; next(); }
+        while (ch >= '0' && ch <= '9') { s += ch; next(); }
+    }
+    var n = +s;
+    if (isNaN(n)) error("Bad number");
+    return n;
+}
+
+function string(quote) {
+    var s = '';
+    if (ch !== quote) error("Expected quote");
+    while (next()) {
+        if (ch === quote) { next(); return s; }
+        if (ch === '\\') {
+            next();
+            if (ch === 'u') {
+                var u = 0;
+                for (var i = 0; i < 4; i++) { var h = parseInt(next(), 16); if (!isFinite(h)) break; u = u * 16 + h; }
+                s += String.fromCharCode(u);
+            } else if (escapee[ch] != null) s += escapee[ch];
+            else break;
+        } else if (ch === '\n' || ch === '\r') break;
+        else s += ch;
+    }
+    error("Bad string");
+}
+
+function identifier() {
+    var s = '';
+    if (!/[$_a-zA-Z\u0080-\uFFFF]/.test(ch)) error("Expected identifier");
+    while (ch && /[\w$\u0080-\uFFFF]/.test(ch)) { s += ch; next(); }
+    return s;
+}
+
+function word() {
+    if (ch === 't') { next('t'); next('r'); next('u'); next('e'); return true; }
+    if (ch === 'f') { next('f'); next('a'); next('l'); next('s'); next('e'); return false; }
+    if (ch === 'n') { next('n'); next('u'); next('l'); next('l'); return null; }
+    if (ch === 'I' && text.substring(at - 1, at + 8) === 'Infinity') {
+        at += 8; ch = text.charAt(at); at++; return Infinity;
+    }
+    if (ch === 'N' && text.substring(at - 1, at + 3) === 'NaN') {
+        at += 3; ch = text.charAt(at); at++; return NaN;
+    }
+    error("Unexpected '" + ch + "'");
+}
+
+function array() {
+    if (ch !== '[') error("Bad array");
+    next('[');
+    white();
+    if (ch === ']') { next(']'); return []; }
+    var arr = [];
+    while (ch) {
+        arr.push(value());
+        white();
+        if (ch === ']') { next(']'); return arr; }
+        next(',');
+        white();
+    }
+    error("Bad array");
+}
+
+function key() {
+    white();
+    if (ch === '"') return string('"');
+    if (ch === "'") return string("'");
+    return identifier();
+}
+
+function object() {
+    if (ch !== '{') error("Bad object");
+    next('{');
+    white();
+    if (ch === '}') { next('}'); return {}; }
+    var obj = {};
+    while (ch) {
+        var k = key();
+        white();
+        next(':');
+        if (Object.hasOwnProperty.call(obj, k)) error('Duplicate key "' + k + '"');
+        obj[k] = value();
+        white();
+        if (ch === '}') { next('}'); return obj; }
+        next(',');
+        white();
+    }
+    error("Bad object");
+}
+
+function value() {
+    white();
+    if (ch === '{') return object();
+    if (ch === '[') return array();
+    if (ch === '"') return string('"');
+    if (ch === "'") return string("'");
+    if (ch === '-' || (ch >= '0' && ch <= '9')) return number();
+    if (ch === 't' || ch === 'f' || ch === 'n' || ch === 'I' || ch === 'N') return word();
+    error("Unexpected '" + ch + "'");
+}
+
+return function parseJson5(source) {
+    text = source;
+    at = 0;
+    ch = ' ';
+    white();
+    var result = value();
+    white();
+    if (ch) error("Syntax error");
+    return result;
+};
+});
+
 define("ace/mode/json_worker",[], function(require, exports, module) {
 "use strict";
 
@@ -1711,5 +1869,25 @@ oop.inherits(JsonWorker, Mirror);
     };
 
 }).call(JsonWorker.prototype);
+
+var parse5 = require("./json5/json_parse");
+var Json5Worker = exports.Json5Worker = function(sender) {
+    Mirror.call(this, sender);
+    this.setTimeout(200);
+};
+oop.inherits(Json5Worker, Mirror);
+(function() {
+    this.onUpdate = function() {
+        var value = this.doc.getValue();
+        var errors = [];
+        try {
+            if (value) parse5(value);
+        } catch (e) {
+            var pos = this.doc.indexToPosition(e.at - 1);
+            errors.push({ row: pos.row, column: pos.column, text: e.message, type: "error" });
+        }
+        this.sender.emit("annotate", errors);
+    };
+}).call(Json5Worker.prototype);
 
 });

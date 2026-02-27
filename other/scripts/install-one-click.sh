@@ -3,16 +3,18 @@ BRANCH="${BRANCH:-main}"
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "$0")" && pwd)"
 UI_PATH="$SCRIPT_DIR/lib/ui.sh"
+PKG_PATH="$SCRIPT_DIR/lib/pkg.sh"
 UI_DOWNLOADED=0
-cleanup_ui_library() {
-    if [ "${UI_DOWNLOADED:-0}" -eq 1 ]; then
+PKG_DOWNLOADED=0
+cleanup_lib() {
+    if [ "${UI_DOWNLOADED:-0}" -eq 1 ] || [ "${PKG_DOWNLOADED:-0}" -eq 1 ]; then
         local cleanup_msg="${MSG_CLEANUP_UI:-Cleaning UI library...}"
         if command -v show_progress >/dev/null 2>&1; then
             show_progress "$cleanup_msg"
         else
             echo "$cleanup_msg"
         fi
-        rm -f -- "$UI_PATH"
+        rm -f -- "$UI_PATH" "$PKG_PATH"
         rmdir -- "$SCRIPT_DIR/lib" 2>/dev/null || true
     fi
 }
@@ -36,12 +38,38 @@ ensure_ui_library() {
     UI_DOWNLOADED=1
     . "$UI_PATH"
 }
+ensure_pkg_library() {
+    if [ -f "$PKG_PATH" ]; then
+        . "$PKG_PATH"
+        detect_pkg_manager || return 1
+        return 0
+    fi
+
+    mkdir -p "$SCRIPT_DIR/lib" 2>/dev/null
+    pkg_url="https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/$BRANCH/other/scripts/lib/pkg.sh"
+    if command -v wget >/dev/null 2>&1; then
+        wget -O "$PKG_PATH" "$pkg_url" || return 1
+    elif command -v curl >/dev/null 2>&1; then
+        curl -fsSL -o "$PKG_PATH" "$pkg_url" || return 1
+    else
+        echo "Missing pkg library and downloader (wget/curl)" >&2
+        return 1
+    fi
+
+    PKG_DOWNLOADED=1
+    . "$PKG_PATH"
+    detect_pkg_manager || return 1
+}
 
 ensure_ui_library || {
     echo "Missing UI library: $UI_PATH" >&2
     exit 1
 }
-trap cleanup_ui_library EXIT HUP INT TERM
+ensure_pkg_library || {
+    echo "Missing pkg library: $PKG_PATH" >&2
+    exit 1
+}
+trap cleanup_lib EXIT HUP INT TERM
 
 # Инициализация языка / Language initialization
 init_language() {
@@ -134,7 +162,7 @@ waiting() {
 # Обновление репозиториев и установка зависимостей / Update repos and install dependencies
 update_pkgs() {
     show_progress "$MSG_UPDATE_PKGS"
-    if opkg update && opkg install openssh-sftp-server; then
+    if pkg_list_update && pkg_install openssh-sftp-server; then
         show_success "$MSG_DEPS_SUCCESS"
     else
         show_error "$MSG_DEPS_ERROR"

@@ -6,14 +6,17 @@ on:
     tags:
       - 'v*'
 
-jobs:
-  build:
-    name: Build release
-    runs-on: ubuntu-latest
+permissions:
+  contents: write
 
+jobs:
+  # Один джоб обновляет версию в Makefile и пушит в ветку — избегаем гонки при параллельной сборке ipk/apk
+  sync-version:
+    name: Sync Makefile version to branch
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@v5.0.0
         with:
           fetch-depth: 0
 
@@ -22,40 +25,36 @@ jobs:
         run: |
           set -e
           git fetch origin "+refs/heads/*:refs/remotes/origin/*"
-
-          BRANCH=$(git branch -r --contains "$GITHUB_SHA" | grep -v "origin/HEAD" | head -n 1 | sed "s#origin/##")
+          BRANCH=""
+          for b in $(git branch -r --contains "$GITHUB_SHA" | grep -v "origin/HEAD" | sed "s#origin/##"); do
+            [ -z "$b" ] && continue
+            if [ "$b" != "${DEFAULT_BRANCH}" ]; then
+              BRANCH="$b"
+              break
+            fi
+          done
+          if [ -z "$BRANCH" ]; then
+            BRANCH=$(git branch -r --contains "$GITHUB_SHA" | grep -v "origin/HEAD" | head -n 1 | sed "s#origin/##")
+          fi
           if [ -z "$BRANCH" ]; then
             BRANCH="${DEFAULT_BRANCH}"
           fi
-
           echo "TARGET_BRANCH=$BRANCH" >> "$GITHUB_ENV"
+          echo "📌 Will push Makefile version sync to branch: $BRANCH"
         env:
           DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
 
-      - name: Check version and sync with tag
+      - name: Update Makefile version to tag and push to branch
         run: |
           set -e
-
-          LUCI_APP_SINGBOX_UI_VERSION=$(grep '^PKG_VERSION:=' luci-app-singbox-ui/Makefile | cut -d '=' -f2 | tr -d ' ')
           TAG_VERSION=${GITHUB_REF#refs/tags/v}
-
+          LUCI_APP_SINGBOX_UI_VERSION=$(grep '^PKG_VERSION:=' luci-app-singbox-ui/Makefile | cut -d '=' -f2 | tr -d ' ')
           echo "📦 Makefile version: $LUCI_APP_SINGBOX_UI_VERSION"
           echo "🏷  Git tag version: $TAG_VERSION"
-
           if [ "$LUCI_APP_SINGBOX_UI_VERSION" != "$TAG_VERSION" ]; then
-            echo "❌ Version mismatch detected!"
             echo "🔁 Updating Makefile version to match tag..."
             sed -i "s/^PKG_VERSION:=.*$/PKG_VERSION:=${TAG_VERSION}/" luci-app-singbox-ui/Makefile
-
-            echo "✅ Makefile updated."
-          else
-            echo "✅ Version match confirmed."
           fi
-
-      - name: Commit updated Makefile version (if changed)
-        run: |
-          TAG_VERSION=${GITHUB_REF#refs/tags/v}
-
           if git diff --quiet; then
             echo "ℹ No changes to commit."
           else
@@ -66,34 +65,83 @@ jobs:
                 commit -m "github-actions[bot]: sync Makefile version with tag v${TAG_VERSION}"
               git push origin HEAD:${TARGET_BRANCH}
             else
-              echo "⚠️ Target branch '${TARGET_BRANCH}' not found on origin. Skipping push."
+              echo "⚠️ Target branch '${TARGET_BRANCH}' not found. Skipping push."
             fi
           fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build Docker image
+  build:
+    name: Build (${{ matrix.pkg_type }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        pkg_type: [ipk, apk]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5.0.0
+        with:
+          fetch-depth: 0
+
+      # Только локально подставляем версию из тега в Makefile для сборки, без пуша
+      - name: Set Makefile version to tag (for build only)
+        run: |
+          TAG_VERSION=${GITHUB_REF#refs/tags/v}
+          sed -i "s/^PKG_VERSION:=.*$/PKG_VERSION:=${TAG_VERSION}/" luci-app-singbox-ui/Makefile
+          echo "📦 Building with PKG_VERSION=$TAG_VERSION"
+
+      - name: Build Docker image (${{ matrix.pkg_type }})
         uses: docker/build-push-action@v6.18.0
         with:
           context: .
-          tags: singbox-ui:ci
+          file: Dockerfile-${{ matrix.pkg_type }}
+          tags: singbox-ui-${{ matrix.pkg_type }}:ci
 
       - name: Create Docker container
-        run: docker create --name singbox-ui singbox-ui:ci
+        run: docker create --name singbox-ui-${{ matrix.pkg_type }} singbox-ui-${{ matrix.pkg_type }}:ci
 
-      - name: Copy file from Docker container
+      - name: Copy package from Docker container
         run: |
-          docker cp singbox-ui:/builder/bin/packages/x86_64/luci/. ./bin/
+          mkdir -p ./pkg-out
+          docker cp singbox-ui-${{ matrix.pkg_type }}:/builder/bin/packages/x86_64/luci/. ./bin-${{ matrix.pkg_type }}/
+          if [ "${{ matrix.pkg_type }}" = "ipk" ]; then
+            cp ./bin-${{ matrix.pkg_type }}/luci-app-singbox-ui*.ipk ./pkg-out/luci-app-singbox-ui.ipk
+          else
+            cp ./bin-${{ matrix.pkg_type }}/luci-app-singbox-ui*.apk ./pkg-out/luci-app-singbox-ui.apk
+          fi
 
       - name: Remove Docker container
-        run: docker rm singbox-ui
+        run: docker rm singbox-ui-${{ matrix.pkg_type }}
 
-      - name: Filter IPK files
-        run: |
-          mkdir -p ./filtered-bin
-          cp ./bin/luci-app-singbox-ui*.ipk ./filtered-bin/luci-app-singbox-ui.ipk
+      - name: Upload built package
+        uses: actions/upload-artifact@v4.6.2
+        with:
+          name: pkg-${{ matrix.pkg_type }}
+          path: pkg-out/
+
+  release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - name: Download ipk artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: pkg-ipk
+          path: release-ipk/
+
+      - name: Download apk artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: pkg-apk
+          path: release-apk/
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2.3.2
+        uses: softprops/action-gh-release@v2.4.0
         with:
-          files: ./filtered-bin/*.ipk
+          files: |
+            release-ipk/*.ipk
+            release-apk/*.apk

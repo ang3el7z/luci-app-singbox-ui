@@ -8,51 +8,62 @@ on:
 
 jobs:
   build:
-    name: Build artifact
+    name: Build (${{ matrix.pkg_type }})
     runs-on: ubuntu-latest
-
-    outputs:
-      ipk_name: ${{ steps.rename.outputs.ipk_name }}
+    strategy:
+      fail-fast: false
+      matrix:
+        pkg_type: [ipk, apk]
 
     steps:
       - name: Checkout PR code
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@v5.0.0
         with:
           ref: ${{ github.event.pull_request.head.ref }}
           fetch-depth: 0
 
-      - name: Build Docker image
+      - name: Build Docker image (${{ matrix.pkg_type }})
         uses: docker/build-push-action@v6.18.0
         with:
           context: .
-          tags: singbox-ui:ci
+          file: Dockerfile-${{ matrix.pkg_type }}
+          tags: singbox-ui-${{ matrix.pkg_type }}:ci
 
       - name: Create Docker container
-        run: docker create --name singbox-ui singbox-ui:ci
+        run: docker create --name singbox-ui-${{ matrix.pkg_type }} singbox-ui-${{ matrix.pkg_type }}:ci
 
-      - name: Copy built .ipk from Docker container
-        run: docker cp singbox-ui:/builder/bin/packages/x86_64/luci/. ./bin/
-
-      - name: Rename and move .ipk
-        id: rename
+      - name: Copy built package from Docker container
         run: |
-          mkdir -p ./artifacts
+          mkdir -p ./artifacts-${{ matrix.pkg_type }}
+          docker cp singbox-ui-${{ matrix.pkg_type }}:/builder/bin/packages/x86_64/luci/. ./bin-${{ matrix.pkg_type }}/
+          if [ "${{ matrix.pkg_type }}" = "ipk" ]; then
+            cp ./bin-${{ matrix.pkg_type }}/luci-app-singbox-ui*.ipk ./artifacts-${{ matrix.pkg_type }}/
+          else
+            cp ./bin-${{ matrix.pkg_type }}/luci-app-singbox-ui*.apk ./artifacts-${{ matrix.pkg_type }}/
+          fi
+
+      - name: Remove Docker container
+        run: docker rm singbox-ui-${{ matrix.pkg_type }}
+
+      - name: Rename and upload artifact
+        run: |
           DATE=$(date +%Y%m%d-%H%M)
           PR_NUM=${{ github.event.pull_request.number }}
           PR_TITLE="${{ github.event.pull_request.title }}"
           SAFE_TITLE=$(echo "$PR_TITLE" | tr '[:upper:]' '[:lower:]' | sed -E 's/[^a-z0-9]+/-/g' | sed -E 's/^-+|-+$//g')
-          NEW_NAME="luci-app-singbox-ui-pr-${PR_NUM}-${SAFE_TITLE}-${DATE}.ipk"
-          cp ./bin/luci-app-singbox-ui*.ipk "./artifacts/${NEW_NAME}"
-          echo "ipk_name=${NEW_NAME}" >> "$GITHUB_OUTPUT"
-
-      - name: Remove Docker container
-        run: docker rm singbox-ui
+          EXT="${{ matrix.pkg_type }}"
+          for f in artifacts-$EXT/*.$EXT; do
+            [ -f "$f" ] || continue
+            NEW_NAME="luci-app-singbox-ui-pr-${PR_NUM}-${SAFE_TITLE}-${DATE}.${EXT}"
+            mv "$f" "artifacts-$EXT/${NEW_NAME}"
+            break
+          done
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4.6.2
         with:
-          name: built-ipk
-          path: ./artifacts/
+          name: built-${{ matrix.pkg_type }}
+          path: artifacts-${{ matrix.pkg_type }}/
 
   commit:
     name: Commit to main branch
@@ -61,59 +72,97 @@ jobs:
 
     steps:
       - name: Checkout main branch
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@v5.0.0
         with:
           ref: main
           fetch-depth: 0
 
-      - name: Copy new .ipk from previous job artifact
-        uses: actions/download-artifact@v4.3.0
+      - name: Download ipk artifact
+        uses: actions/download-artifact@v4
         with:
           name: built-ipk
           path: ./new-ipk/
 
-      - name: Copy new .ipk to artifacts directory
-        run: |
-          mkdir -p artifacts
-          cp ./new-ipk/*.ipk ./artifacts/
+      - name: Download apk artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: built-apk
+          path: ./new-apk/
 
-      - name: Remove old .ipk files (>= 7 days)
+      - name: Copy to artifacts/ipk and artifacts/apk
         run: |
-          for file in artifacts/*.ipk; do
-            if [ -f "$file" ]; then
-              basename=$(basename "$file")
-              date_part=$(echo "$basename" | sed -E 's/.*-([0-9]{8}-[0-9]{4})\.ipk$/\1/')
-              if [[ $date_part =~ ^[0-9]{8}-[0-9]{4}$ ]]; then
-                ymd=${date_part:0:8}
-                hm=${date_part:9:4}
-                h=${hm:0:2}
-                m=${hm:2:2}
-                file_date=$(date -d "${ymd:0:4}-${ymd:4:2}-${ymd:6:2} ${h}:${m}:00" +%s)
-                now=$(date +%s)
-                diff=$(( (now - file_date) / 86400 ))
-                if (( diff >= 7 )); then
-                  echo "Deleting old file: $file"
-                  rm "$file"
-                fi
+          mkdir -p artifacts/ipk artifacts/apk
+          cp -n ./new-ipk/*.ipk ./artifacts/ipk/ 2>/dev/null || true
+          cp -n ./new-apk/*.apk ./artifacts/apk/ 2>/dev/null || true
+
+      - name: Remove old ipk files (>= 7 days)
+        run: |
+          for file in artifacts/ipk/*.ipk; do
+            [ -f "$file" ] || continue
+            basename=$(basename "$file")
+            date_part=$(echo "$basename" | sed -E 's/.*-([0-9]{8}-[0-9]{4})\.ipk$/\1/')
+            if [[ "$date_part" =~ ^[0-9]{8}-[0-9]{4}$ ]]; then
+              ymd=${date_part:0:8}
+              hm=${date_part:9:4}
+              h=${hm:0:2}
+              m=${hm:2:2}
+              file_date=$(date -d "${ymd:0:4}-${ymd:4:2}-${ymd:6:2} ${h}:${m}:00" +%s)
+              now=$(date +%s)
+              diff=$(( (now - file_date) / 86400 ))
+              if [ "$diff" -ge 7 ]; then
+                echo "Deleting old file: $file"
+                rm "$file"
               fi
             fi
           done
 
-      - name: Update index.txt
+      - name: Remove old apk files (>= 7 days)
+        run: |
+          for file in artifacts/apk/*.apk; do
+            [ -f "$file" ] || continue
+            basename=$(basename "$file")
+            date_part=$(echo "$basename" | sed -E 's/.*-([0-9]{8}-[0-9]{4})\.apk$/\1/')
+            if [[ "$date_part" =~ ^[0-9]{8}-[0-9]{4}$ ]]; then
+              ymd=${date_part:0:8}
+              hm=${date_part:9:4}
+              h=${hm:0:2}
+              m=${hm:2:2}
+              file_date=$(date -d "${ymd:0:4}-${ymd:4:2}-${ymd:6:2} ${h}:${m}:00" +%s)
+              now=$(date +%s)
+              diff=$(( (now - file_date) / 86400 ))
+              if [ "$diff" -ge 7 ]; then
+                echo "Deleting old file: $file"
+                rm "$file"
+              fi
+            fi
+          done
+
+      - name: Update index.txt for ipk
         run: |
           shopt -s nullglob
-          files=(artifacts/*.ipk)
+          files=(artifacts/ipk/*.ipk)
           if [ ${#files[@]} -eq 0 ]; then
-            echo "" > artifacts/index.txt
+            echo "" > artifacts/ipk/index.txt
           else
-            printf "%s\n" "${files[@]##*/}" > artifacts/index.txt
+            printf "%s\n" "${files[@]##*/}" > artifacts/ipk/index.txt
+          fi
+
+      - name: Update index.txt for apk
+        run: |
+          shopt -s nullglob
+          files=(artifacts/apk/*.apk)
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "" > artifacts/apk/index.txt
+          else
+            printf "%s\n" "${files[@]##*/}" > artifacts/apk/index.txt
           fi
 
       - name: Commit and push changes
         run: |
-          echo "📤 Committing updated .ipk to main"
+          echo "📤 Committing updated packages to main"
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add artifacts/
-          git commit -m "github-actions[bot]: update .ipk from PR #${{ github.event.pull_request.number }}" || echo "No changes to commit"
+          git status
+          git commit -m "github-actions[bot]: update ipk/apk from PR #${{ github.event.pull_request.number }}" || echo "No changes to commit"
           git push origin HEAD:main
