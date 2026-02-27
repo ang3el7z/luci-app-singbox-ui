@@ -1,7 +1,6 @@
 #!/bin/sh
 # Package manager abstraction for OpenWrt: opkg (23.05, 24.10) vs apk (25.x).
 # Source this after ui.sh. Sets PKG_IS_APK (0|1) and PKG_EXT (ipk|apk).
-# Style aligned with itdoginfo/podkop.
 
 detect_pkg_manager() {
     PKG_IS_APK=0
@@ -14,7 +13,7 @@ detect_pkg_manager() {
         PKG_EXT="ipk"
         PKG_MODE_LABEL="opkg (.ipk) — OpenWrt 23/24"
     else
-        echo "No package manager (opkg/apk) found." >&2
+        show_message "No package manager (opkg/apk) found." 2>/dev/null || true
         return 1
     fi
 
@@ -40,10 +39,32 @@ pkg_remove() {
     fi
 }
 
+# Print "retry in N seconds" via show_message.
+_pkg_retry_wait() {
+    local delay="$1"
+    local attempt="$2"
+    local max="$3"
+    show_message "Error on attempt $attempt/$max. Retrying in ${delay}s..." 2>/dev/null || true
+    sleep "$delay"
+}
+
+# Compute exponential backoff delay: base * 2^(n-1), where n = retry number (1-based).
+# First retry → base, second → base*2, third → base*4, ...
+_pkg_backoff() {
+    local base="${PKG_RETRY_DELAY:-5}"
+    local n="$1"
+    local delay="$base"
+    local i=1
+    while [ "$i" -lt "$n" ]; do
+        delay=$((delay * 2))
+        i=$((i + 1))
+    done
+    echo "$delay"
+}
+
 # Update package lists. Retries on failure (transient SSL/EOF on OpenWrt).
 pkg_list_update() {
-    local max="${PKG_UPDATE_RETRIES:-3}"
-    local delay="${PKG_RETRY_DELAY:-3}"
+    local max="${PKG_UPDATE_RETRIES:-5}"
     local attempt=1
     while [ "$attempt" -le "$max" ]; do
         if [ "$PKG_IS_APK" -eq 1 ]; then
@@ -51,16 +72,18 @@ pkg_list_update() {
         else
             opkg update && return 0
         fi
+        if [ "$attempt" -lt "$max" ]; then
+            _pkg_retry_wait "$(_pkg_backoff "$attempt")" "$attempt" "$max"
+        fi
         attempt=$((attempt + 1))
-        [ "$attempt" -le "$max" ] && sleep "$delay"
     done
+    show_message "pkg_list_update failed after $max attempts." 2>/dev/null || true
     return 1
 }
 
-# Install package(s) from repo. Retries once on failure (transient SSL/EOF).
+# Install package(s) from repo. Retries on failure (transient SSL/EOF).
 pkg_install() {
-    local max="${PKG_INSTALL_RETRIES:-2}"
-    local delay="${PKG_RETRY_DELAY:-3}"
+    local max="${PKG_INSTALL_RETRIES:-5}"
     local attempt=1
     while [ "$attempt" -le "$max" ]; do
         if [ "$PKG_IS_APK" -eq 1 ]; then
@@ -68,16 +91,18 @@ pkg_install() {
         else
             opkg install "$@" && return 0
         fi
+        if [ "$attempt" -lt "$max" ]; then
+            _pkg_retry_wait "$(_pkg_backoff "$attempt")" "$attempt" "$max"
+        fi
         attempt=$((attempt + 1))
-        [ "$attempt" -le "$max" ] && sleep "$delay"
     done
+    show_message "pkg_install failed after $max attempts." 2>/dev/null || true
     return 1
 }
 
-# Install with force-reinstall (opkg) / reinstall (apk). Retries once on failure.
+# Install with force-reinstall (opkg) / reinstall (apk). Retries on failure.
 pkg_install_force() {
-    local max="${PKG_INSTALL_RETRIES:-2}"
-    local delay="${PKG_RETRY_DELAY:-3}"
+    local max="${PKG_INSTALL_RETRIES:-5}"
     local attempt=1
     while [ "$attempt" -le "$max" ]; do
         if [ "$PKG_IS_APK" -eq 1 ]; then
@@ -85,18 +110,20 @@ pkg_install_force() {
         else
             opkg install --force-reinstall "$@" && return 0
         fi
+        if [ "$attempt" -lt "$max" ]; then
+            _pkg_retry_wait "$(_pkg_backoff "$attempt")" "$attempt" "$max"
+        fi
         attempt=$((attempt + 1))
-        [ "$attempt" -le "$max" ] && sleep "$delay"
     done
+    show_message "pkg_install_force failed after $max attempts." 2>/dev/null || true
     return 1
 }
 
-# Install from local file (.ipk or .apk). Retries once on failure.
+# Install from local file (.ipk or .apk). Retries on failure.
 # For apk, uses --allow-untrusted (self-built / third-party packages).
 pkg_install_file() {
     local path="$1"
-    local max="${PKG_INSTALL_RETRIES:-2}"
-    local delay="${PKG_RETRY_DELAY:-3}"
+    local max="${PKG_INSTALL_RETRIES:-5}"
     local attempt=1
     while [ "$attempt" -le "$max" ]; do
         if [ "$PKG_IS_APK" -eq 1 ]; then
@@ -104,8 +131,11 @@ pkg_install_file() {
         else
             opkg install "$path" && return 0
         fi
+        if [ "$attempt" -lt "$max" ]; then
+            _pkg_retry_wait "$(_pkg_backoff "$attempt")" "$attempt" "$max"
+        fi
         attempt=$((attempt + 1))
-        [ "$attempt" -le "$max" ] && sleep "$delay"
     done
+    show_message "pkg_install_file failed after $max attempts." 2>/dev/null || true
     return 1
 }
