@@ -1,0 +1,1 @@
+luci-app-singbox-ui-pr-65-support-openwrt-25-and-fix-issue-20260227-0113.apk
