@@ -271,8 +271,9 @@ network_check() {
     fi
 }
 
-# Сохранение конфигов в /tmp / Backup configs to /tmp (for singbox+singbox-ui flow)
+# Сохранение конфигов в /tmp / Backup configs to /tmp (только при переустановке OPERATION=3)
 backup_backup_configs() {
+    [ "$OPERATION" != "3" ] && return 0
     show_progress "$MSG_BACKUP_CONFIGS"
     mkdir -p /tmp
     for f in config.json config2.json config3.json url_config.json url_config2.json url_config3.json; do
@@ -280,8 +281,9 @@ backup_backup_configs() {
     done
 }
 
-# Восстановление конфигов из /tmp / Restore configs from /tmp
+# Восстановление конфигов из /tmp / Restore configs from /tmp (только при переустановке OPERATION=3)
 restore_backup_configs() {
+    [ "$OPERATION" != "3" ] && return 0
     show_progress "$MSG_RESTORE_CONFIGS"
     mkdir -p /etc/sing-box
     for f in config.json config2.json config3.json url_config.json url_config2.json url_config3.json; do
@@ -342,10 +344,8 @@ choose_action() {
             install_singbox_script
             ;;
         3)
-            backup_backup_configs
             install_singbox_script
             install_singbox_ui_script
-            restore_backup_configs
             ;;
     esac
 }
@@ -372,5 +372,7 @@ run_steps_with_separator \
     "::$MSG_INSTALL_TITLE" \
     update_pkgs \
     choose_install_operation \
+    backup_backup_configs \
     choose_action \
+    restore_backup_configs \
     complete_script
