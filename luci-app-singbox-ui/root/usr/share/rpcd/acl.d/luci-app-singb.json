@@ -11,6 +11,7 @@
                 "/usr/bin/singbox-ui/*": ["exec"],
                 "/tmp/*": ["read"],
                 "/usr/bin/sing-box check -c /tmp/singbox-config.json": ["exec"],
+                "/usr/bin/sing-box format -w -c /tmp/singbox-format.json": ["exec"],
                 "/usr/bin/sing-box": ["exec"],
                 "/bin/opkg": ["exec"],
                 "/usr/bin/apk": ["exec"],
