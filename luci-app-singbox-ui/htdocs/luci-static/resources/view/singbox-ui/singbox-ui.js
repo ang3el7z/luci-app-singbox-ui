@@ -599,7 +599,7 @@ async function createConfigEditor(section, tab, config, key) {
 function createFormatConfigButton(section, tab, config, key) {
   const btn = section.taboption(tab, form.Button, `format_config_${config.name}`, 'Format');
   btn.inputstyle = 'apply';
-  btn.title = 'Format config with sing-box format -c';
+  btn.title = 'Format config';
   btn.inputtitle = 'Format';
   btn.onclick = async () => {
     try {

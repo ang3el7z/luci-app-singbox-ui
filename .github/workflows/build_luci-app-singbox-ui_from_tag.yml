@@ -10,6 +10,67 @@ permissions:
   contents: write
 
 jobs:
+  # Один джоб обновляет версию в Makefile и пушит в ветку — избегаем гонки при параллельной сборке ipk/apk
+  sync-version:
+    name: Sync Makefile version to branch
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5.0.0
+        with:
+          fetch-depth: 0
+
+      - name: Detect target branch from tag
+        id: detect_branch
+        run: |
+          set -e
+          git fetch origin "+refs/heads/*:refs/remotes/origin/*"
+          BRANCH=""
+          for b in $(git branch -r --contains "$GITHUB_SHA" | grep -v "origin/HEAD" | sed "s#origin/##"); do
+            [ -z "$b" ] && continue
+            if [ "$b" != "${DEFAULT_BRANCH}" ]; then
+              BRANCH="$b"
+              break
+            fi
+          done
+          if [ -z "$BRANCH" ]; then
+            BRANCH=$(git branch -r --contains "$GITHUB_SHA" | grep -v "origin/HEAD" | head -n 1 | sed "s#origin/##")
+          fi
+          if [ -z "$BRANCH" ]; then
+            BRANCH="${DEFAULT_BRANCH}"
+          fi
+          echo "TARGET_BRANCH=$BRANCH" >> "$GITHUB_ENV"
+          echo "📌 Will push Makefile version sync to branch: $BRANCH"
+        env:
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+
+      - name: Update Makefile version to tag and push to branch
+        run: |
+          set -e
+          TAG_VERSION=${GITHUB_REF#refs/tags/v}
+          LUCI_APP_SINGBOX_UI_VERSION=$(grep '^PKG_VERSION:=' luci-app-singbox-ui/Makefile | cut -d '=' -f2 | tr -d ' ')
+          echo "📦 Makefile version: $LUCI_APP_SINGBOX_UI_VERSION"
+          echo "🏷  Git tag version: $TAG_VERSION"
+          if [ "$LUCI_APP_SINGBOX_UI_VERSION" != "$TAG_VERSION" ]; then
+            echo "🔁 Updating Makefile version to match tag..."
+            sed -i "s/^PKG_VERSION:=.*$/PKG_VERSION:=${TAG_VERSION}/" luci-app-singbox-ui/Makefile
+          fi
+          if git diff --quiet; then
+            echo "ℹ No changes to commit."
+          else
+            if git show-ref --verify --quiet "refs/remotes/origin/${TARGET_BRANCH}"; then
+              echo "📤 Committing updated Makefile to ${TARGET_BRANCH}..."
+              git add luci-app-singbox-ui/Makefile
+              git -c user.name="github-actions[bot]" -c user.email="github-actions[bot]@users.noreply.github.com" \
+                commit -m "github-actions[bot]: sync Makefile version with tag v${TAG_VERSION}"
+              git push origin HEAD:${TARGET_BRANCH}
+            else
+              echo "⚠️ Target branch '${TARGET_BRANCH}' not found. Skipping push."
+            fi
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
   build:
     name: Build (${{ matrix.pkg_type }})
     runs-on: ubuntu-latest
@@ -24,68 +85,12 @@ jobs:
         with:
           fetch-depth: 0
 
-      # Determine branch to push Makefile update: same branch the tag was created from.
-      # Prefer non-default branch when commit is on multiple (e.g. tag from fix-issue → update fix-issue).
-      - name: Detect target branch from tag
-        id: detect_branch
-        run: |
-          set -e
-          git fetch origin "+refs/heads/*:refs/remotes/origin/*"
-          BRANCH=""
-          for b in $(git branch -r --contains "$GITHUB_SHA" | grep -v "origin/HEAD" | sed "s#origin/##"); do
-            [ -z "$b" ] && continue
-            # Prefer the branch that is NOT default (tag was likely created on feature branch)
-            if [ "$b" != "${DEFAULT_BRANCH}" ]; then
-              BRANCH="$b"
-              break
-            fi
-          done
-          # If all containing branches were default or only default contains, use default
-          if [ -z "$BRANCH" ]; then
-            BRANCH=$(git branch -r --contains "$GITHUB_SHA" | grep -v "origin/HEAD" | head -n 1 | sed "s#origin/##")
-          fi
-          if [ -z "$BRANCH" ]; then
-            BRANCH="${DEFAULT_BRANCH}"
-          fi
-          echo "TARGET_BRANCH=$BRANCH" >> "$GITHUB_ENV"
-          echo "📌 Will push Makefile version sync to branch: $BRANCH"
-        env:
-          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
-
-      - name: Check version and sync with tag
-        run: |
-          set -e
-          LUCI_APP_SINGBOX_UI_VERSION=$(grep '^PKG_VERSION:=' luci-app-singbox-ui/Makefile | cut -d '=' -f2 | tr -d ' ')
-          TAG_VERSION=${GITHUB_REF#refs/tags/v}
-          echo "📦 Makefile version: $LUCI_APP_SINGBOX_UI_VERSION"
-          echo "🏷  Git tag version: $TAG_VERSION"
-          if [ "$LUCI_APP_SINGBOX_UI_VERSION" != "$TAG_VERSION" ]; then
-            echo "❌ Version mismatch detected!"
-            echo "🔁 Updating Makefile version to match tag..."
-            sed -i "s/^PKG_VERSION:=.*$/PKG_VERSION:=${TAG_VERSION}/" luci-app-singbox-ui/Makefile
-            echo "✅ Makefile updated."
-          else
-            echo "✅ Version match confirmed."
-          fi
-
-      - name: Commit updated Makefile version (if changed)
+      # Только локально подставляем версию из тега в Makefile для сборки, без пуша
+      - name: Set Makefile version to tag (for build only)
         run: |
           TAG_VERSION=${GITHUB_REF#refs/tags/v}
-          if git diff --quiet; then
-            echo "ℹ No changes to commit."
-          else
-            if git show-ref --verify --quiet "refs/remotes/origin/${TARGET_BRANCH}"; then
-              echo "📤 Committing updated Makefile to ${TARGET_BRANCH}..."
-              git add luci-app-singbox-ui/Makefile
-              git -c user.name="github-actions[bot]" -c user.email="github-actions[bot]@users.noreply.github.com" \
-                commit -m "github-actions[bot]: sync Makefile version with tag v${TAG_VERSION}"
-              git push origin HEAD:${TARGET_BRANCH}
-            else
-              echo "⚠️ Target branch '${TARGET_BRANCH}' not found on origin. Skipping push."
-            fi
-          fi
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          sed -i "s/^PKG_VERSION:=.*$/PKG_VERSION:=${TAG_VERSION}/" luci-app-singbox-ui/Makefile
+          echo "📦 Building with PKG_VERSION=$TAG_VERSION"
 
       - name: Build Docker image (${{ matrix.pkg_type }})
         uses: docker/build-push-action@v6.18.0
