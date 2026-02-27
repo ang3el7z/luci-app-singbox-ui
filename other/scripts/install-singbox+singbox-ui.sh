@@ -119,6 +119,8 @@ init_language() {
         MSG_OPERATION_DELETE="2. Удаление"
         MSG_OPERATION_REINSTALL_UPDATE="3. Переустановка/Обновление"
         MSG_OPERATION_CHOICE="Ваш выбор: "
+        MSG_BACKUP_CONFIGS="Сохранение резервных конфигов..."
+        MSG_RESTORE_CONFIGS="Восстановление резервных конфигов..."
         MSG_INSTALL_SFTP_SERVER="Установить openssh-sftp-server? y/n (n - по умолчанию): "
         MSG_SFTP_ALREADY_INSTALLED="openssh-sftp-server уже установлен"
         MSG_INVALID_INPUT="Некорректный ввод"
@@ -150,6 +152,8 @@ init_language() {
         MSG_OPERATION_DELETE="2. Delete"
         MSG_OPERATION_REINSTALL_UPDATE="3. Reinstall/Update"
         MSG_OPERATION_CHOICE="Your choice: "
+        MSG_BACKUP_CONFIGS="Backing up configs..."
+        MSG_RESTORE_CONFIGS="Restoring backup configs..."
         MSG_INSTALL_SFTP_SERVER="Install openssh-sftp-server? y/n (n - by default): "
         MSG_SFTP_ALREADY_INSTALLED="openssh-sftp-server already installed"
         MSG_INVALID_INPUT="Invalid input"
@@ -267,6 +271,27 @@ network_check() {
     fi
 }
 
+# Сохранение конфигов в /tmp / Backup configs to /tmp (for singbox+singbox-ui flow)
+backup_backup_configs() {
+    show_progress "$MSG_BACKUP_CONFIGS"
+    mkdir -p /tmp
+    for f in config.json config2.json config3.json url_config.json url_config2.json url_config3.json; do
+        [ -f "/etc/sing-box/$f" ] && cp -f "/etc/sing-box/$f" "/tmp/singbox-ui-backup-$f"
+    done
+}
+
+# Восстановление конфигов из /tmp / Restore configs from /tmp
+restore_backup_configs() {
+    show_progress "$MSG_RESTORE_CONFIGS"
+    mkdir -p /etc/sing-box
+    for f in config.json config2.json config3.json url_config.json url_config2.json url_config3.json; do
+        if [ -f "/tmp/singbox-ui-backup-$f" ]; then
+            cat "/tmp/singbox-ui-backup-$f" > "/etc/sing-box/$f"
+            rm -f "/tmp/singbox-ui-backup-$f"
+        fi
+    done
+}
+
 # Установка singbox / Install singbox
 install_singbox_script() {
     show_warning "$MSG_SINGBOX_INSTALL"
@@ -317,8 +342,10 @@ choose_action() {
             install_singbox_script
             ;;
         3)
+            backup_backup_configs
             install_singbox_script
             install_singbox_ui_script
+            restore_backup_configs
             ;;
     esac
 }

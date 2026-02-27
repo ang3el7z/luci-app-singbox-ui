@@ -118,6 +118,10 @@ init_language() {
             MSG_WAITING="Ожидание %d сек"
             MSG_YOUR_CHOICE="Ваш выбор: "
             MSG_COMPLETE="Выполнено! ($script_name)"
+            MSG_CONFIG_MENU="Ввод конфигурации:"
+            MSG_CONFIG_MENU_1="1) Ввести URL конфигурации"
+            MSG_CONFIG_MENU_2="2) Пропустить"
+            MSG_CONFIG_MENU_CHOICE=" Ваш выбор: "
             MSG_CONFIG_PROMPT="Введите URL конфигурации (Enter для ручного ввода): "
             MSG_CONFIG_LOADING="Загрузка конфигурации с %s (Попытка %s из %s)"
             MSG_CONFIG_SUCCESS="Конфигурация успешно загружена"
@@ -173,7 +177,11 @@ init_language() {
             MSG_WAITING="Waiting %d sec"
             MSG_YOUR_CHOICE="Your choice: "
             MSG_COMPLETE="Completed! ($script_name)"
-            MSG_CONFIG_PROMPT="Enter Configuration subscription URL (Enter for manual input): "
+            MSG_CONFIG_MENU="Configuration input:"
+            MSG_CONFIG_MENU_1="1) Enter configuration URL"
+            MSG_CONFIG_MENU_2="2) Skip"
+            MSG_CONFIG_MENU_CHOICE=" Your choice: "
+            MSG_CONFIG_PROMPT="Enter configuration URL (Enter for manual input): "
             MSG_CONFIG_LOADING="Loading configuration from %s (Attempt %s of %s)"
             MSG_CONFIG_SUCCESS="Configuration loaded successfully"
             MSG_CONFIG_ERROR="Loading error: %s"
@@ -411,8 +419,31 @@ install_singbox_ui() {
 
 # Получение конфигурации / Configuration download
 get_config() {
+    # При переустановке (операция 3) бэкап уже есть — пропускаем ввод конфигурации, восстановим в конце
+    if [ "$OPERATION" = "3" ] && [ -f "/tmp/singbox-ui-backup-config.json" ]; then
+        return 0
+    fi
     if [ -z "$CONFIG_URL" ]; then
-        read_input "${MSG_CONFIG_PROMPT}" CONFIG_URL
+        local config_choice
+        while true; do
+            show_message "$MSG_CONFIG_MENU"
+            show_message "$MSG_CONFIG_MENU_1"
+            show_message "$MSG_CONFIG_MENU_2"
+            read_input "$MSG_CONFIG_MENU_CHOICE" config_choice
+            case "${config_choice}" in
+                1)
+                    read_input "${MSG_CONFIG_PROMPT}" CONFIG_URL
+                    break
+                    ;;
+                2)
+                    CONFIG_URL=""
+                    break
+                    ;;
+                *)
+                    show_error "$MSG_INVALID_INPUT. $MSG_REPEAT_INPUT"
+                    ;;
+            esac
+        done
     fi
 
     local is_auto_config=0
@@ -491,27 +522,6 @@ get_config() {
     fi
 }
 
-# Сохранение всех конфигов в /tmp / Backup all configs to /tmp (preserve on reinstall)
-backup_backup_configs() {
-    show_progress "$MSG_BACKUP_CONFIGS"
-    mkdir -p /tmp
-    for f in config.json config2.json config3.json url_config.json url_config2.json url_config3.json; do
-        [ -f "/etc/sing-box/$f" ] && cp -f "/etc/sing-box/$f" "/tmp/singbox-ui-backup-$f"
-    done
-}
-
-# Восстановление конфигов из /tmp в /etc/sing-box, затем удаление tmp / Restore from /tmp into /etc/sing-box, then remove tmp
-restore_backup_configs() {
-    show_progress "$MSG_RESTORE_CONFIGS"
-    mkdir -p /etc/sing-box
-    for f in config.json config2.json config3.json url_config.json url_config2.json url_config3.json; do
-        if [ -f "/tmp/singbox-ui-backup-$f" ]; then
-            cat "/tmp/singbox-ui-backup-$f" > "/etc/sing-box/$f"
-            rm -f "/tmp/singbox-ui-backup-$f"
-        fi
-    done
-}
-
 # Удаление существующих файлов / Remove existing files
 uninstall_existing_files(){
     show_progress "$MSG_UNINSTALL_EXISTING_FILES"
@@ -571,12 +581,10 @@ perform_operation() {
         ;;
         3)  
             if check_installed; then
-                backup_backup_configs
                 uninstall
             fi
             update_pkgs
             install
-            restore_backup_configs
             ;;
         *)
             show_error "$MSG_INVALID_OPERATION"
