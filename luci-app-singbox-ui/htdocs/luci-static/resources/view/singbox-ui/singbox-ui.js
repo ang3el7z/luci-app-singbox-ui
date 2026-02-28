@@ -30,10 +30,8 @@ const isValidUrl = url => {
 
 /**
  * Show a LuCI notification.
- * 'info' notifications auto-dismiss after 4 s — no manual close needed.
- * 'error' notifications stay until the user closes them.
  */
-const NOTIFY_TIMEOUT = { info: 4000, error: 10000 };
+const NOTIFY_TIMEOUT = { info: 2500, error: 5000 };
 const notify = (type, msg) => {
 	const node    = ui.addNotification(null, msg, type);
 	const timeout = NOTIFY_TIMEOUT[type] ?? 4000;
