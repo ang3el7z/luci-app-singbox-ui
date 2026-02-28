@@ -401,7 +401,7 @@ const PAGE_CSS = `<style>
 .sbox-input:focus { border-color: var(--active-color, #4a9eff); }
 .sbox-editor {
   width: 100%;
-  height: 450px;
+  height: 675px;
   border: 1px solid var(--border-color, #333);
   border-radius: 6px;
   margin: 0.65rem 0;
