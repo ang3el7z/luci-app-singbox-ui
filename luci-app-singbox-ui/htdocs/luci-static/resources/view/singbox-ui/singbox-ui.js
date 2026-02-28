@@ -423,12 +423,15 @@ function buildPageHtml(state, configs) {
   const svcBtns = [
     state.mainConfigHasUrl && !state.healthAutoupdaterEnabled
       ? b(state.autoupdaterEnabled ? 'negative' : 'positive', 'toggleAutoupdater',
-          state.autoupdaterEnabled ? 'Stop Autoupdater' : 'Autoupdater') : '',
+          state.autoupdaterEnabled ? 'Stop Autoupdater' : 'Autoupdater',
+          state.autoupdaterEnabled ? 'Stop periodic config update from subscription URL' : 'Start periodic config update from subscription URL') : '',
     state.mainConfigHasUrl && !state.autoupdaterEnabled
       ? b(state.healthAutoupdaterEnabled ? 'negative' : 'positive', 'toggleHealthAutoupdater',
-          state.healthAutoupdaterEnabled ? 'Stop Health Autoupdater' : 'Health Autoupdater') : '',
+          state.healthAutoupdaterEnabled ? 'Stop Health Autoupdater' : 'Health Autoupdater',
+          state.healthAutoupdaterEnabled ? 'Stop config update on outbound health failure' : 'Start config update when outbound health check fails') : '',
     b(state.memdocEnabled ? 'negative' : 'positive', 'toggleMemdoc',
-      state.memdocEnabled ? 'Stop Memdoc' : 'Memdoc')
+      state.memdocEnabled ? 'Stop Memdoc' : 'Memdoc',
+      state.memdocEnabled ? 'Stop memory monitor (restart sing-box on low RAM)' : 'Start memory monitor: restart sing-box when free RAM is low')
   ].filter(Boolean).join('');
 
   const opts = configs.map(c => `<option value="${c.name}">${c.label}</option>`).join('');
