@@ -33,11 +33,11 @@ const isValidUrl = url => {
  * 'info' notifications auto-dismiss after 4 s — no manual close needed.
  * 'error' notifications stay until the user closes them.
  */
-const NOTIFY_TIMEOUT = 4000;
+const NOTIFY_TIMEOUT = { info: 4000, error: 10000 };
 const notify = (type, msg) => {
-	const node = ui.addNotification(null, msg, type);
-	if (type !== 'error' && node)
-		setTimeout(() => node.remove?.() ?? node.parentNode?.removeChild(node), NOTIFY_TIMEOUT);
+	const node    = ui.addNotification(null, msg, type);
+	const timeout = NOTIFY_TIMEOUT[type] ?? 4000;
+	if (node) setTimeout(() => node.remove?.() ?? node.parentNode?.removeChild(node), timeout);
 };
 
 /** Unique /tmp path to avoid race conditions on concurrent requests. */
