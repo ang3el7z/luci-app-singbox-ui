@@ -8,6 +8,7 @@
 // ============================================================
 
 const TPROXY_RULE_FILE = '/etc/nftables.d/singbox.nft';
+const TUN_INTERFACE    = 'singtun0';
 const SINGBOX_BIN      = '/usr/bin/sing-box';
 const UPDATER_BIN      = '/usr/bin/singbox-ui/singbox-ui-updater';
 const UCI_CONFIG       = 'singbox-ui';
@@ -151,7 +152,7 @@ async function isServiceActive(name) {
 
 async function runNft(args) {
 	try { return await fs.exec('/usr/sbin/nft', args); }
-	catch { return await fs.exec('nft', args); }
+	catch { return await fs.exec('/usr/bin/nft', args); }
 }
 
 async function isTproxyConfigPresent() {
@@ -161,6 +162,11 @@ async function isTproxyConfigPresent() {
 
 async function isTproxyTablePresent() {
 	try { await runNft(['list', 'table', 'ip', 'singbox']); return true; }
+	catch { return false; }
+}
+
+async function isTunInterfacePresent() {
+	try { await fs.stat('/sys/class/net/' + TUN_INTERFACE); return true; }
 	catch { return false; }
 }
 
@@ -232,6 +238,60 @@ async function formatConfig(content) {
 	} finally {
 		try { await fs.remove(tmp); } catch (_) {}
 	}
+}
+
+// ============================================================
+// Mode switching
+// ============================================================
+
+const MODE_SWITCH_BIN = '/usr/bin/singbox-ui/singbox-ui-mode-switch';
+
+async function execModeSwitch(action) {
+	const r = await fs.exec(MODE_SWITCH_BIN, [action]);
+	if (String(r?.stdout ?? '').trim() !== 'ok') {
+		throw new Error(String(r?.stderr ?? r?.stdout ?? 'mode switch failed').trim() || 'mode switch failed');
+	}
+}
+
+/**
+ * Show a modal dialog.
+ * options: { title, body, buttons: [{ cls, label, action }] }
+ * Returns a close() function.
+ */
+function showModeModal(options) {
+	const overlay = document.createElement('div');
+	overlay.className = 'sbox-modal-overlay';
+
+	const btns = options.buttons.map((b, i) =>
+		`<button type="button" class="cbi-button cbi-button-${b.cls}" data-mi="${i}">${b.label}</button>`
+	).join('');
+
+	overlay.innerHTML = `
+<div class="sbox-modal">
+  <div class="sbox-modal-title">${options.title}</div>
+  <div class="sbox-modal-body">${options.body}</div>
+  <div class="sbox-modal-actions">
+    ${btns}
+    <button type="button" class="cbi-button cbi-button-neutral" data-cancel>Cancel</button>
+  </div>
+</div>`;
+
+	const close = () => overlay.remove();
+
+	overlay.querySelector('[data-cancel]').onclick = close;
+	overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+
+	options.buttons.forEach((b, i) => {
+		overlay.querySelector(`[data-mi="${i}"]`).onclick = async btn => {
+			close();
+			const el = btn.currentTarget;
+			el.disabled = true;
+			try { await b.action(); } catch (e) { notify('error', e.message); }
+		};
+	});
+
+	document.body.appendChild(overlay);
+	return close;
 }
 
 // ============================================================
@@ -350,6 +410,53 @@ const PAGE_CSS = `<style>
   background: var(--card-bg-color, #1a1a1a);
   color: var(--muted, #888);
   font-weight: 500;
+}
+.sbox-header-mode-conflict {
+  border-color: #e74c3c;
+  color: #e74c3c;
+}
+.sbox-header-mode-btn {
+  cursor: pointer;
+}
+.sbox-header-mode-btn:hover {
+  border-color: var(--active-color, #4a9eff);
+  color: var(--active-color, #4a9eff);
+}
+.sbox-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.65);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.sbox-modal {
+  background: var(--card-bg-color, #1a1a1a);
+  border: 1px solid var(--border-color, #2e2e2e);
+  border-radius: 10px;
+  padding: 1.5rem 1.75rem;
+  min-width: 280px;
+  max-width: 420px;
+  width: 90vw;
+  box-sizing: border-box;
+}
+.sbox-modal-title {
+  font-size: 0.95em;
+  font-weight: 600;
+  margin-bottom: 0.6rem;
+  color: var(--text-color, #ddd);
+}
+.sbox-modal-body {
+  font-size: 0.85em;
+  color: var(--muted, #aaa);
+  margin-bottom: 1.1rem;
+  line-height: 1.5;
+}
+.sbox-modal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
 }
 .sbox-header-dash {
   font-size: 0.78em;
@@ -519,7 +626,9 @@ function buildServiceInner(state) {
 function buildPageHtml(state) {
 	const v         = state.versions;
 	const dot       = '<span class="sbox-header-dot">\u00B7</span>';
-	const proxyMode = state.tproxyConfigPresent ? 'tproxy' : 'tun';
+	const proxyMode = (state.tproxyActive && state.tunInterfacePresent)
+		? 'conflict'
+		: (state.tproxyActive ? 'tproxy' : (state.tunInterfacePresent ? 'tun' : 'custom'));
 	const opts      = CONFIGS.map(c => `<option value="${c.name}">${c.label}</option>`).join('');
 	const cbtn      = (cls, action, label) =>
 		`<button type="button" class="cbi-button cbi-button-${cls}" data-config-action="${action}">${label}</button>`;
@@ -530,7 +639,11 @@ function buildPageHtml(state) {
   ${dot}
   sing-box <strong>${v.singbox}</strong>
   ${dot}
-  <span class="sbox-header-mode">${proxyMode} mode</span>
+  <span id="sbox-mode-badge" class="sbox-header-mode${proxyMode === 'conflict' ? ' sbox-header-mode-conflict' : ''}${proxyMode !== 'custom' ? ' sbox-header-mode-btn' : ''}" data-mode="${proxyMode}">${
+		proxyMode === 'custom'   ? 'custom setup' :
+		proxyMode === 'conflict' ? '\u26A0 fix: tproxy + tun conflict' :
+		proxyMode + ' mode'
+	}</span>
   <button type="button" id="sbox-header-dash" class="cbi-button cbi-button-apply sbox-header-dash"${(state.singboxRunning && state.dashboardPort) ? '' : ' style="display:none"'}>Dashboard</button>
 </div>
 <div class="sbox-card" id="sbox-control">${buildControlInner(state)}</div>
@@ -906,6 +1019,59 @@ function initPage(page, state, mainContent, mainUrl) {
 			window.open(`${window.location.protocol}//${window.location.hostname}:${state.dashboardPort}/ui/`, '_blank');
 	};
 
+	// Mode badge click handler
+	const modeBadge = page.querySelector('#sbox-mode-badge');
+	if (modeBadge) {
+		const mode = modeBadge.dataset.mode;
+
+		const switchTo = async (disable, enable) => {
+			notify('info', 'Switching mode\u2026');
+			try {
+				if (disable) await execModeSwitch(disable);
+				if (enable)  await execModeSwitch(enable);
+				notify('info', 'Mode switched, reloading\u2026');
+				reloadPage(1200);
+			} catch (e) {
+				notify('error', 'Mode switch failed: ' + e.message);
+			}
+		};
+
+		if (mode === 'tun') {
+			modeBadge.onclick = () => showModeModal({
+				title: 'Switch to tproxy mode?',
+				body:  'tun interface <b>singtun0</b> will be removed.<br>tproxy nft rules and policy routing will be applied.',
+				buttons: [{
+					cls: 'apply', label: 'Switch to tproxy',
+					action: () => switchTo('disable-tun', 'enable-tproxy'),
+				}],
+			});
+		} else if (mode === 'tproxy') {
+			modeBadge.onclick = () => showModeModal({
+				title: 'Switch to tun mode?',
+				body:  'tproxy nft rules will be removed.<br>tun interface <b>singtun0</b> and firewall zone will be configured.',
+				buttons: [{
+					cls: 'apply', label: 'Switch to tun',
+					action: () => switchTo('disable-tproxy', 'enable-tun'),
+				}],
+			});
+		} else if (mode === 'conflict') {
+			modeBadge.onclick = () => showModeModal({
+				title: '\u26A0 Conflict: tproxy + tun both active',
+				body:  'Both modes are active simultaneously. Disable one to resolve:',
+				buttons: [
+					{
+						cls: 'apply', label: 'Keep tproxy (disable tun)',
+						action: () => switchTo('disable-tun', null),
+					},
+					{
+						cls: 'reload', label: 'Keep tun (disable tproxy)',
+						action: () => switchTo('disable-tproxy', null),
+					},
+				],
+			});
+		}
+	}
+
 	// Init Ace editor
 	const aceEl = page.querySelector('#sbox-ace');
 	if (aceEl) {
@@ -950,8 +1116,11 @@ return view.extend({
 			loadFile('/etc/sing-box/url_config.json'),
 		]);
 
-		const tproxyActive         = tproxyConfigPresent || await isTproxyTablePresent();
-		const isInitialConfigValid = await isValidConfig(mainContent.trim());
+		const [tproxyActive, tunInterfacePresent, isInitialConfigValid] = await Promise.all([
+			isTproxyTablePresent(),
+			isTunInterfacePresent(),
+			isValidConfig(mainContent.trim()),
+		]);
 		const mainUrl              = mainConfigUrl.trim();
 
 		const state = {
@@ -961,6 +1130,7 @@ return view.extend({
 			isInitialConfigValid,
 			tproxyConfigPresent,
 			tproxyActive,
+			tunInterfacePresent,
 			mainConfigHasUrl:                 isValidUrl(mainUrl),
 			dashboardPort:                    parseDashboardPort(mainContent),
 			healthAutoupdaterServiceTempFlag,

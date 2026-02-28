@@ -1,0 +1,177 @@
+#!/bin/sh
+# Usage: singbox-ui-mode-switch <action>
+# Actions: enable-tun | disable-tun | enable-tproxy | disable-tproxy
+
+NFT_RULE_FILE="/etc/nftables.d/singbox.nft"
+TUN_IFACE="singtun0"
+
+# ── network.proxy UCI ────────────────────────────────────────────────────────
+
+configure_proxy() {
+    uci set network.proxy=interface
+    uci set network.proxy.proto="none"
+    uci set network.proxy.device="$TUN_IFACE"
+    uci set network.proxy.defaultroute="0"
+    uci set network.proxy.delegate="0"
+    uci set network.proxy.peerdns="0"
+    uci set network.proxy.auto="1"
+    uci commit network
+}
+
+remove_configure_proxy() {
+    uci -q delete network.proxy
+    uci commit network
+}
+
+# ── firewall zone/forwarding for tun ─────────────────────────────────────────
+
+configure_firewall_tun() {
+    if ! uci -q show firewall | grep -q "\.name='proxy'"; then
+        uci add firewall zone      >/dev/null
+        uci set firewall.@zone[-1].name="proxy"
+        uci set firewall.@zone[-1].forward="REJECT"
+        uci set firewall.@zone[-1].output="ACCEPT"
+        uci set firewall.@zone[-1].input="ACCEPT"
+        uci set firewall.@zone[-1].masq="1"
+        uci set firewall.@zone[-1].mtu_fix="1"
+        uci set firewall.@zone[-1].device="$TUN_IFACE"
+        uci set firewall.@zone[-1].family="ipv4"
+        uci add_list firewall.@zone[-1].network="$TUN_IFACE"
+    fi
+    if ! uci -q show firewall | grep -q "\.dest='proxy'"; then
+        uci add firewall forwarding >/dev/null
+        uci set firewall.@forwarding[-1].dest="proxy"
+        uci set firewall.@forwarding[-1].src="lan"
+        uci set firewall.@forwarding[-1].family="ipv4"
+    fi
+    uci commit firewall
+}
+
+remove_firewall_tun() {
+    zone_id=$(uci -q show firewall | grep "\.name='proxy'" | sed "s/firewall\.@zone\[\([0-9]*\)\].*/\1/")
+    [ -n "$zone_id" ] && uci -q delete firewall.@zone["$zone_id"]
+
+    fwd_id=$(uci -q show firewall | grep "\.dest='proxy'" | sed "s/firewall\.@forwarding\[\([0-9]*\)\].*/\1/")
+    [ -n "$fwd_id" ] && uci -q delete firewall.@forwarding["$fwd_id"]
+
+    uci commit firewall
+}
+
+# ── nft rules ────────────────────────────────────────────────────────────────
+
+install_nft_rule() {
+    mkdir -p /etc/nftables.d
+    cat > "$NFT_RULE_FILE" << 'EOF'
+define PROXY_FWMARK = 1
+define BYPASS_MARK = 2
+define RESERVED_IP = {
+    0.0.0.0/8,
+    10.0.0.0/8,
+    100.64.0.0/10,
+    127.0.0.0/8,
+    169.254.0.0/16,
+    172.16.0.0/12,
+    192.168.0.0/16,
+    192.0.0.0/24,
+    192.0.2.0/24,
+    198.18.0.0/15,
+    198.51.100.0/24,
+    203.0.113.0/24,
+    224.0.0.0/4,
+    240.0.0.0/4,
+    255.255.255.255/32
+}
+
+table ip singbox {
+    chain prerouting {
+        type filter hook prerouting priority mangle; policy accept;
+        ip daddr $RESERVED_IP return
+        meta mark $BYPASS_MARK return
+        ip protocol tcp tproxy to 127.0.0.1:2080 meta mark set $PROXY_FWMARK
+        ip protocol udp tproxy to 127.0.0.1:2080 meta mark set $PROXY_FWMARK
+    }
+}
+EOF
+    nft -f "$NFT_RULE_FILE"
+}
+
+uninstall_nft_rule() {
+    nft delete table ip singbox 2>/dev/null || true
+    rm -f "$NFT_RULE_FILE"
+}
+
+# ── tproxy firewall include ───────────────────────────────────────────────────
+
+ensure_tproxy_firewall_include() {
+    uci set firewall.singbox_tproxy=include
+    uci set firewall.singbox_tproxy.type="nftables"
+    uci set firewall.singbox_tproxy.path="$NFT_RULE_FILE"
+    uci set firewall.singbox_tproxy.enabled="1"
+    uci commit firewall
+}
+
+remove_tproxy_firewall_include() {
+    uci -q delete firewall.singbox_tproxy
+    uci commit firewall
+}
+
+# ── policy routing for tproxy ────────────────────────────────────────────────
+
+setup_tproxy_routing() {
+    ip rule add fwmark 1 table 100 2>/dev/null || true
+    ip route add local 0.0.0.0/0 dev lo table 100 2>/dev/null || true
+}
+
+cleanup_tproxy_routing() {
+    ip rule del fwmark 1 table 100 2>/dev/null || true
+    ip route flush table 100 2>/dev/null || true
+}
+
+# ── service helpers ──────────────────────────────────────────────────────────
+
+reload_firewall() {
+    service firewall reload >/dev/null 2>&1
+}
+
+reload_network() {
+    uci commit network
+    /etc/init.d/network reload >/dev/null 2>&1
+    ifup proxy 2>/dev/null || true
+}
+
+# ── actions ──────────────────────────────────────────────────────────────────
+
+case "$1" in
+    enable-tun)
+        configure_proxy
+        configure_firewall_tun
+        reload_firewall
+        reload_network
+        echo "ok"
+        ;;
+    disable-tun)
+        remove_configure_proxy
+        remove_firewall_tun
+        reload_firewall
+        reload_network
+        echo "ok"
+        ;;
+    enable-tproxy)
+        setup_tproxy_routing
+        install_nft_rule
+        ensure_tproxy_firewall_include
+        reload_firewall
+        echo "ok"
+        ;;
+    disable-tproxy)
+        remove_tproxy_firewall_include
+        reload_firewall
+        uninstall_nft_rule
+        cleanup_tproxy_routing
+        echo "ok"
+        ;;
+    *)
+        echo "Usage: $0 {enable-tun|disable-tun|enable-tproxy|disable-tproxy}" >&2
+        exit 1
+        ;;
+esac
