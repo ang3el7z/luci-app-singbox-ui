@@ -1,2 +1,3 @@
 luci-app-singbox-ui-pr-65-support-openwrt-25-and-fix-issue-20260227-0112.ipk
 luci-app-singbox-ui-pr-66-singbox-ui-v2-2-0-20260228-1501.ipk
+luci-app-singbox-ui-pr-67-refactoring-20260228-1522.ipk
