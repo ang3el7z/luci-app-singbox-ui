@@ -455,8 +455,6 @@ function buildControlInner(state) {
 			: '',
 		state.singboxRunning && state.isInitialConfigValid
 			? btn('reload', 'restart', 'Restart') : '',
-		state.singboxRunning
-			? btn('apply', 'dashboard', 'Dashboard') : '',
 	].filter(Boolean).join('');
 
 	return `
