@@ -30,25 +30,35 @@ const isValidUrl = url => {
 
 const notify = (type, msg) => ui.addNotification(null, msg, type);
 
-/** Generate a unique /tmp path to avoid race conditions on concurrent requests. */
+/** Unique /tmp path to avoid race conditions on concurrent requests. */
 const tmpPath = prefix =>
 	`/tmp/${prefix}-${Date.now()}-${Math.random().toString(36).slice(2)}.json`;
 
-function reloadPage(delay = 800) {
+function reloadPage(delay = 600) {
 	setTimeout(() => location.reload(), delay);
 }
 
 /**
- * Disable one or more buttons while an async action runs, re-enable on finish.
- * This prevents double-submit and gives the user visual feedback.
+ * Disable one or more buttons and show a CSS spinner while an async action runs.
+ * If the button is removed from the DOM (card re-rendered) during the action,
+ * the finally-block skips it gracefully via isConnected check.
  */
 async function withButtons(btns, fn) {
-	const list = Array.isArray(btns) ? btns : (btns ? [btns] : []);
-	list.forEach(b => { b.disabled = true; b.style.opacity = '0.55'; });
+	const list  = Array.isArray(btns) ? btns : (btns ? [btns] : []);
+	const saved = list.map(b => b.innerHTML);
+	list.forEach(b => {
+		b.disabled   = true;
+		b.innerHTML  = '<span class="sbox-spinner"></span>\u00A0' + b.textContent.trim();
+	});
 	try {
 		return await fn();
 	} finally {
-		list.forEach(b => { b.disabled = false; b.style.opacity = ''; });
+		list.forEach((b, i) => {
+			if (b.isConnected) {
+				b.disabled  = false;
+				b.innerHTML = saved[i];
+			}
+		});
 	}
 }
 
@@ -72,7 +82,7 @@ async function saveFile(path, val) {
 async function execService(name, action) {
 	try {
 		const result = await fs.exec(`/etc/init.d/${name}`, [action]);
-		const out = String(result?.stdout ?? '').trim();
+		const out    = String(result?.stdout ?? '').trim();
 		console.log(`[${name}] ${action}: ${out}`);
 		return out;
 	} catch (err) {
@@ -83,7 +93,7 @@ async function execService(name, action) {
 
 /**
  * Lifecycle wrapper: start = enable+start, stop = stop+disable, else passthrough.
- * Logs final status after the operation.
+ * Logs the final service status after the operation completes.
  */
 async function execServiceLifecycle(name, action) {
 	const path = `/etc/init.d/${name}`;
@@ -112,17 +122,9 @@ async function execServiceLifecycle(name, action) {
 }
 
 async function isServiceActive(name) {
-	try {
-		await fs.stat(`/etc/init.d/${name}`);
-	} catch {
-		return false;
-	}
-	try {
-		const result = await fs.exec(`/etc/init.d/${name}`, ['status']);
-		return String(result?.stdout ?? '').includes('running');
-	} catch {
-		return false;
-	}
+	try   { await fs.stat(`/etc/init.d/${name}`); } catch { return false; }
+	try   { return String((await fs.exec(`/etc/init.d/${name}`, ['status']))?.stdout ?? '').includes('running'); }
+	catch { return false; }
 }
 
 // ============================================================
@@ -145,12 +147,12 @@ async function isTproxyTablePresent() {
 }
 
 async function disableTproxy() {
-	try { await runNft(['delete', 'table', 'ip', 'singbox']); }
+	try   { await runNft(['delete', 'table', 'ip', 'singbox']); }
 	catch (e) { console.warn('[tproxy] delete table failed:', e); }
 }
 
 async function enableTproxy() {
-	try { await runNft(['-f', TPROXY_RULE_FILE]); }
+	try   { await runNft(['-f', TPROXY_RULE_FILE]); }
 	catch (e) { console.warn('[tproxy] apply rules failed:', e); }
 }
 
@@ -160,16 +162,13 @@ async function enableTproxy() {
 
 async function readUciFlag(option) {
 	try {
-		const result = await fs.exec('/sbin/uci', ['get', `${UCI_CONFIG}.${UCI_SECTION}.${option}`]);
-		return String(result?.stdout ?? '').trim() === '1';
-	} catch {
-		return false;
-	}
+		const r = await fs.exec('/sbin/uci', ['get', `${UCI_CONFIG}.${UCI_SECTION}.${option}`]);
+		return String(r?.stdout ?? '').trim() === '1';
+	} catch { return false; }
 }
 
 async function writeUciFlag(option, value) {
-	const val = value ? '1' : '0';
-	await fs.exec('/sbin/uci', ['set', `${UCI_CONFIG}.${UCI_SECTION}.${option}=${val}`]);
+	await fs.exec('/sbin/uci', ['set',    `${UCI_CONFIG}.${UCI_SECTION}.${option}=${value ? '1' : '0'}`]);
 	await fs.exec('/sbin/uci', ['commit', UCI_CONFIG]);
 }
 
@@ -178,13 +177,13 @@ async function writeUciFlag(option, value) {
 // ============================================================
 
 async function isValidConfig(content) {
-	if (!content || !content.trim()) return false;
+	if (!content?.trim()) return false;
 	const tmp = tmpPath('singbox-check');
 	try {
 		await fs.write(tmp, content);
-		const result = await fs.exec(SINGBOX_BIN, ['check', '-c', tmp]);
-		if (result.code === 0) return true;
-		let msg = String(result.stderr || '').trim();
+		const r = await fs.exec(SINGBOX_BIN, ['check', '-c', tmp]);
+		if (r.code === 0) return true;
+		let msg = String(r.stderr || '').trim();
 		if (msg.includes(tmp)) msg = msg.substring(msg.indexOf(tmp) + tmp.length + 1).trim();
 		notify('error', 'Config error: ' + (msg || 'validation failed'));
 		return false;
@@ -197,13 +196,13 @@ async function isValidConfig(content) {
 }
 
 async function formatConfig(content) {
-	if (!content || !content.trim()) return null;
+	if (!content?.trim()) return null;
 	const tmp = tmpPath('singbox-fmt');
 	try {
 		await fs.write(tmp, content);
-		const result = await fs.exec(SINGBOX_BIN, ['format', '-w', '-c', tmp]);
-		if (result.code !== 0) {
-			let msg = String(result.stderr || result.stdout || '').trim();
+		const r = await fs.exec(SINGBOX_BIN, ['format', '-w', '-c', tmp]);
+		if (r.code !== 0) {
+			let msg = String(r.stderr || r.stdout || '').trim();
 			if (msg.includes(tmp)) msg = msg.substring(msg.indexOf(tmp) + tmp.length + 1).trim();
 			notify('error', 'Format failed: ' + (msg || 'unknown error'));
 			return null;
@@ -226,17 +225,17 @@ async function getVersions() {
 	let singbox   = '\u2014';
 	try {
 		const { stdout } = await fs.exec(SINGBOX_BIN, ['version']);
-		const m = stdout && stdout.match(/(\d+\.\d+\.\d+(?:-\S+)?)/);
+		const m = stdout?.match(/(\d+\.\d+\.\d+(?:-\S+)?)/);
 		if (m) singbox = m[1];
 	} catch (_) {}
 	try {
 		const { stdout } = await fs.exec('/bin/opkg', ['list-installed', 'luci-app-singbox-ui']);
-		const m = stdout && stdout.match(/luci-app-singbox-ui[^\d]*([\d.]+(?:-\d+)?)/);
+		const m = stdout?.match(/luci-app-singbox-ui[^\d]*([\d.]+(?:-\d+)?)/);
 		if (m) singboxUi = m[1];
 	} catch (_) {
 		try {
 			const { stdout } = await fs.exec('/usr/bin/apk', ['info', '-e', 'luci-app-singbox-ui']);
-			const m = stdout && stdout.match(/luci-app-singbox-ui-([\d.]+(?:-r\d+)?)/);
+			const m = stdout?.match(/luci-app-singbox-ui-([\d.]+(?:-r\d+)?)/);
 			if (m) singboxUi = m[1];
 		} catch (_) {}
 	}
@@ -249,8 +248,8 @@ async function getVersions() {
 
 function loadScript(src) {
 	return new Promise((resolve, reject) => {
-		const s = document.createElement('script');
-		s.src = src;
+		const s  = document.createElement('script');
+		s.src    = src;
 		s.onload = resolve;
 		s.onerror = reject;
 		document.head.appendChild(s);
@@ -285,7 +284,7 @@ async function initAceEditor(el, content) {
 }
 
 // ============================================================
-// CSS (inline, theme-aware via CSS variables)
+// CSS (theme-aware via LuCI CSS variables)
 // ============================================================
 
 const PAGE_CSS = `<style>
@@ -381,23 +380,34 @@ const PAGE_CSS = `<style>
   gap: 0.4rem;
   align-items: center;
 }
+@keyframes sbox-spin { to { transform: rotate(360deg); } }
+.sbox-spinner {
+  display: inline-block;
+  width: 0.75em; height: 0.75em;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: sbox-spin 0.6s linear infinite;
+  vertical-align: middle;
+}
 </style>`;
 
 // ============================================================
-// HTML builder
+// HTML: inner content builders (card wrappers stay in place,
+// only innerHTML is swapped on refresh — no full page reload)
 // ============================================================
 
-function buildHtml(state) {
-	const v   = state.versions;
-	const dot = '\u00B7';
+function buildControlInner(state) {
+	const v           = state.versions;
+	const dot         = '\u00B7';
 	const proxyMode   = state.tproxyConfigPresent ? 'tproxy' : 'tun';
-	const sk          = state.singboxRunning ? 'running' : (state.singboxStatus === 'error' ? 'error' : 'inactive');
+	const sk          = state.singboxRunning
+		? 'running'
+		: (state.singboxStatus === 'error' ? 'error' : 'inactive');
 	const statusLabel = sk === 'running' ? 'Running' : (sk === 'error' ? 'Error' : 'Inactive');
 
 	const btn = (cls, action, label, title) =>
 		`<button type="button" class="cbi-button cbi-button-${cls}" data-action="${action}"${title ? ` title="${title}"` : ''}>${label}</button>`;
-	const cbtn = (cls, action, label) =>
-		`<button type="button" class="cbi-button cbi-button-${cls}" data-config-action="${action}">${label}</button>`;
 
 	const svcLabel = () => {
 		if (state.healthAutoupdaterServiceTempFlag) return 'Sing\u2011Box & Health Autoupdater';
@@ -418,6 +428,21 @@ function buildHtml(state) {
 		state.singboxRunning
 			? btn('apply', 'dashboard', 'Dashboard') : '',
 	].filter(Boolean).join('');
+
+	return `
+  <div class="sbox-version">singbox-ui ${v.singboxUi} ${dot} sing-box ${v.singbox} ${dot} ${proxyMode} mode</div>
+  <div class="sbox-card-title">Control</div>
+  <div class="sbox-row">
+    <span class="sbox-status sbox-color-${sk}">
+      <span class="sbox-dot sbox-dot-${sk}"></span>${statusLabel}
+    </span>
+    ${ctrlBtns}
+  </div>`;
+}
+
+function buildServiceInner(state) {
+	const btn = (cls, action, label, title) =>
+		`<button type="button" class="cbi-button cbi-button-${cls}" data-action="${action}"${title ? ` title="${title}"` : ''}>${label}</button>`;
 
 	const svcBtns = [
 		state.mainConfigHasUrl && !state.healthAutoupdaterEnabled
@@ -447,23 +472,19 @@ function buildHtml(state) {
 				: 'Restart sing-box when free RAM is low'),
 	].filter(Boolean).join('');
 
+	return `
+  <div class="sbox-card-title">Services</div>
+  <div class="sbox-row">${svcBtns}</div>`;
+}
+
+function buildPageHtml(state) {
 	const opts = CONFIGS.map(c => `<option value="${c.name}">${c.label}</option>`).join('');
+	const cbtn = (cls, action, label) =>
+		`<button type="button" class="cbi-button cbi-button-${cls}" data-config-action="${action}">${label}</button>`;
 
 	return `
-<div class="sbox-card" id="sbox-control">
-  <div class="sbox-version">singbox-ui ${v.singboxUi} ${dot} sing-box ${v.singbox} ${dot} ${proxyMode} mode</div>
-  <div class="sbox-card-title">Control</div>
-  <div class="sbox-row">
-    <span class="sbox-status sbox-color-${sk}">
-      <span class="sbox-dot sbox-dot-${sk}"></span>${statusLabel}
-    </span>
-    ${ctrlBtns}
-  </div>
-</div>
-<div class="sbox-card" id="sbox-services">
-  <div class="sbox-card-title">Services</div>
-  <div class="sbox-row">${svcBtns}</div>
-</div>
+<div class="sbox-card" id="sbox-control">${buildControlInner(state)}</div>
+<div class="sbox-card" id="sbox-services">${buildServiceInner(state)}</div>
 <div class="sbox-card" id="sbox-config">
   <div class="sbox-card-title">Config</div>
   <div class="sbox-cfg-top">
@@ -489,144 +510,166 @@ function buildHtml(state) {
 
 function initPage(page, state, mainContent, mainUrl) {
 	let currentConfig = CONFIGS[0];
+
+	// ----------------------------------------------------------
+	// Control card: re-render in place after start/stop/restart
+	// (no full page reload needed for status changes)
+	// ----------------------------------------------------------
+
+	async function refreshControlCard() {
+		state.singboxStatus = await execService('sing-box', 'status');
+		state.singboxRunning = state.singboxStatus.includes('running');
+		if (state.singboxRunning)
+			state.tproxyActive = state.tproxyConfigPresent || await isTproxyTablePresent();
+
+		const card = page.querySelector('#sbox-control');
+		if (card) { card.innerHTML = buildControlInner(state); bindControlCard(); }
+	}
+
+	function bindControlCard() {
+		const actions = {
+			async startStop(b) {
+				await withButtons(b, async () => {
+					try {
+						if (state.singboxRunning) {
+							if (state.tproxyActive) await disableTproxy();
+							await execService('sing-box', 'stop');
+							if (state.autoupdaterServiceTempFlag)
+								await execServiceLifecycle('singbox-ui-autoupdater-service', 'stop');
+							else if (state.healthAutoupdaterServiceTempFlag)
+								await execServiceLifecycle('singbox-ui-health-autoupdater-service', 'stop');
+							notify('info', 'Sing\u2011Box stopped');
+						} else {
+							await execService('sing-box', 'start');
+							if (state.tproxyConfigPresent) await enableTproxy();
+							if (state.autoupdaterServiceTempFlag)
+								await execServiceLifecycle('singbox-ui-autoupdater-service', 'start');
+							else if (state.healthAutoupdaterServiceTempFlag)
+								await execServiceLifecycle('singbox-ui-health-autoupdater-service', 'start');
+							notify('info', 'Sing\u2011Box started');
+						}
+					} catch (e) {
+						notify('error', 'Operation failed: ' + e.message);
+					}
+					await refreshControlCard();
+				});
+			},
+
+			async restart(b) {
+				await withButtons(b, async () => {
+					try {
+						await execService('sing-box', 'restart');
+						if (state.autoupdaterServiceTempFlag)
+							await execServiceLifecycle('singbox-ui-autoupdater-service', 'restart');
+						else if (state.healthAutoupdaterServiceTempFlag)
+							await execServiceLifecycle('singbox-ui-health-autoupdater-service', 'restart');
+						notify('info', 'Sing\u2011Box restarted');
+					} catch (e) {
+						notify('error', 'Restart failed: ' + e.message);
+					}
+					await refreshControlCard();
+				});
+			},
+
+			dashboard() {
+				window.open(`${window.location.protocol}//${window.location.hostname}:9090/ui/`, '_blank');
+			},
+		};
+
+		page.querySelectorAll('#sbox-control [data-action]').forEach(b => {
+			const fn = actions[b.dataset.action];
+			if (fn) b.onclick = () => fn(b).catch(() => {});
+		});
+	}
+
+	// ----------------------------------------------------------
+	// Service card: re-render in place after toggle actions
+	// ----------------------------------------------------------
+
+	async function refreshServiceCard() {
+		state.autoupdaterEnabled       = await isServiceActive('singbox-ui-autoupdater-service');
+		state.healthAutoupdaterEnabled = await isServiceActive('singbox-ui-health-autoupdater-service');
+		state.memdocEnabled            = await isServiceActive('singbox-ui-memdoc-service');
+
+		const card = page.querySelector('#sbox-services');
+		if (card) { card.innerHTML = buildServiceInner(state); bindServiceCard(); }
+	}
+
+	function bindServiceCard() {
+		const actions = {
+			async toggleAutoupdater(b) {
+				await withButtons(b, async () => {
+					try {
+						if (state.autoupdaterEnabled) {
+							await execServiceLifecycle('singbox-ui-autoupdater-service', 'stop');
+							await writeUciFlag('autoupdater_service_state', false);
+							notify('info', 'Autoupdater stopped');
+						} else {
+							await execServiceLifecycle('singbox-ui-health-autoupdater-service', 'stop');
+							await writeUciFlag('health_autoupdater_service_state', false);
+							await writeUciFlag('autoupdater_service_state', true);
+							await execServiceLifecycle('singbox-ui-autoupdater-service', 'start');
+							notify('info', 'Autoupdater started');
+						}
+					} catch (e) { notify('error', 'Toggle failed: ' + e.message); }
+					await refreshServiceCard();
+				});
+			},
+
+			async toggleHealthAutoupdater(b) {
+				await withButtons(b, async () => {
+					try {
+						if (state.healthAutoupdaterEnabled) {
+							await execServiceLifecycle('singbox-ui-health-autoupdater-service', 'stop');
+							await writeUciFlag('health_autoupdater_service_state', false);
+							notify('info', 'Health Autoupdater stopped');
+						} else {
+							await execServiceLifecycle('singbox-ui-autoupdater-service', 'stop');
+							await writeUciFlag('autoupdater_service_state', false);
+							await writeUciFlag('health_autoupdater_service_state', true);
+							await execServiceLifecycle('singbox-ui-health-autoupdater-service', 'start');
+							notify('info', 'Health Autoupdater started');
+						}
+					} catch (e) { notify('error', 'Toggle failed: ' + e.message); }
+					await refreshServiceCard();
+				});
+			},
+
+			async toggleMemdoc(b) {
+				await withButtons(b, async () => {
+					try {
+						if (state.memdocEnabled) {
+							await execServiceLifecycle('singbox-ui-memdoc-service', 'stop');
+							notify('info', 'Memdoc stopped');
+						} else {
+							await execServiceLifecycle('singbox-ui-memdoc-service', 'start');
+							notify('info', 'Memdoc started');
+						}
+					} catch (e) { notify('error', 'Toggle failed: ' + e.message); }
+					await refreshServiceCard();
+				});
+			},
+		};
+
+		page.querySelectorAll('#sbox-services [data-action]').forEach(b => {
+			const fn = actions[b.dataset.action];
+			if (fn) b.onclick = () => fn(b).catch(() => {});
+		});
+	}
+
+	// ----------------------------------------------------------
+	// Config card: in-place editor/URL updates, no page reload
+	// (setAsMain and clear still reload — they swap content)
+	// ----------------------------------------------------------
+
 	const urlEl      = page.querySelector('#sbox-url');
 	const selectEl   = page.querySelector('#sbox-config-select');
 	const setMainBtn = page.querySelector('#sbox-set-main-btn');
 
 	if (urlEl) urlEl.value = mainUrl || '';
 
-	// --- Control bar ---
-
-	const barActions = {
-		async startStop() {
-			const allBtns = [...page.querySelectorAll('[data-action]')];
-			await withButtons(allBtns, async () => {
-				try {
-					if (state.singboxRunning) {
-						if (state.tproxyActive) await disableTproxy();
-						await execService('sing-box', 'stop');
-						if (state.autoupdaterServiceTempFlag)
-							await execServiceLifecycle('singbox-ui-autoupdater-service', 'stop');
-						else if (state.healthAutoupdaterServiceTempFlag)
-							await execServiceLifecycle('singbox-ui-health-autoupdater-service', 'stop');
-						notify('info', 'Sing\u2011Box stopped');
-					} else {
-						await execService('sing-box', 'start');
-						if (state.tproxyConfigPresent) await enableTproxy();
-						if (state.autoupdaterServiceTempFlag)
-							await execServiceLifecycle('singbox-ui-autoupdater-service', 'start');
-						else if (state.healthAutoupdaterServiceTempFlag)
-							await execServiceLifecycle('singbox-ui-health-autoupdater-service', 'start');
-						notify('info', 'Sing\u2011Box started');
-					}
-				} catch (e) {
-					notify('error', 'Operation failed: ' + e.message);
-				} finally {
-					reloadPage();
-				}
-			});
-		},
-
-		async restart() {
-			const allBtns = [...page.querySelectorAll('[data-action]')];
-			await withButtons(allBtns, async () => {
-				try {
-					await execService('sing-box', 'restart');
-					if (state.autoupdaterServiceTempFlag)
-						await execServiceLifecycle('singbox-ui-autoupdater-service', 'restart');
-					else if (state.healthAutoupdaterServiceTempFlag)
-						await execServiceLifecycle('singbox-ui-health-autoupdater-service', 'restart');
-					notify('info', 'Sing\u2011Box restarted');
-				} catch (e) {
-					notify('error', 'Restart failed: ' + e.message);
-				} finally {
-					reloadPage();
-				}
-			});
-		},
-
-		dashboard() {
-			const proto = window.location.protocol;
-			const host  = window.location.hostname;
-			window.open(`${proto}//${host}:9090/ui/`, '_blank');
-		},
-
-		async toggleAutoupdater() {
-			const b = page.querySelector('[data-action="toggleAutoupdater"]');
-			await withButtons(b, async () => {
-				try {
-					if (state.autoupdaterEnabled) {
-						await execServiceLifecycle('singbox-ui-autoupdater-service', 'stop');
-						await writeUciFlag('autoupdater_service_state', false);
-						notify('info', 'Autoupdater stopped');
-					} else {
-						await execServiceLifecycle('singbox-ui-health-autoupdater-service', 'stop');
-						await writeUciFlag('health_autoupdater_service_state', false);
-						await writeUciFlag('autoupdater_service_state', true);
-						await execServiceLifecycle('singbox-ui-autoupdater-service', 'start');
-						notify('info', 'Autoupdater started');
-					}
-				} catch (e) {
-					notify('error', 'Toggle failed: ' + e.message);
-				} finally {
-					reloadPage();
-				}
-			});
-		},
-
-		async toggleHealthAutoupdater() {
-			const b = page.querySelector('[data-action="toggleHealthAutoupdater"]');
-			await withButtons(b, async () => {
-				try {
-					if (state.healthAutoupdaterEnabled) {
-						await execServiceLifecycle('singbox-ui-health-autoupdater-service', 'stop');
-						await writeUciFlag('health_autoupdater_service_state', false);
-						notify('info', 'Health Autoupdater stopped');
-					} else {
-						await execServiceLifecycle('singbox-ui-autoupdater-service', 'stop');
-						await writeUciFlag('autoupdater_service_state', false);
-						await writeUciFlag('health_autoupdater_service_state', true);
-						await execServiceLifecycle('singbox-ui-health-autoupdater-service', 'start');
-						notify('info', 'Health Autoupdater started');
-					}
-				} catch (e) {
-					notify('error', 'Toggle failed: ' + e.message);
-				} finally {
-					reloadPage();
-				}
-			});
-		},
-
-		async toggleMemdoc() {
-			const b = page.querySelector('[data-action="toggleMemdoc"]');
-			await withButtons(b, async () => {
-				try {
-					if (state.memdocEnabled) {
-						await execServiceLifecycle('singbox-ui-memdoc-service', 'stop');
-						notify('info', 'Memdoc stopped');
-					} else {
-						await execServiceLifecycle('singbox-ui-memdoc-service', 'start');
-						notify('info', 'Memdoc started');
-					}
-				} catch (e) {
-					notify('error', 'Toggle failed: ' + e.message);
-				} finally {
-					reloadPage();
-				}
-			});
-		},
-	};
-
-	page.querySelectorAll('[data-action]').forEach(b => {
-		const fn = barActions[b.dataset.action];
-		if (fn) b.onclick = () => fn().catch(() => {});
-	});
-
-	// --- Config actions ---
-
 	const configActions = {
-		async saveUrl() {
-			const b   = page.querySelector('[data-config-action="saveUrl"]');
+		async saveUrl(b) {
 			const url = urlEl?.value.trim() || '';
 			if (!url)             return notify('error', 'URL is empty');
 			if (!isValidUrl(url)) return notify('error', 'Invalid URL');
@@ -643,21 +686,26 @@ function initPage(page, state, mainContent, mainUrl) {
 					} else if (r.code !== 0) {
 						notify('error', r.stderr || r.stdout || 'Update failed');
 					} else {
-						if (currentConfig.name === 'config.json') await execService('sing-box', 'reload');
-						notify('info', currentConfig.name === 'config.json'
-							? 'Main config reloaded'
-							: currentConfig.label + ' updated');
+						const newContent = await loadFile('/etc/sing-box/' + currentConfig.name);
+						const ed = window.singboxEditor;
+						if (ed) { ed.setValue(newContent, -1); ed.clearSelection(); }
+						notify('info', currentConfig.label + ' updated');
+						if (currentConfig.name === 'config.json') {
+							await execService('sing-box', 'reload');
+							notify('info', 'Sing\u2011Box reloaded');
+							state.isInitialConfigValid = await isValidConfig(newContent);
+							state.mainConfigHasUrl = true;
+							await refreshControlCard();
+							await refreshServiceCard();
+						}
 					}
 				} catch (e) {
 					notify('error', 'Save URL failed: ' + e.message);
-				} finally {
-					reloadPage();
 				}
 			});
 		},
 
-		async update() {
-			const b = page.querySelector('[data-config-action="update"]');
+		async update(b) {
 			await withButtons(b, async () => {
 				try {
 					const r = await fs.exec(UPDATER_BIN, [
@@ -666,21 +714,22 @@ function initPage(page, state, mainContent, mainUrl) {
 					]);
 					if (r.code === 2) return notify('info', 'No changes detected');
 					if (r.code !== 0) return notify('error', r.stderr || r.stdout || 'Update failed');
-					if (currentConfig.name === 'config.json') await execService('sing-box', 'reload');
-					notify('info', currentConfig.name === 'config.json'
-						? 'Main config reloaded'
-						: currentConfig.label + ' updated');
-				} catch (e) {
-					notify('error', 'Update failed: ' + e.message);
-				} finally {
-					reloadPage();
-				}
+					const newContent = await loadFile('/etc/sing-box/' + currentConfig.name);
+					const ed = window.singboxEditor;
+					if (ed) { ed.setValue(newContent, -1); ed.clearSelection(); }
+					notify('info', currentConfig.label + ' updated');
+					if (currentConfig.name === 'config.json') {
+						await execService('sing-box', 'reload');
+						notify('info', 'Sing\u2011Box reloaded');
+						state.isInitialConfigValid = await isValidConfig(newContent);
+						await refreshControlCard();
+					}
+				} catch (e) { notify('error', 'Update failed: ' + e.message); }
 			});
 		},
 
-		async format() {
+		async format(b) {
 			const ed = window.singboxEditor;
-			const b  = page.querySelector('[data-config-action="format"]');
 			if (!ed) return notify('error', 'Editor not ready');
 			const val = ed.getValue();
 			if (!val?.trim()) return notify('info', 'Nothing to format');
@@ -694,9 +743,8 @@ function initPage(page, state, mainContent, mainUrl) {
 			});
 		},
 
-		async save() {
+		async save(b) {
 			const ed = window.singboxEditor;
-			const b  = page.querySelector('[data-config-action="save"]');
 			if (!ed) return;
 			const val = ed.getValue();
 			if (!val) return notify('error', 'Config is empty');
@@ -708,18 +756,15 @@ function initPage(page, state, mainContent, mainUrl) {
 					if (currentConfig.name === 'config.json') {
 						await execService('sing-box', 'reload');
 						notify('info', 'Sing\u2011Box reloaded');
+						state.isInitialConfigValid = true;
+						await refreshControlCard();
 					}
-				} catch (e) {
-					notify('error', 'Save failed: ' + e.message);
-				} finally {
-					reloadPage();
-				}
+				} catch (e) { notify('error', 'Save failed: ' + e.message); }
 			});
 		},
 
-		async setAsMain() {
+		async setAsMain(b) {
 			if (currentConfig.name === 'config.json') return;
-			const b = page.querySelector('#sbox-set-main-btn');
 			await withButtons(b, async () => {
 				try {
 					const [nc, no, nu, ou] = await Promise.all([
@@ -728,12 +773,12 @@ function initPage(page, state, mainContent, mainUrl) {
 						loadFile('/etc/sing-box/url_' + currentConfig.name),
 						loadFile('/etc/sing-box/url_config.json'),
 					]);
-					await saveFile('/etc/sing-box/config.json',                 nc);
-					await saveFile('/etc/sing-box/' + currentConfig.name,       no);
-					await saveFile('/etc/sing-box/url_config.json',             nu);
-					await saveFile('/etc/sing-box/url_' + currentConfig.name,   ou);
+					await saveFile('/etc/sing-box/config.json',               nc);
+					await saveFile('/etc/sing-box/' + currentConfig.name,     no);
+					await saveFile('/etc/sing-box/url_config.json',           nu);
+					await saveFile('/etc/sing-box/url_' + currentConfig.name, ou);
 					await execService('sing-box', 'reload');
-					notify('info', currentConfig.label + ' is now main');
+					notify('info', currentConfig.label + ' is now main config');
 				} catch (e) {
 					notify('error', 'Set as main failed: ' + e.message);
 				} finally {
@@ -742,10 +787,11 @@ function initPage(page, state, mainContent, mainUrl) {
 			});
 		},
 
-		async clear() {
-			if (!confirm(`Clear all data for "${currentConfig.label}"?\nThis will erase the config and URL and cannot be undone.`))
-				return;
-			const b = page.querySelector('[data-config-action="clear"]');
+		async clear(b) {
+			if (!confirm(
+				`Clear all data for "${currentConfig.label}"?\n` +
+				`Config and URL will be erased. This cannot be undone.`
+			)) return;
 			await withButtons(b, async () => {
 				try {
 					await saveFile('/etc/sing-box/' + currentConfig.name,     '{}');
@@ -770,10 +816,10 @@ function initPage(page, state, mainContent, mainUrl) {
 
 	page.querySelectorAll('[data-config-action]').forEach(b => {
 		const fn = configActions[b.dataset.configAction];
-		if (fn) b.onclick = () => fn().catch(() => {});
+		if (fn) b.onclick = () => fn(b).catch(() => {});
 	});
 
-	// Config select handler
+	// Config select: swap editor content and URL field without page reload
 	if (selectEl) {
 		selectEl.addEventListener('change', async () => {
 			const cfg = CONFIGS.find(c => c.name === selectEl.value);
@@ -789,6 +835,10 @@ function initPage(page, state, mainContent, mainUrl) {
 			if (setMainBtn) setMainBtn.style.display = cfg.name === 'config.json' ? 'none' : 'inline-block';
 		});
 	}
+
+	// Initial bind
+	bindControlCard();
+	bindServiceCard();
 
 	// Init Ace editor
 	const aceEl = page.querySelector('#sbox-ace');
@@ -855,7 +905,7 @@ return view.extend({
 
 		const page = document.createElement('div');
 		page.className = 'sbox-page';
-		page.innerHTML = PAGE_CSS + buildHtml(state);
+		page.innerHTML = PAGE_CSS + buildPageHtml(state);
 
 		setTimeout(() => {
 			try {
