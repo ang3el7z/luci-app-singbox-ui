@@ -339,6 +339,11 @@ const PAGE_CSS = `<style>
   color: var(--muted, #888);
   font-weight: 500;
 }
+.sbox-header-dash {
+  font-size: 0.78em;
+  padding: 0.15em 0.65em;
+  margin-left: 0.25em;
+}
 .sbox-row {
   display: flex;
   flex-wrap: wrap;
@@ -516,6 +521,7 @@ function buildPageHtml(state) {
   sing-box <strong>${v.singbox}</strong>
   ${dot}
   <span class="sbox-header-mode">${proxyMode} mode</span>
+  <button type="button" id="sbox-header-dash" class="cbi-button cbi-button-apply sbox-header-dash">Dashboard</button>
 </div>
 <div class="sbox-card" id="sbox-control">${buildControlInner(state)}</div>
 <div class="sbox-card" id="sbox-services">${buildServiceInner(state)}</div>
@@ -873,6 +879,10 @@ function initPage(page, state, mainContent, mainUrl) {
 	// Initial bind
 	bindControlCard();
 	bindServiceCard();
+
+	const dashBtn = page.querySelector('#sbox-header-dash');
+	if (dashBtn) dashBtn.onclick = () =>
+		window.open(`${window.location.protocol}//${window.location.hostname}:9090/ui/`, '_blank');
 
 	// Init Ace editor
 	const aceEl = page.querySelector('#sbox-ace');
