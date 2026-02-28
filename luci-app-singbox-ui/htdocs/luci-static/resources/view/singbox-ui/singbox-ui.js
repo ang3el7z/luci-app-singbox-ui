@@ -519,7 +519,7 @@ function buildPageHtml(state) {
   sing-box <strong>${v.singbox}</strong>
   ${dot}
   <span class="sbox-header-mode">${proxyMode} mode</span>
-  <button type="button" id="sbox-header-dash" class="cbi-button cbi-button-apply sbox-header-dash">Dashboard</button>
+  <button type="button" id="sbox-header-dash" class="cbi-button cbi-button-apply sbox-header-dash"${state.singboxRunning ? '' : ' style="display:none"'}>Dashboard</button>
 </div>
 <div class="sbox-card" id="sbox-control">${buildControlInner(state)}</div>
 <div class="sbox-card" id="sbox-services">${buildServiceInner(state)}</div>
@@ -562,6 +562,9 @@ function initPage(page, state, mainContent, mainUrl) {
 
 		const card = page.querySelector('#sbox-control');
 		if (card) { card.innerHTML = buildControlInner(state); bindControlCard(); }
+
+		const dashBtn = page.querySelector('#sbox-header-dash');
+		if (dashBtn) dashBtn.style.display = state.singboxRunning ? '' : 'none';
 	}
 
 	function bindControlCard() {
