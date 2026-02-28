@@ -29,6 +29,16 @@ const isValidUrl = url => {
 };
 
 /**
+ * Extract port from "external_controller" field in a sing-box JSON config.
+ * Handles formats like "0.0.0.0:9090", "127.0.0.1:9090", ":9090".
+ * Returns port string or null if not found.
+ */
+const parseDashboardPort = content => {
+	const m = (content || '').match(/"external_controller"\s*:\s*"[^"]*:(\d+)"/);
+	return m ? m[1] : null;
+};
+
+/**
  * Show a LuCI notification.
  */
 const NOTIFY_TIMEOUT = { info: 2500, error: 5000 };
@@ -318,10 +328,12 @@ const PAGE_CSS = `<style>
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  justify-content: center;
   gap: 0.3em 0.55em;
   margin-bottom: 1rem;
   font-size: 1em;
   color: var(--muted, #aaa);
+  text-align: center;
 }
 .sbox-header strong {
   color: var(--text-color, #ddd);
@@ -519,7 +531,7 @@ function buildPageHtml(state) {
   sing-box <strong>${v.singbox}</strong>
   ${dot}
   <span class="sbox-header-mode">${proxyMode} mode</span>
-  <button type="button" id="sbox-header-dash" class="cbi-button cbi-button-apply sbox-header-dash"${state.singboxRunning ? '' : ' style="display:none"'}>Dashboard</button>
+  <button type="button" id="sbox-header-dash" class="cbi-button cbi-button-apply sbox-header-dash"${(state.singboxRunning && state.dashboardPort) ? '' : ' style="display:none"'}>Dashboard</button>
 </div>
 <div class="sbox-card" id="sbox-control">${buildControlInner(state)}</div>
 <div class="sbox-card" id="sbox-services">${buildServiceInner(state)}</div>
@@ -563,8 +575,12 @@ function initPage(page, state, mainContent, mainUrl) {
 		const card = page.querySelector('#sbox-control');
 		if (card) { card.innerHTML = buildControlInner(state); bindControlCard(); }
 
-		const dashBtn = page.querySelector('#sbox-header-dash');
-		if (dashBtn) dashBtn.style.display = state.singboxRunning ? '' : 'none';
+		updateDashBtn();
+	}
+
+	function updateDashBtn() {
+		const b = page.querySelector('#sbox-header-dash');
+		if (b) b.style.display = (state.singboxRunning && state.dashboardPort) ? '' : 'none';
 	}
 
 	function bindControlCard() {
@@ -731,14 +747,15 @@ function initPage(page, state, mainContent, mainUrl) {
 						const ed = window.singboxEditor;
 						if (ed) { ed.setValue(newContent, -1); ed.clearSelection(); }
 						notify('info', currentConfig.label + ' updated');
-						if (currentConfig.name === 'config.json') {
-							await execService('sing-box', 'reload');
-							notify('info', 'Sing\u2011Box reloaded');
-							state.isInitialConfigValid = await isValidConfig(newContent);
-							state.mainConfigHasUrl = true;
-							await refreshControlCard();
-							await refreshServiceCard();
-						}
+				if (currentConfig.name === 'config.json') {
+						await execService('sing-box', 'reload');
+						notify('info', 'Sing\u2011Box reloaded');
+						state.isInitialConfigValid = await isValidConfig(newContent);
+						state.mainConfigHasUrl = true;
+						state.dashboardPort = parseDashboardPort(newContent);
+						await refreshControlCard();
+						await refreshServiceCard();
+					}
 					}
 				} catch (e) {
 					notify('error', 'Save URL failed: ' + e.message);
@@ -763,6 +780,7 @@ function initPage(page, state, mainContent, mainUrl) {
 						await execService('sing-box', 'reload');
 						notify('info', 'Sing\u2011Box reloaded');
 						state.isInitialConfigValid = await isValidConfig(newContent);
+						state.dashboardPort = parseDashboardPort(newContent);
 						await refreshControlCard();
 					}
 				} catch (e) { notify('error', 'Update failed: ' + e.message); }
@@ -798,6 +816,7 @@ function initPage(page, state, mainContent, mainUrl) {
 						await execService('sing-box', 'reload');
 						notify('info', 'Sing\u2011Box reloaded');
 						state.isInitialConfigValid = true;
+						state.dashboardPort = parseDashboardPort(val);
 						await refreshControlCard();
 					}
 				} catch (e) { notify('error', 'Save failed: ' + e.message); }
@@ -882,8 +901,10 @@ function initPage(page, state, mainContent, mainUrl) {
 	bindServiceCard();
 
 	const dashBtn = page.querySelector('#sbox-header-dash');
-	if (dashBtn) dashBtn.onclick = () =>
-		window.open(`${window.location.protocol}//${window.location.hostname}:9090/ui/`, '_blank');
+	if (dashBtn) dashBtn.onclick = () => {
+		if (state.dashboardPort)
+			window.open(`${window.location.protocol}//${window.location.hostname}:${state.dashboardPort}/ui/`, '_blank');
+	};
 
 	// Init Ace editor
 	const aceEl = page.querySelector('#sbox-ace');
@@ -941,6 +962,7 @@ return view.extend({
 			tproxyConfigPresent,
 			tproxyActive,
 			mainConfigHasUrl:                 isValidUrl(mainUrl),
+			dashboardPort:                    parseDashboardPort(mainContent),
 			healthAutoupdaterServiceTempFlag,
 			autoupdaterServiceTempFlag,
 			autoupdaterEnabled,
