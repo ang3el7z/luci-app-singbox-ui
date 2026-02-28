@@ -15,9 +15,9 @@ const UCI_SECTION      = 'main';
 const ACE_BASE         = '/luci-static/resources/view/singbox-ui/ace/';
 
 const CONFIGS = [
-	{ name: 'config.json',  label: 'Main Config'      },
-	{ name: 'config2.json', label: 'Backup Config #1' },
-	{ name: 'config3.json', label: 'Backup Config #2' },
+	{ name: 'config.json',  label: 'Main Config #1' },
+	{ name: 'config2.json', label: 'Backup Config #2' },
+	{ name: 'config3.json', label: 'Backup Config #3' },
 ];
 
 // ============================================================
