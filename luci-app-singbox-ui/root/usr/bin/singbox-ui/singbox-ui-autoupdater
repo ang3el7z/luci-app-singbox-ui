@@ -1,52 +1,46 @@
 #!/bin/sh
 
-UCI_OPTION_STATE="autoupdater_service_state"
-AUTOUPDATER_SERVICE_NAME="singbox-ui-autoupdater-service"
-TARGET_FILE="/etc/sing-box/config.json"
-INTERVAL=3600 # 1 час / 1 hour
+readonly UCI_OPTION='autoupdater_service_state'
+readonly SERVICE_NAME='singbox-ui-autoupdater-service'
+readonly TARGET_FILE='/etc/sing-box/config.json'
+readonly URL_FILE='/etc/sing-box/url_config.json'
+readonly INTERVAL=3600
 
-# Проверяем флаг UCI / Check UCI flag
 check_uci() {
-  ENABLED=$(uci get singbox-ui.main.$UCI_OPTION_STATE 2>/dev/null || echo 0)
-  if [ "$ENABLED" != "1" ]; then
-    logger -t $AUTOUPDATER_SERVICE_NAME "Autoupdater disabled via UCI config, stopping service"
-    /etc/init.d/$AUTOUPDATER_SERVICE_NAME stop
-    exit 0
-  fi
+	local enabled
+	enabled="$(uci get singbox-ui.main."$UCI_OPTION" 2>/dev/null)" || enabled='0'
+	if [ "$enabled" != '1' ]; then
+		logger -t "$SERVICE_NAME" "disabled via UCI, stopping"
+		/etc/init.d/"$SERVICE_NAME" stop
+		exit 0
+	fi
 }
 
-# Проверяем, работает ли singbox / Check if singbox is running
-check_singbox() {
-  while ! pgrep singbox >/dev/null 2>&1; do
-    logger -t $AUTOUPDATER_SERVICE_NAME "Singbox not running, waiting..."
-    sleep 30 # подождать 30 секунд
-  done
+wait_for_singbox() {
+	while ! pgrep -x sing-box >/dev/null 2>&1; do
+		logger -t "$SERVICE_NAME" "waiting for sing-box..."
+		sleep 30
+	done
 }
 
-update_config() {
-  /usr/bin/singbox-ui/singbox-ui-updater /etc/sing-box/url_config.json $TARGET_FILE
+run_update() {
+	/usr/bin/singbox-ui/singbox-ui-updater "$URL_FILE" "$TARGET_FILE"
 }
 
-# ======== Основной код / Main code ========
-
-logger -t $AUTOUPDATER_SERVICE_NAME "Starting service"
+logger -t "$SERVICE_NAME" "starting"
 check_uci
-check_singbox
- 
+wait_for_singbox
+
 while true; do
-  logger -t $AUTOUPDATER_SERVICE_NAME "Running updater"
-  update_config
-  CODE=$?
-
-if [ "$CODE" = 0 ]; then
-  logger -t $AUTOUPDATER_SERVICE_NAME "Config updated, reloading singbox"
-  /etc/init.d/sing-box reload
-elif [ "$CODE" = 2 ]; then
-  logger -t $AUTOUPDATER_SERVICE_NAME "No changes in config"
-else
-  logger -t $AUTOUPDATER_SERVICE_NAME "Updater failed"
-fi
-
-sleep $INTERVAL
-check_singbox
+	logger -t "$SERVICE_NAME" "running updater"
+	run_update
+	code=$?
+	case $code in
+		0) logger -t "$SERVICE_NAME" "config updated, reloading sing-box"
+		   /etc/init.d/sing-box reload ;;
+		2) logger -t "$SERVICE_NAME" "no changes in config" ;;
+		*) logger -t "$SERVICE_NAME" "updater failed (exit $code)" ;;
+	esac
+	sleep "$INTERVAL"
+	wait_for_singbox
 done
