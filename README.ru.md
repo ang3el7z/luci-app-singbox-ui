@@ -16,7 +16,8 @@
 
 ## 📸 Screenshots
 
-<img width="983" height="952" alt="luci-app-singbox-ui" src="https://github.com/user-attachments/assets/0075fa7b-f61c-4116-aafc-d1c2d1f8ecda" />
+<img width="993" height="952" alt="luci-app-singbox-ui" src="https://github.com/user-attachments/assets/c3eca47d-7884-4b6b-b9e6-5ad8212335c5" />
+
 ---
 
 ## ✨ Возможности
