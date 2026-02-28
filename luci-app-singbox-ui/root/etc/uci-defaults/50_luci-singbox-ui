@@ -1,45 +1,16 @@
 #!/bin/sh
 
-APP_TAG="singbox-ui"
-TIMESTAMP="$(date '+%Y-%m-%d %H:%M:%S')"
+# Remove old misnamed ACL file left by previous versions
+rm -f /usr/share/rpcd/acl.d/luci-app-singb.json
 
-LOG=""
-log_append() {
-    LOG="$LOG
-[$(date '+%H:%M:%S')] $*"
-}
-
-log_append "uci-defaults script started"
-
-# Удаление кэша LuCI
+# Clear LuCI caches so the new app appears immediately
 rm -f /var/luci-indexcache* /tmp/luci-indexcache* 2>/dev/null
-find /tmp -name "luci-*cache*" -exec rm -f {} \; 2>/dev/null && \
-    log_append "LuCI cache cleared"
+find /tmp -name 'luci-*cache*' -delete 2>/dev/null
 
-# Удаление кэшей uhttpd
-rm -f /var/lib/uhttpd* 2>/dev/null && \
-    log_append "uhttpd cache removed"
+# Restart rpcd to pick up the new ACL
+[ -x /etc/init.d/rpcd ] && /etc/init.d/rpcd restart
 
-# Перезапуск rpcd
-[ -x /etc/init.d/rpcd ] && /etc/init.d/rpcd restart && \
-    log_append "rpcd restarted"
-
-# Перезапуск uhttpd
-[ -x /etc/init.d/uhttpd ] && /etc/init.d/uhttpd restart && \
-    log_append "uhttpd restarted"
-
-# Обновление dnsmasq
-killall -HUP dnsmasq 2>/dev/null && \
-    log_append "dnsmasq reloaded"
-
-# Права на статику
-STATIC_DIR="/www/luci-static/singbox-ui"
-[ -d "$STATIC_DIR" ] && chmod 755 "$STATIC_DIR" && \
-    log_append "Permissions set for $STATIC_DIR"
-
-log_append "uci-defaults script finished"
-
-# Отправка всего лога одной пачкой
-echo "$LOG" | logger -t "$APP_TAG" "init: $TIMESTAMP"
+# Restart uhttpd to serve updated static resources
+[ -x /etc/init.d/uhttpd ] && /etc/init.d/uhttpd restart
 
 exit 0

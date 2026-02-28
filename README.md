@@ -15,7 +15,7 @@ Web interface for Sing-Box on **OpenWrt 23/24 and 25**
 
 ## 📸 Screenshots
 
-<img width="1032" height="839" alt="image" src="https://github.com/user-attachments/assets/703a4cab-0bb1-4453-8095-71538fc9798c" />
+<img width="983" height="952" alt="luci-app-singbox-ui" src="https://github.com/user-attachments/assets/0075fa7b-f61c-4116-aafc-d1c2d1f8ecda" />
 
 ---
 

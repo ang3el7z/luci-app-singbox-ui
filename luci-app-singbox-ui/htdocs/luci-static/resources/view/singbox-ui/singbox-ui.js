@@ -1,295 +1,301 @@
 'use strict';
 'require view';
-'require form';
 'require ui';
 'require fs';
-'require uci';
 
-// === Global variables =====================================================
-
-let editor = null;
-
-// === Helpers ==============================================================
-
-const isValidUrl = url => {
-  try { new URL(url); return true; } catch { return false; }
-};
-
-const notify = (type, msg) => ui.addNotification(null, msg, type);
-
-const getInputValueByKey = (key) => {
-  const id = `widget.cbid.singbox-ui.main.${key}`;
-  return document.querySelector(`#${CSS.escape(id)}`)?.value.trim();
-};
+// ============================================================
+// Constants
+// ============================================================
 
 const TPROXY_RULE_FILE = '/etc/nftables.d/singbox.nft';
-const CARD_STYLE = 'margin-bottom:1rem;padding:1rem 1.25rem;background:var(--card-bg-color, #1e1e1e);border-radius:10px;border:1px solid var(--border-color, #333);box-sizing:border-box;width:100%;';
+const SINGBOX_BIN      = '/usr/bin/sing-box';
+const UPDATER_BIN      = '/usr/bin/singbox-ui/singbox-ui-updater';
+const UCI_CONFIG       = 'singbox-ui';
+const UCI_SECTION      = 'main';
+const ACE_BASE         = '/luci-static/resources/view/singbox-ui/ace/';
+
+const CONFIGS = [
+	{ name: 'config.json',  label: 'Main Config #1' },
+	{ name: 'config2.json', label: 'Backup Config #2' },
+	{ name: 'config3.json', label: 'Backup Config #3' },
+];
+
+// ============================================================
+// Utilities
+// ============================================================
+
+const isValidUrl = url => {
+	try { new URL(url); return true; } catch { return false; }
+};
+
+/**
+ * Show a LuCI notification.
+ */
+const NOTIFY_TIMEOUT = { info: 2500, error: 5000 };
+const notify = (type, msg) => {
+	const node    = ui.addNotification(null, msg, type);
+	const timeout = NOTIFY_TIMEOUT[type] ?? 4000;
+	if (node) setTimeout(() => node.remove?.() ?? node.parentNode?.removeChild(node), timeout);
+};
+
+/** Unique /tmp path to avoid race conditions on concurrent requests. */
+const tmpPath = prefix =>
+	`/tmp/${prefix}-${Date.now()}-${Math.random().toString(36).slice(2)}.json`;
+
+function reloadPage(delay = 600) {
+	setTimeout(() => location.reload(), delay);
+}
+
+/**
+ * Disable one or more buttons and show a CSS spinner while an async action runs.
+ * If the button is removed from the DOM (card re-rendered) during the action,
+ * the finally-block skips it gracefully via isConnected check.
+ */
+async function withButtons(btns, fn) {
+	const list  = Array.isArray(btns) ? btns : (btns ? [btns] : []);
+	const saved = list.map(b => b.innerHTML);
+	list.forEach(b => {
+		b.disabled   = true;
+		b.innerHTML  = '<span class="sbox-spinner"></span>\u00A0' + b.textContent.trim();
+	});
+	try {
+		return await fn();
+	} finally {
+		list.forEach((b, i) => {
+			if (b.isConnected) {
+				b.disabled  = false;
+				b.innerHTML = saved[i];
+			}
+		});
+	}
+}
+
+// ============================================================
+// File helpers
+// ============================================================
 
 async function loadFile(path) {
-  try { return (await fs.read(path)) || ''; }
-  catch { return ''; }
+	try { return (await fs.read(path)) || ''; }
+	catch { return ''; }
 }
 
-async function saveFile(path, val, msg) {
-  try {
-    await fs.write(path, val);
-    notify('info', msg);
-  } catch (e) {
-    notify('error', 'Error: ' + e.message);
-  }
+async function saveFile(path, val) {
+	await fs.write(path, val);
 }
+
+// ============================================================
+// Service exec helpers
+// ============================================================
 
 async function execService(name, action) {
-  try {
-    const result = await fs.exec(`/etc/init.d/${name}`, [action]);
-    const stdout = (result && result.stdout != null) ? String(result.stdout) : '';
-    console.log(`[${name}] ${action} output: ${stdout.trim()}`);
-    return stdout.trim();
-  } catch (err) {
-    console.error(`[${name}] Error executing "${action}":`, err);
-    return 'error';
-  }
+	try {
+		const result = await fs.exec(`/etc/init.d/${name}`, [action]);
+		const out    = String(result?.stdout ?? '').trim();
+		console.log(`[${name}] ${action}: ${out}`);
+		return out;
+	} catch (err) {
+		console.error(`[${name}] ${action} error:`, err);
+		return 'error';
+	}
 }
 
+/**
+ * Lifecycle wrapper: start = enable+start, stop = stop+disable, else passthrough.
+ * Logs the final service status after the operation completes.
+ */
+async function execServiceLifecycle(name, action) {
+	const path = `/etc/init.d/${name}`;
+
+	const run = async cmd => {
+		try {
+			const { stdout } = await fs.exec(path, [cmd]);
+			if (stdout?.trim()) console.log(`[${name}] ${cmd}: ${stdout.trim()}`);
+		} catch (err) {
+			console.error(`[${name}] ${cmd} error:`, err);
+		}
+	};
+
+	switch (action) {
+		case 'stop':  await run('stop');   await run('disable'); break;
+		case 'start': await run('enable'); await run('start');   break;
+		default:      await run(action);                         break;
+	}
+
+	try {
+		const { stdout } = await fs.exec(path, ['status']);
+		console.log(`[${name}] status: ${stdout?.trim()}`);
+	} catch (err) {
+		console.error(`[${name}] status error:`, err);
+	}
+}
+
+async function isServiceActive(name) {
+	try   { await fs.stat(`/etc/init.d/${name}`); } catch { return false; }
+	try   { return String((await fs.exec(`/etc/init.d/${name}`, ['status']))?.stdout ?? '').includes('running'); }
+	catch { return false; }
+}
+
+// ============================================================
+// nft / tproxy
+// ============================================================
+
 async function runNft(args) {
-  try {
-    return await fs.exec('/usr/sbin/nft', args);
-  } catch (e) {
-    return await fs.exec('nft', args);
-  }
+	try { return await fs.exec('/usr/sbin/nft', args); }
+	catch { return await fs.exec('nft', args); }
 }
 
 async function isTproxyConfigPresent() {
-  try {
-    await fs.stat(TPROXY_RULE_FILE);
-    return true;
-  } catch {
-    return false;
-  }
+	try { await fs.stat(TPROXY_RULE_FILE); return true; }
+	catch { return false; }
 }
 
 async function isTproxyTablePresent() {
-  try {
-    await runNft(['list', 'table', 'ip', 'singbox']);
-    return true;
-  } catch {
-    return false;
-  }
+	try { await runNft(['list', 'table', 'ip', 'singbox']); return true; }
+	catch { return false; }
 }
 
 async function disableTproxy() {
-  try {
-    await runNft(['delete', 'table', 'ip', 'singbox']);
-    console.log('[tproxy] nft table deleted');
-  } catch (e) {
-    console.warn('[tproxy] Failed to delete nft table:', e);
-  }
+	try   { await runNft(['delete', 'table', 'ip', 'singbox']); }
+	catch (e) { console.warn('[tproxy] delete table failed:', e); }
 }
 
 async function enableTproxy() {
-  try {
-    await runNft(['-f', TPROXY_RULE_FILE]);
-    console.log('[tproxy] nft rules applied');
-  } catch (e) {
-    console.warn('[tproxy] Failed to apply nft rules:', e);
-  }
+	try   { await runNft(['-f', TPROXY_RULE_FILE]); }
+	catch (e) { console.warn('[tproxy] apply rules failed:', e); }
 }
 
-async function execServiceLifecycle(name, action) {
-  const path = `/etc/init.d/${name}`;
+// ============================================================
+// UCI helpers
+// ============================================================
 
-  const run = async (cmd) => {
-    try {
-      console.log(`[${name}] Running: ${cmd}`);
-      const { stdout } = await fs.exec(path, [cmd]);
-      if (stdout?.trim()) {
-        console.log(`[${name}] ${cmd} output: ${stdout.trim()}`);
-      }
-    } catch (err) {
-      console.error(`[${name}] Error running "${cmd}":`, err);
-    }
-  };
-
-  switch (action) {
-    case 'stop':
-      await run('stop');
-      await run('disable');
-      break;
-    case 'start':
-      await run('enable');
-      await run('start');
-      break;
-    default:
-      await execService(name, action);
-      break;
-  }
-
-  try {
-    const result = await fs.exec(path, ['status']);
-    const stdout = (result && result.stdout != null) ? String(result.stdout) : '';
-    console.log(`[${name}] Final status: ${stdout.trim()}`);
-  } catch (err) {
-    console.error(`[${name}] Failed to get final status:`, err);
-  }
+async function readUciFlag(option) {
+	try {
+		const r = await fs.exec('/sbin/uci', ['get', `${UCI_CONFIG}.${UCI_SECTION}.${option}`]);
+		return String(r?.stdout ?? '').trim() === '1';
+	} catch { return false; }
 }
 
-async function isValidConfigFile(content) {
-  const tmpPath = '/tmp/singbox-config.json';
-  let result = false;
-
-  try {
-    await fs.write(tmpPath, content);
-  } catch (e) {
-    notify('error', 'Failed to write temp config: ' + e.message);
-    return false;
-  }
-
-  try {
-    const checkConfig = await fs.exec("/usr/bin/sing-box", ["check", "-c", tmpPath]);
-    if (checkConfig.code === 0) {
-      result = true;
-    } else {
-      let errorMsg = checkConfig.stderr.trim();
-      if (errorMsg.includes(tmpPath)) {
-        errorMsg = errorMsg.substring(errorMsg.indexOf(tmpPath) + tmpPath.length + 1).trim();
-      }
-      notify('error', 'Config error: ' + errorMsg);
-    }
-  } catch (e) {
-    notify('error', 'Error: ' + e.message);
-  }
-
-  try {
-    await fs.remove(tmpPath);
-  } catch (e) {
-    notify('error', 'Failed to remove temp config: ' + e.message);
-  }
-
-  return result;
+async function writeUciFlag(option, value) {
+	await fs.exec('/sbin/uci', ['set',    `${UCI_CONFIG}.${UCI_SECTION}.${option}=${value ? '1' : '0'}`]);
+	await fs.exec('/sbin/uci', ['commit', UCI_CONFIG]);
 }
 
-/** Format config via sing-box format -c (write temp file, format -w, read back). */
-async function formatConfigWithSingBox(content) {
-  const tmpPath = '/tmp/singbox-format.json';
-  if (!content || !content.trim()) return null;
-  try {
-    await fs.write(tmpPath, content);
-  } catch (e) {
-    notify('error', 'Failed to write temp config: ' + e.message);
-    return null;
-  }
-  try {
-    const formatResult = await fs.exec('/usr/bin/sing-box', ['format', '-w', '-c', tmpPath]);
-    if (formatResult.code !== 0) {
-      let err = (formatResult.stderr || formatResult.stdout || '').trim();
-      if (err.includes(tmpPath)) err = err.substring(err.indexOf(tmpPath) + tmpPath.length + 1).trim();
-      notify('error', 'Format failed: ' + (err || 'Unknown error'));
-      return null;
-    }
-    return await loadFile(tmpPath);
-  } catch (e) {
-    notify('error', 'Format error: ' + e.message);
-    return null;
-  } finally {
-    try { await fs.remove(tmpPath); } catch (_) {}
-  }
+// ============================================================
+// Config validation and formatting
+// ============================================================
+
+async function isValidConfig(content) {
+	if (!content?.trim()) return false;
+	const tmp = tmpPath('singbox-check');
+	try {
+		await fs.write(tmp, content);
+		const r = await fs.exec(SINGBOX_BIN, ['check', '-c', tmp]);
+		if (r.code === 0) return true;
+		let msg = String(r.stderr || '').trim();
+		if (msg.includes(tmp)) msg = msg.substring(msg.indexOf(tmp) + tmp.length + 1).trim();
+		notify('error', 'Config error: ' + (msg || 'validation failed'));
+		return false;
+	} catch (e) {
+		notify('error', 'Validation error: ' + e.message);
+		return false;
+	} finally {
+		try { await fs.remove(tmp); } catch (_) {}
+	}
 }
+
+async function formatConfig(content) {
+	if (!content?.trim()) return null;
+	const tmp = tmpPath('singbox-fmt');
+	try {
+		await fs.write(tmp, content);
+		const r = await fs.exec(SINGBOX_BIN, ['format', '-w', '-c', tmp]);
+		if (r.code !== 0) {
+			let msg = String(r.stderr || r.stdout || '').trim();
+			if (msg.includes(tmp)) msg = msg.substring(msg.indexOf(tmp) + tmp.length + 1).trim();
+			notify('error', 'Format failed: ' + (msg || 'unknown error'));
+			return null;
+		}
+		return await loadFile(tmp);
+	} catch (e) {
+		notify('error', 'Format error: ' + e.message);
+		return null;
+	} finally {
+		try { await fs.remove(tmp); } catch (_) {}
+	}
+}
+
+// ============================================================
+// Version info
+// ============================================================
+
+async function getVersions() {
+	let singboxUi = '\u2014';
+	let singbox   = '\u2014';
+	try {
+		const { stdout } = await fs.exec(SINGBOX_BIN, ['version']);
+		const m = stdout?.match(/(\d+\.\d+\.\d+(?:-\S+)?)/);
+		if (m) singbox = m[1];
+	} catch (_) {}
+	try {
+		const { stdout } = await fs.exec('/bin/opkg', ['list-installed', 'luci-app-singbox-ui']);
+		const m = stdout?.match(/luci-app-singbox-ui[^\d]*([\d.]+(?:-\d+)?)/);
+		if (m) singboxUi = m[1];
+	} catch (_) {
+		try {
+			const { stdout } = await fs.exec('/usr/bin/apk', ['info', '-e', 'luci-app-singbox-ui']);
+			const m = stdout?.match(/luci-app-singbox-ui-([\d.]+(?:-r\d+)?)/);
+			if (m) singboxUi = m[1];
+		} catch (_) {}
+	}
+	return { singboxUi, singbox };
+}
+
+// ============================================================
+// Ace editor
+// ============================================================
 
 function loadScript(src) {
-  return new Promise((resolve, reject) => {
-      const script = document.createElement('script');
-      script.src = src;
-      script.onload = resolve;
-      script.onerror = reject;
-      document.head.appendChild(script);
-  });
+	return new Promise((resolve, reject) => {
+		const s  = document.createElement('script');
+		s.src    = src;
+		s.onload = resolve;
+		s.onerror = reject;
+		document.head.appendChild(s);
+	});
 }
 
-async function setUciOption(option, mode, value = null) {
-  const config = 'singbox-ui';
-  const section = 'main';
-  
-  if (mode === 'read') {
-    try {
-      // Р§РёС‚Р°РµРј С‡РµСЂРµР· fs.exec
-      const result = await fs.exec('/sbin/uci', ['get', `${config}.${section}.${option}`]);
-      const out = (result && result.stdout != null) ? String(result.stdout) : '';
-      return out.trim() === '1';
-    } catch {
-      return false;
-    }
-  }
-
-  if (mode === 'write') {
-    try {
-      const val = value ? '1' : '0';
-      
-      // РСЃРїРѕР»СЊР·СѓРµРј РїСЂСЏРјСѓСЋ РєРѕРјР°РЅРґСѓ uci
-      await fs.exec('/sbin/uci', ['set', `${config}.${section}.${option}=${val}`]);
-      await fs.exec('/sbin/uci', ['commit', config]);
-    } catch (e) {
-      notify('error', `Failed to set UCI option "${option}": ${e.message || e.toString()}`);
-    }
-  }
+async function initAceEditor(el, content) {
+	await loadScript(ACE_BASE + 'ace.js');
+	await loadScript(ACE_BASE + 'ext-language_tools.js');
+	ace.config.set('basePath',   ACE_BASE);
+	ace.config.set('workerPath', ACE_BASE);
+	const ed = ace.edit(el);
+	ed.setTheme('ace/theme/tomorrow_night_bright');
+	ed.session.setMode('ace/mode/json5');
+	ed.setValue(content || '', -1);
+	ed.clearSelection();
+	ed.session.setUseWorker(true);
+	ed.setOptions({
+		fontSize: '13px',
+		showPrintMargin: false,
+		wrap: true,
+		highlightActiveLine: true,
+		behavioursEnabled: true,
+		showFoldWidgets: true,
+		foldStyle: 'markbegin',
+		enableBasicAutocompletion: true,
+		enableLiveAutocompletion: true,
+		enableSnippets: false,
+	});
+	window.singboxEditor = ed;
+	return ed;
 }
 
-function reloadPage(delay = 1000) {
-  setTimeout(() => location.reload(), delay);
-}
+// ============================================================
+// CSS (theme-aware via LuCI CSS variables)
+// ============================================================
 
-// === Controls =============================================================
-
-async function isServiceActive(name) {
-    console.log(`Checking if service "${name}" exists...`);
-    try {
-      await fs.stat(`/etc/init.d/${name}`);
-      console.log(`Service "${name}" found.`);
-    } catch {
-      console.log(`Service "${name}" not found.`);
-      return false;
-    }
-  
-    try {
-      console.log(`Checking status of service "${name}"...`);
-      const result = await fs.exec(`/etc/init.d/${name}`, ['status']);
-      const stdout = (result && result.stdout != null) ? String(result.stdout) : '';
-      const running = stdout.trim().includes('running');
-      console.log(`Service "${name}" status output: "${stdout.trim()}"`);
-      console.log(`Service "${name}" is ${running ? 'running' : 'not running'}.`);
-      return running;
-    } catch (e) {
-      console.log(`Error while checking status of service "${name}":`, e);
-      return false;
-    }
-}
-
-/** Get versions from packages: opkg/apk for luci-app-singbox-ui, sing-box version for binary. */
-async function getPackageVersions() {
-  let singboxUi = 'вЂ”';
-  let singbox = 'вЂ”';
-  try {
-    const { stdout: sbOut } = await fs.exec('/usr/bin/sing-box', ['version']);
-    const m = sbOut && sbOut.match(/(\d+\.\d+\.\d+(?:-\S+)?)/);
-    if (m) singbox = m[1];
-  } catch (_) {}
-  try {
-    const { stdout: opkgOut } = await fs.exec('/bin/opkg', ['list-installed', 'luci-app-singbox-ui']);
-    const v = opkgOut && opkgOut.match(/luci-app-singbox-ui[^\d]*([\d.]+(?:-\d+)?)/);
-    if (v) singboxUi = v[1];
-  } catch (_) {
-    try {
-      const { stdout: apkOut } = await fs.exec('/usr/bin/apk', ['info', '-e', 'luci-app-singbox-ui']);
-      const v = apkOut && apkOut.match(/luci-app-singbox-ui-([\d.]+(?:-r\d+)?)/);
-      if (v) singboxUi = v[1];
-    } catch (_) {}
-  }
-  return { singboxUi, singbox };
-}
-
-// === UI: Pure HTML rendering (no LuCI form system) ========================
-
-function buildPageCss() {
-  return `<style>
+const PAGE_CSS = `<style>
 .sbox-page { width: 100%; box-sizing: border-box; }
 .sbox-card {
   background: var(--card-bg-color, #1a1a1a);
@@ -308,10 +314,35 @@ function buildPageCss() {
   font-weight: 700;
   margin-bottom: 0.55rem;
 }
-.sbox-version {
-  font-size: 0.8em;
+.sbox-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3em 0.55em;
+  margin-bottom: 1rem;
+  font-size: 1em;
+  color: var(--muted, #aaa);
+}
+.sbox-header strong {
+  color: var(--text-color, #ddd);
+  font-weight: 600;
+}
+.sbox-header-dot {
+  color: var(--muted, #444);
+}
+.sbox-header-mode {
+  font-size: 0.78em;
+  padding: 0.15em 0.55em;
+  border-radius: 4px;
+  border: 1px solid var(--border-color, #333);
+  background: var(--card-bg-color, #1a1a1a);
   color: var(--muted, #888);
-  margin-bottom: 0.55rem;
+  font-weight: 500;
+}
+.sbox-header-dash {
+  font-size: 0.78em;
+  padding: 0.15em 0.65em;
+  margin-left: 0.25em;
 }
 .sbox-row {
   display: flex;
@@ -332,24 +363,18 @@ function buildPageCss() {
   border-radius: 50%;
   flex-shrink: 0;
 }
-.sbox-dot-running { background: #2ecc71; box-shadow: 0 0 6px rgba(46,204,113,0.5); }
+.sbox-dot-running  { background: #2ecc71; box-shadow: 0 0 6px rgba(46,204,113,0.5); }
 .sbox-dot-inactive { background: #e67e22; }
-.sbox-dot-error { background: #e74c3c; }
-.sbox-color-running { color: #2ecc71; }
+.sbox-dot-error    { background: #e74c3c; }
+.sbox-color-running  { color: #2ecc71; }
 .sbox-color-inactive { color: #e67e22; }
-.sbox-color-error { color: #e74c3c; }
+.sbox-color-error    { color: #e74c3c; }
 .sbox-cfg-top {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 0.55rem;
   margin-bottom: 0.65rem;
-}
-.sbox-label {
-  font-size: 0.82em;
-  color: var(--muted, #aaa);
-  white-space: nowrap;
-  font-weight: 500;
 }
 .sbox-select {
   padding: 0.35rem 0.55rem;
@@ -376,7 +401,7 @@ function buildPageCss() {
 .sbox-input:focus { border-color: var(--active-color, #4a9eff); }
 .sbox-editor {
   width: 100%;
-  height: 450px;
+  height: 550px;
   border: 1px solid var(--border-color, #333);
   border-radius: 6px;
   margin: 0.65rem 0;
@@ -388,353 +413,554 @@ function buildPageCss() {
   gap: 0.4rem;
   align-items: center;
 }
-</style>`;
+@keyframes sbox-spin { to { transform: rotate(360deg); } }
+.sbox-spinner {
+  display: inline-block;
+  width: 0.75em; height: 0.75em;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: sbox-spin 0.6s linear infinite;
+  vertical-align: middle;
 }
+</style>`;
 
-function buildPageHtml(state, configs) {
-  const v = state.versions;
-  const dot = '\u00B7';
-  const proxyMode = state.tproxyConfigPresent ? 'tproxy mode' : 'tun mode';
-  const sk = state.singboxStatus === 'running' ? 'running' : state.singboxStatus === 'error' ? 'error' : 'inactive';
-  const statusLabel = sk === 'running' ? 'Running' : sk === 'error' ? 'Error' : 'Inactive';
-  const b = (cls, action, label, title) =>
-    `<button type="button" class="cbi-button cbi-button-${cls}" data-action="${action}"${title ? ` title="${title}"` : ''}>${label}</button>`;
-  const cb = (cls, action, label) =>
-    `<button type="button" class="cbi-button cbi-button-${cls}" data-config-action="${action}">${label}</button>`;
+// ============================================================
+// HTML: inner content builders (card wrappers stay in place,
+// only innerHTML is swapped on refresh — no full page reload)
+// ============================================================
 
-  const svcNames = () => {
-    const n = ['Sing\u2011Box'];
-    if (state.healthAutoupdaterServiceTempFlag) n.push('Health Autoupdater');
-    else if (state.autoupdaterServiceTempFlag) n.push('Autoupdater');
-    return n.join(' & ');
-  };
+function buildControlInner(state) {
+	const sk = state.singboxRunning
+		? 'running'
+		: (state.singboxStatus === 'error' ? 'error' : 'inactive');
+	const statusLabel = sk === 'running' ? 'Running' : (sk === 'error' ? 'Error' : 'Inactive');
 
-  const ctrlBtns = [
-    state.isInitialConfigValid
-      ? b(state.singboxRunning ? 'remove' : 'apply', 'startStop',
-          state.singboxRunning ? 'Stop' : 'Start',
-          (state.singboxRunning ? 'Stop ' : 'Start ') + svcNames())
-      : '',
-    state.singboxRunning && state.isInitialConfigValid
-      ? b('reload', 'restart', 'Restart') : '',
-    state.singboxRunning ? b('apply', 'dashboard', 'Dashboard') : ''
-  ].filter(Boolean).join('');
+	const btn = (cls, action, label, title) =>
+		`<button type="button" class="cbi-button cbi-button-${cls}" data-action="${action}"${title ? ` title="${title}"` : ''}>${label}</button>`;
 
-  const svcBtns = [
-    state.mainConfigHasUrl && !state.healthAutoupdaterEnabled
-      ? b(state.autoupdaterEnabled ? 'negative' : 'positive', 'toggleAutoupdater',
-          state.autoupdaterEnabled ? 'Stop Autoupdater' : 'Autoupdater',
-          state.autoupdaterEnabled ? 'Stop periodic config update from subscription URL' : 'Start periodic config update from subscription URL') : '',
-    state.mainConfigHasUrl && !state.autoupdaterEnabled
-      ? b(state.healthAutoupdaterEnabled ? 'negative' : 'positive', 'toggleHealthAutoupdater',
-          state.healthAutoupdaterEnabled ? 'Stop Health Autoupdater' : 'Health Autoupdater',
-          state.healthAutoupdaterEnabled ? 'Stop config update on outbound health failure' : 'Start config update when outbound health check fails') : '',
-    b(state.memdocEnabled ? 'negative' : 'positive', 'toggleMemdoc',
-      state.memdocEnabled ? 'Stop Memdoc' : 'Memdoc',
-      state.memdocEnabled ? 'Stop memory monitor (restart sing-box on low RAM)' : 'Start memory monitor: restart sing-box when free RAM is low')
-  ].filter(Boolean).join('');
+	const svcLabel = () => {
+		if (state.healthAutoupdaterServiceTempFlag) return 'Sing\u2011Box & Health Autoupdater';
+		if (state.autoupdaterServiceTempFlag)       return 'Sing\u2011Box & Autoupdater';
+		return 'Sing\u2011Box';
+	};
 
-  const opts = configs.map(c => `<option value="${c.name}">${c.label}</option>`).join('');
+	const ctrlBtns = [
+		state.isInitialConfigValid
+			? btn(
+				state.singboxRunning ? 'remove' : 'apply',
+				'startStop',
+				state.singboxRunning ? 'Stop' : 'Start',
+				(state.singboxRunning ? 'Stop ' : 'Start ') + svcLabel())
+			: '',
+		state.singboxRunning && state.isInitialConfigValid
+			? btn('reload', 'restart', 'Restart') : '',
+	].filter(Boolean).join('');
 
-  return `
-<div class="sbox-card" id="sbox-control">
-  <div class="sbox-version">singbox-ui ${v.singboxUi} ${dot} sing-box ${v.singbox} ${dot} ${proxyMode}</div>
+	return `
   <div class="sbox-card-title">Control</div>
   <div class="sbox-row">
     <span class="sbox-status sbox-color-${sk}">
       <span class="sbox-dot sbox-dot-${sk}"></span>${statusLabel}
     </span>
     ${ctrlBtns}
-  </div>
-</div>
-<div class="sbox-card" id="sbox-services">
+  </div>`;
+}
+
+function buildServiceInner(state) {
+	const btn = (cls, action, label, title) =>
+		`<button type="button" class="cbi-button cbi-button-${cls}" data-action="${action}"${title ? ` title="${title}"` : ''}>${label}</button>`;
+
+	const svcBtns = [
+		state.mainConfigHasUrl && !state.healthAutoupdaterEnabled
+			? btn(
+				state.autoupdaterEnabled ? 'negative' : 'positive',
+				'toggleAutoupdater',
+				state.autoupdaterEnabled ? 'Stop Autoupdater' : 'Autoupdater',
+				state.autoupdaterEnabled
+					? 'Stop periodic config update from subscription URL'
+					: 'Start periodic config update from subscription URL')
+			: '',
+		state.mainConfigHasUrl && !state.autoupdaterEnabled
+			? btn(
+				state.healthAutoupdaterEnabled ? 'negative' : 'positive',
+				'toggleHealthAutoupdater',
+				state.healthAutoupdaterEnabled ? 'Stop Health Autoupdater' : 'Health Autoupdater',
+				state.healthAutoupdaterEnabled
+					? 'Stop config update on outbound health failure'
+					: 'Update config when outbound health check fails')
+			: '',
+		btn(
+			state.memdocEnabled ? 'negative' : 'positive',
+			'toggleMemdoc',
+			state.memdocEnabled ? 'Stop Memdoc' : 'Memdoc',
+			state.memdocEnabled
+				? 'Stop memory monitor'
+				: 'Restart sing-box when free RAM is low'),
+	].filter(Boolean).join('');
+
+	return `
   <div class="sbox-card-title">Services</div>
-  <div class="sbox-row">${svcBtns}</div>
+  <div class="sbox-row">${svcBtns}</div>`;
+}
+
+function buildPageHtml(state) {
+	const v         = state.versions;
+	const dot       = '<span class="sbox-header-dot">\u00B7</span>';
+	const proxyMode = state.tproxyConfigPresent ? 'tproxy' : 'tun';
+	const opts      = CONFIGS.map(c => `<option value="${c.name}">${c.label}</option>`).join('');
+	const cbtn      = (cls, action, label) =>
+		`<button type="button" class="cbi-button cbi-button-${cls}" data-config-action="${action}">${label}</button>`;
+
+	return `
+<div class="sbox-header">
+  singbox-ui <strong>${v.singboxUi}</strong>
+  ${dot}
+  sing-box <strong>${v.singbox}</strong>
+  ${dot}
+  <span class="sbox-header-mode">${proxyMode} mode</span>
+  <button type="button" id="sbox-header-dash" class="cbi-button cbi-button-apply sbox-header-dash"${state.singboxRunning ? '' : ' style="display:none"'}>Dashboard</button>
 </div>
+<div class="sbox-card" id="sbox-control">${buildControlInner(state)}</div>
+<div class="sbox-card" id="sbox-services">${buildServiceInner(state)}</div>
 <div class="sbox-card" id="sbox-config">
   <div class="sbox-card-title">Config</div>
   <div class="sbox-cfg-top">
-    <select id="singbox-ui-config-select" class="sbox-select">${opts}</select>
-    <input type="url" id="singbox-ui-url" class="sbox-input" placeholder="Subscription URL: https://subscribe-url" />
-    ${cb('positive', 'saveUrl', 'Save URL')}
-    ${cb('reload', 'update', 'Update')}
+    <select id="sbox-config-select" class="sbox-select">${opts}</select>
+    <input type="url" id="sbox-url" class="sbox-input" placeholder="Subscription URL: https://\u2026" />
+    ${cbtn('positive', 'saveUrl', 'Save URL')}
+    ${cbtn('reload',   'update',  'Update')}
   </div>
-  <div id="singbox-ui-ace" class="sbox-editor"></div>
+  <div id="sbox-ace" class="sbox-editor"></div>
   <div class="sbox-actions">
-    ${cb('apply', 'format', 'Format')}
-    ${cb('positive', 'save', 'Save')}
-    <button type="button" class="cbi-button cbi-button-apply" data-config-action="setAsMain" id="singbox-ui-set-main-btn" style="display:none">Set as Main</button>
-    ${cb('negative', 'clear', 'Clear All')}
+    ${cbtn('apply',    'format',   'Format')}
+    ${cbtn('positive', 'save',     'Save')}
+    <button type="button" class="cbi-button cbi-button-apply"
+      data-config-action="setAsMain" id="sbox-set-main-btn" style="display:none">Set as Main</button>
+    ${cbtn('negative', 'clear', 'Clear All')}
   </div>
 </div>`;
 }
 
-async function initPage(page, state, configs, mainContent, mainUrl) {
-  const barActions = {
-    async startStop() {
-      try {
-        if (state.singboxRunning) {
-          if (state.tproxyActive) await disableTproxy();
-          await execService('sing-box', 'stop');
-          const stopped = ['Sing\u2011Box'];
-          if (state.autoupdaterServiceTempFlag) { await execServiceLifecycle('singbox-ui-autoupdater-service', 'stop'); stopped.push('Autoupdater'); }
-          else if (state.healthAutoupdaterServiceTempFlag) { await execServiceLifecycle('singbox-ui-health-autoupdater-service', 'stop'); stopped.push('Health Autoupdater'); }
-          notify('info', stopped.join(' & ') + ' stopped');
-        } else {
-          await execService('sing-box', 'start');
-          if (state.tproxyConfigPresent) await enableTproxy();
-          const started = ['Sing\u2011Box'];
-          if (state.autoupdaterServiceTempFlag) { await execServiceLifecycle('singbox-ui-autoupdater-service', 'start'); started.push('Autoupdater'); }
-          else if (state.healthAutoupdaterServiceTempFlag) { await execServiceLifecycle('singbox-ui-health-autoupdater-service', 'start'); started.push('Health Autoupdater'); }
-          notify('info', started.join(' & ') + ' started');
-        }
-      } catch (e) { notify('error', 'Operation failed: ' + e.message); }
-      finally { reloadPage(); }
-    },
-    async restart() {
-      try {
-        await execService('sing-box', 'restart');
-        const restarted = ['Sing\u2011Box'];
-        if (state.autoupdaterServiceTempFlag) { await execServiceLifecycle('singbox-ui-autoupdater-service', 'restart'); restarted.push('Autoupdater'); }
-        else if (state.healthAutoupdaterServiceTempFlag) { await execServiceLifecycle('singbox-ui-health-autoupdater-service', 'restart'); restarted.push('Health Autoupdater'); }
-        notify('info', restarted.join(' & ') + ' restarted');
-      } catch (e) { notify('error', 'Restart failed: ' + e.message); }
-      finally { reloadPage(); }
-    },
-    dashboard() { window.open('http://' + window.location.hostname + ':9090/ui/', '_blank'); },
-    async toggleAutoupdater() {
-      try {
-        if (state.autoupdaterEnabled) {
-          await execServiceLifecycle('singbox-ui-autoupdater-service', 'stop');
-          await setUciOption('autoupdater_service_state', 'write', false);
-          notify('info', 'Autoupdater stopped');
-        } else {
-          await execServiceLifecycle('singbox-ui-health-autoupdater-service', 'stop');
-          await setUciOption('health_autoupdater_service_state', 'write', false);
-          await setUciOption('autoupdater_service_state', 'write', true);
-          await execServiceLifecycle('singbox-ui-autoupdater-service', 'start');
-          notify('info', 'Autoupdater started');
-        }
-      } catch (e) { notify('error', 'Toggle failed: ' + e.message); }
-      finally { reloadPage(); }
-    },
-    async toggleHealthAutoupdater() {
-      try {
-        if (state.healthAutoupdaterEnabled) {
-          await execServiceLifecycle('singbox-ui-health-autoupdater-service', 'stop');
-          await setUciOption('health_autoupdater_service_state', 'write', false);
-          notify('info', 'Health Autoupdater stopped');
-        } else {
-          await execServiceLifecycle('singbox-ui-autoupdater-service', 'stop');
-          await setUciOption('autoupdater_service_state', 'write', false);
-          await setUciOption('health_autoupdater_service_state', 'write', true);
-          await execServiceLifecycle('singbox-ui-health-autoupdater-service', 'start');
-          notify('info', 'Health Autoupdater started');
-        }
-      } catch (e) { notify('error', 'Toggle failed: ' + e.message); }
-      finally { reloadPage(); }
-    },
-    async toggleMemdoc() {
-      try {
-        if (state.memdocEnabled) { await execServiceLifecycle('singbox-ui-memdoc-service', 'stop'); notify('info', 'Memdoc stopped'); }
-        else { await execServiceLifecycle('singbox-ui-memdoc-service', 'start'); notify('info', 'Memdoc started'); }
-      } catch (e) { notify('error', 'Toggle failed: ' + e.message); }
-      finally { reloadPage(); }
-    }
-  };
+// ============================================================
+// Page controller
+// ============================================================
 
-  page.querySelectorAll('button[data-action]').forEach(btn => {
-    const fn = barActions[btn.getAttribute('data-action')];
-    if (fn) btn.onclick = () => { if (fn.constructor.name === 'AsyncFunction') fn().catch(() => {}); else fn(); };
-  });
+function initPage(page, state, mainContent, mainUrl) {
+	let currentConfig = CONFIGS[0];
 
-  let currentConfig = configs[0];
-  const urlEl = page.querySelector('#singbox-ui-url');
-  const selectEl = page.querySelector('#singbox-ui-config-select');
-  const setMainBtn = page.querySelector('#singbox-ui-set-main-btn');
-  if (urlEl) urlEl.value = mainUrl || '';
+	// ----------------------------------------------------------
+	// Control card: re-render in place after start/stop/restart
+	// (no full page reload needed for status changes)
+	// ----------------------------------------------------------
 
-  const configActions = {
-    saveUrl: async () => {
-      const url = (urlEl && urlEl.value || '').trim();
-      if (!url) return notify('error', 'URL empty');
-      if (!isValidUrl(url)) return notify('error', 'Invalid URL');
-      await saveFile('/etc/sing-box/url_' + currentConfig.name, url, 'URL saved');
-      try {
-        const r = await fs.exec('/usr/bin/singbox-ui/singbox-ui-updater',
-          ['/etc/sing-box/url_' + currentConfig.name, '/etc/sing-box/' + currentConfig.name]);
-        if (r.code === 2) notify('info', 'No changes detected');
-        else if (r.code !== 0) notify('error', r.stderr || r.stdout || 'Unknown');
-        else {
-          if (currentConfig.name === 'config.json') await execService('sing-box', 'reload');
-          notify('info', currentConfig.name === 'config.json' ? 'Main config reloaded' : 'Updated ' + currentConfig.label);
-        }
-      } catch (e) { notify('error', 'Update failed: ' + e.message); }
-      reloadPage();
-    },
-    update: async () => {
-      try {
-        const r = await fs.exec('/usr/bin/singbox-ui/singbox-ui-updater',
-          ['/etc/sing-box/url_' + currentConfig.name, '/etc/sing-box/' + currentConfig.name]);
-        if (r.code === 2) return notify('info', 'No changes detected');
-        if (r.code !== 0) return notify('error', r.stderr || r.stdout || 'Unknown');
-        if (currentConfig.name === 'config.json') await execService('sing-box', 'reload');
-        notify('info', currentConfig.name === 'config.json' ? 'Main config reloaded' : 'Updated ' + currentConfig.label);
-      } catch (e) { notify('error', 'Update failed: ' + e.message); }
-      finally { reloadPage(); }
-    },
-    format: async () => {
-      const ed = window.singboxEditor;
-      if (!ed) return notify('error', 'Editor not ready');
-      const val = ed.getValue();
-      if (!val || !val.trim()) return notify('info', 'Nothing to format');
-      const formatted = await formatConfigWithSingBox(val);
-      if (formatted != null) { ed.setValue(formatted, -1); ed.clearSelection(); notify('info', 'Formatted'); }
-    },
-    save: async () => {
-      const ed = window.singboxEditor;
-      if (!ed) return;
-      const val = ed.getValue();
-      if (!val) return notify('error', 'Config is empty');
-      if (!(await isValidConfigFile(val))) return;
-      await saveFile('/etc/sing-box/' + currentConfig.name, val, 'Config saved');
-      if (currentConfig.name === 'config.json') { await execService('sing-box', 'reload'); notify('info', 'Sing\u2011Box reloaded'); }
-      reloadPage();
-    },
-    setAsMain: async () => {
-      if (currentConfig.name === 'config.json') return;
-      try {
-        const [nc, no, nu, ou] = await Promise.all([
-          loadFile('/etc/sing-box/' + currentConfig.name), loadFile('/etc/sing-box/config.json'),
-          loadFile('/etc/sing-box/url_' + currentConfig.name), loadFile('/etc/sing-box/url_config.json')
-        ]);
-        await saveFile('/etc/sing-box/config.json', nc, 'Main config set');
-        await saveFile('/etc/sing-box/' + currentConfig.name, no, 'Backup config updated');
-        await saveFile('/etc/sing-box/url_config.json', nu, 'Main URL set');
-        await saveFile('/etc/sing-box/url_' + currentConfig.name, ou, 'Backup URL set');
-        await execService('sing-box', 'reload');
-        notify('info', currentConfig.label + ' is now main');
-      } catch (e) { notify('error', 'Failed to set main: ' + e.message); }
-      finally { reloadPage(); }
-    },
-    clear: async () => {
-      try {
-        await saveFile('/etc/sing-box/' + currentConfig.name, '{}', 'Config cleared');
-        await saveFile('/etc/sing-box/url_' + currentConfig.name, '', 'URL cleared');
-        if (currentConfig.name === 'config.json') {
-          if (await isTproxyTablePresent()) await disableTproxy();
-          await execService('sing-box', 'stop');
-          await execServiceLifecycle('singbox-ui-autoupdater-service', 'stop');
-          await execServiceLifecycle('singbox-ui-health-autoupdater-service', 'stop');
-          notify('info', 'Services stopped');
-        }
-      } catch (e) { notify('error', 'Clear failed: ' + e.message); }
-      finally { reloadPage(); }
-    }
-  };
+	async function refreshControlCard() {
+		state.singboxStatus = await execService('sing-box', 'status');
+		state.singboxRunning = state.singboxStatus.includes('running');
+		if (state.singboxRunning)
+			state.tproxyActive = state.tproxyConfigPresent || await isTproxyTablePresent();
 
-  page.querySelectorAll('button[data-config-action]').forEach(btn => {
-    const fn = configActions[btn.getAttribute('data-config-action')];
-    if (fn) btn.onclick = () => { if (fn.constructor.name === 'AsyncFunction') fn().catch(() => {}); else fn(); };
-  });
+		const card = page.querySelector('#sbox-control');
+		if (card) { card.innerHTML = buildControlInner(state); bindControlCard(); }
 
-  if (selectEl) selectEl.addEventListener('change', async () => {
-    const config = configs.find(c => c.name === selectEl.value);
-    if (!config) return;
-    currentConfig = config;
-    const [content, url] = await Promise.all([
-      loadFile('/etc/sing-box/' + config.name),
-      loadFile('/etc/sing-box/url_' + config.name)
-    ]);
-    if (window.singboxEditor) { window.singboxEditor.setValue(content || '', -1); window.singboxEditor.clearSelection(); }
-    if (urlEl) urlEl.value = url || '';
-    if (setMainBtn) setMainBtn.style.display = config.name === 'config.json' ? 'none' : 'inline-block';
-  });
+		const dashBtn = page.querySelector('#sbox-header-dash');
+		if (dashBtn) dashBtn.style.display = state.singboxRunning ? '' : 'none';
+	}
 
-  const aceEl = page.querySelector('#singbox-ui-ace');
-  if (!aceEl) return;
-  await loadScript('/luci-static/resources/view/singbox-ui/ace/ace.js');
-  await loadScript('/luci-static/resources/view/singbox-ui/ace/ext-language_tools.js');
-  ace.config.set('basePath', '/luci-static/resources/view/singbox-ui/ace/');
-  ace.config.set('workerPath', '/luci-static/resources/view/singbox-ui/ace/');
-  editor = ace.edit(aceEl);
-  editor.setTheme('ace/theme/tomorrow_night_bright');
-  editor.session.setMode('ace/mode/json5');
-  editor.setValue(mainContent || '', -1);
-  editor.clearSelection();
-  editor.session.setUseWorker(true);
-  editor.setOptions({ fontSize: '13px', showPrintMargin: false, wrap: true, highlightActiveLine: true, behavioursEnabled: true, showFoldWidgets: true, foldStyle: 'markbegin', enableBasicAutocompletion: true, enableLiveAutocompletion: true, enableSnippets: false });
-  window.singboxEditor = editor;
+	function bindControlCard() {
+		const actions = {
+			async startStop(b) {
+				await withButtons(b, async () => {
+					try {
+						if (state.singboxRunning) {
+							if (state.tproxyActive) await disableTproxy();
+							await execService('sing-box', 'stop');
+							if (state.autoupdaterServiceTempFlag)
+								await execServiceLifecycle('singbox-ui-autoupdater-service', 'stop');
+							else if (state.healthAutoupdaterServiceTempFlag)
+								await execServiceLifecycle('singbox-ui-health-autoupdater-service', 'stop');
+							notify('info', 'Sing\u2011Box stopped');
+						} else {
+							await execService('sing-box', 'start');
+							if (state.tproxyConfigPresent) await enableTproxy();
+							if (state.autoupdaterServiceTempFlag)
+								await execServiceLifecycle('singbox-ui-autoupdater-service', 'start');
+							else if (state.healthAutoupdaterServiceTempFlag)
+								await execServiceLifecycle('singbox-ui-health-autoupdater-service', 'start');
+							notify('info', 'Sing\u2011Box started');
+						}
+					} catch (e) {
+						notify('error', 'Operation failed: ' + e.message);
+					}
+					await refreshControlCard();
+				});
+			},
+
+			async restart(b) {
+				await withButtons(b, async () => {
+					try {
+						await execService('sing-box', 'restart');
+						if (state.autoupdaterServiceTempFlag)
+							await execServiceLifecycle('singbox-ui-autoupdater-service', 'restart');
+						else if (state.healthAutoupdaterServiceTempFlag)
+							await execServiceLifecycle('singbox-ui-health-autoupdater-service', 'restart');
+						notify('info', 'Sing\u2011Box restarted');
+					} catch (e) {
+						notify('error', 'Restart failed: ' + e.message);
+					}
+					await refreshControlCard();
+				});
+			},
+
+			dashboard() {
+				window.open(`${window.location.protocol}//${window.location.hostname}:9090/ui/`, '_blank');
+			},
+		};
+
+		page.querySelectorAll('#sbox-control [data-action]').forEach(b => {
+			const fn = actions[b.dataset.action];
+			if (fn) b.onclick = () => fn(b).catch(() => {});
+		});
+	}
+
+	// ----------------------------------------------------------
+	// Service card: re-render in place after toggle actions
+	// ----------------------------------------------------------
+
+	async function refreshServiceCard() {
+		state.autoupdaterEnabled       = await isServiceActive('singbox-ui-autoupdater-service');
+		state.healthAutoupdaterEnabled = await isServiceActive('singbox-ui-health-autoupdater-service');
+		state.memdocEnabled            = await isServiceActive('singbox-ui-memdoc-service');
+
+		const card = page.querySelector('#sbox-services');
+		if (card) { card.innerHTML = buildServiceInner(state); bindServiceCard(); }
+	}
+
+	function bindServiceCard() {
+		const actions = {
+			async toggleAutoupdater(b) {
+				await withButtons(b, async () => {
+					try {
+						if (state.autoupdaterEnabled) {
+							await execServiceLifecycle('singbox-ui-autoupdater-service', 'stop');
+							await writeUciFlag('autoupdater_service_state', false);
+							notify('info', 'Autoupdater stopped');
+						} else {
+							await execServiceLifecycle('singbox-ui-health-autoupdater-service', 'stop');
+							await writeUciFlag('health_autoupdater_service_state', false);
+							await writeUciFlag('autoupdater_service_state', true);
+							await execServiceLifecycle('singbox-ui-autoupdater-service', 'start');
+							notify('info', 'Autoupdater started');
+						}
+					} catch (e) { notify('error', 'Toggle failed: ' + e.message); }
+					await refreshServiceCard();
+				});
+			},
+
+			async toggleHealthAutoupdater(b) {
+				await withButtons(b, async () => {
+					try {
+						if (state.healthAutoupdaterEnabled) {
+							await execServiceLifecycle('singbox-ui-health-autoupdater-service', 'stop');
+							await writeUciFlag('health_autoupdater_service_state', false);
+							notify('info', 'Health Autoupdater stopped');
+						} else {
+							await execServiceLifecycle('singbox-ui-autoupdater-service', 'stop');
+							await writeUciFlag('autoupdater_service_state', false);
+							await writeUciFlag('health_autoupdater_service_state', true);
+							await execServiceLifecycle('singbox-ui-health-autoupdater-service', 'start');
+							notify('info', 'Health Autoupdater started');
+						}
+					} catch (e) { notify('error', 'Toggle failed: ' + e.message); }
+					await refreshServiceCard();
+				});
+			},
+
+			async toggleMemdoc(b) {
+				await withButtons(b, async () => {
+					try {
+						if (state.memdocEnabled) {
+							await execServiceLifecycle('singbox-ui-memdoc-service', 'stop');
+							notify('info', 'Memdoc stopped');
+						} else {
+							await execServiceLifecycle('singbox-ui-memdoc-service', 'start');
+							notify('info', 'Memdoc started');
+						}
+					} catch (e) { notify('error', 'Toggle failed: ' + e.message); }
+					await refreshServiceCard();
+				});
+			},
+		};
+
+		page.querySelectorAll('#sbox-services [data-action]').forEach(b => {
+			const fn = actions[b.dataset.action];
+			if (fn) b.onclick = () => fn(b).catch(() => {});
+		});
+	}
+
+	// ----------------------------------------------------------
+	// Config card: in-place editor/URL updates, no page reload
+	// (setAsMain and clear still reload — they swap content)
+	// ----------------------------------------------------------
+
+	const urlEl      = page.querySelector('#sbox-url');
+	const selectEl   = page.querySelector('#sbox-config-select');
+	const setMainBtn = page.querySelector('#sbox-set-main-btn');
+
+	if (urlEl) urlEl.value = mainUrl || '';
+
+	const configActions = {
+		async saveUrl(b) {
+			const url = urlEl?.value.trim() || '';
+			if (!url)             return notify('error', 'URL is empty');
+			if (!isValidUrl(url)) return notify('error', 'Invalid URL');
+			await withButtons(b, async () => {
+				try {
+					await saveFile('/etc/sing-box/url_' + currentConfig.name, url);
+					notify('info', 'URL saved');
+					const r = await fs.exec(UPDATER_BIN, [
+						'/etc/sing-box/url_' + currentConfig.name,
+						'/etc/sing-box/' + currentConfig.name,
+					]);
+					if (r.code === 2) {
+						notify('info', 'No changes detected');
+					} else if (r.code !== 0) {
+						notify('error', r.stderr || r.stdout || 'Update failed');
+					} else {
+						const newContent = await loadFile('/etc/sing-box/' + currentConfig.name);
+						const ed = window.singboxEditor;
+						if (ed) { ed.setValue(newContent, -1); ed.clearSelection(); }
+						notify('info', currentConfig.label + ' updated');
+						if (currentConfig.name === 'config.json') {
+							await execService('sing-box', 'reload');
+							notify('info', 'Sing\u2011Box reloaded');
+							state.isInitialConfigValid = await isValidConfig(newContent);
+							state.mainConfigHasUrl = true;
+							await refreshControlCard();
+							await refreshServiceCard();
+						}
+					}
+				} catch (e) {
+					notify('error', 'Save URL failed: ' + e.message);
+				}
+			});
+		},
+
+		async update(b) {
+			await withButtons(b, async () => {
+				try {
+					const r = await fs.exec(UPDATER_BIN, [
+						'/etc/sing-box/url_' + currentConfig.name,
+						'/etc/sing-box/' + currentConfig.name,
+					]);
+					if (r.code === 2) return notify('info', 'No changes detected');
+					if (r.code !== 0) return notify('error', r.stderr || r.stdout || 'Update failed');
+					const newContent = await loadFile('/etc/sing-box/' + currentConfig.name);
+					const ed = window.singboxEditor;
+					if (ed) { ed.setValue(newContent, -1); ed.clearSelection(); }
+					notify('info', currentConfig.label + ' updated');
+					if (currentConfig.name === 'config.json') {
+						await execService('sing-box', 'reload');
+						notify('info', 'Sing\u2011Box reloaded');
+						state.isInitialConfigValid = await isValidConfig(newContent);
+						await refreshControlCard();
+					}
+				} catch (e) { notify('error', 'Update failed: ' + e.message); }
+			});
+		},
+
+		async format(b) {
+			const ed = window.singboxEditor;
+			if (!ed) return notify('error', 'Editor not ready');
+			const val = ed.getValue();
+			if (!val?.trim()) return notify('info', 'Nothing to format');
+			await withButtons(b, async () => {
+				const formatted = await formatConfig(val);
+				if (formatted != null) {
+					ed.setValue(formatted, -1);
+					ed.clearSelection();
+					notify('info', 'Formatted');
+				}
+			});
+		},
+
+		async save(b) {
+			const ed = window.singboxEditor;
+			if (!ed) return;
+			const val = ed.getValue();
+			if (!val) return notify('error', 'Config is empty');
+			await withButtons(b, async () => {
+				try {
+					if (!(await isValidConfig(val))) return;
+					await saveFile('/etc/sing-box/' + currentConfig.name, val);
+					notify('info', 'Config saved');
+					if (currentConfig.name === 'config.json') {
+						await execService('sing-box', 'reload');
+						notify('info', 'Sing\u2011Box reloaded');
+						state.isInitialConfigValid = true;
+						await refreshControlCard();
+					}
+				} catch (e) { notify('error', 'Save failed: ' + e.message); }
+			});
+		},
+
+		async setAsMain(b) {
+			if (currentConfig.name === 'config.json') return;
+			await withButtons(b, async () => {
+				try {
+					const [nc, no, nu, ou] = await Promise.all([
+						loadFile('/etc/sing-box/' + currentConfig.name),
+						loadFile('/etc/sing-box/config.json'),
+						loadFile('/etc/sing-box/url_' + currentConfig.name),
+						loadFile('/etc/sing-box/url_config.json'),
+					]);
+					await saveFile('/etc/sing-box/config.json',               nc);
+					await saveFile('/etc/sing-box/' + currentConfig.name,     no);
+					await saveFile('/etc/sing-box/url_config.json',           nu);
+					await saveFile('/etc/sing-box/url_' + currentConfig.name, ou);
+					await execService('sing-box', 'reload');
+					notify('info', currentConfig.label + ' is now main config');
+				} catch (e) {
+					notify('error', 'Set as main failed: ' + e.message);
+				} finally {
+					reloadPage();
+				}
+			});
+		},
+
+		async clear(b) {
+			if (!confirm(
+				`Clear all data for "${currentConfig.label}"?\n` +
+				`Config and URL will be erased. This cannot be undone.`
+			)) return;
+			await withButtons(b, async () => {
+				try {
+					await saveFile('/etc/sing-box/' + currentConfig.name,     '{}');
+					await saveFile('/etc/sing-box/url_' + currentConfig.name, '');
+					if (currentConfig.name === 'config.json') {
+						if (await isTproxyTablePresent()) await disableTproxy();
+						await execService('sing-box', 'stop');
+						await execServiceLifecycle('singbox-ui-autoupdater-service', 'stop');
+						await execServiceLifecycle('singbox-ui-health-autoupdater-service', 'stop');
+						notify('info', 'Config cleared, services stopped');
+					} else {
+						notify('info', currentConfig.label + ' cleared');
+					}
+				} catch (e) {
+					notify('error', 'Clear failed: ' + e.message);
+				} finally {
+					reloadPage();
+				}
+			});
+		},
+	};
+
+	page.querySelectorAll('[data-config-action]').forEach(b => {
+		const fn = configActions[b.dataset.configAction];
+		if (fn) b.onclick = () => fn(b).catch(() => {});
+	});
+
+	// Config select: swap editor content and URL field without page reload
+	if (selectEl) {
+		selectEl.addEventListener('change', async () => {
+			const cfg = CONFIGS.find(c => c.name === selectEl.value);
+			if (!cfg) return;
+			currentConfig = cfg;
+			const [content, url] = await Promise.all([
+				loadFile('/etc/sing-box/' + cfg.name),
+				loadFile('/etc/sing-box/url_' + cfg.name),
+			]);
+			const ed = window.singboxEditor;
+			if (ed) { ed.setValue(content || '', -1); ed.clearSelection(); }
+			if (urlEl)      urlEl.value = url || '';
+			if (setMainBtn) setMainBtn.style.display = cfg.name === 'config.json' ? 'none' : 'inline-block';
+		});
+	}
+
+	// Initial bind
+	bindControlCard();
+	bindServiceCard();
+
+	const dashBtn = page.querySelector('#sbox-header-dash');
+	if (dashBtn) dashBtn.onclick = () =>
+		window.open(`${window.location.protocol}//${window.location.hostname}:9090/ui/`, '_blank');
+
+	// Init Ace editor
+	const aceEl = page.querySelector('#sbox-ace');
+	if (aceEl) {
+		initAceEditor(aceEl, mainContent).catch(e => {
+			console.error('[singbox-ui] Ace init error:', e);
+			notify('error', 'Editor failed to load: ' + e.message);
+		});
+	}
 }
 
-// === Main View ============================================================
+// ============================================================
+// Main LuCI view
+// ============================================================
 
 return view.extend({
-  handleSave: null,
-  handleSaveApply: null,
-  handleReset: null,
+	handleSave:      null,
+	handleSaveApply: null,
+	handleReset:     null,
 
-  async render() {
-    const configs = [
-      { name: 'config.json', label: 'Main Config' },
-      { name: 'config2.json', label: 'Backup Config #1' },
-      { name: 'config3.json', label: 'Backup Config #2' }
-    ];
+	async render() {
+		const [
+			singboxStatus,
+			healthAutoupdaterEnabled,
+			autoupdaterEnabled,
+			memdocEnabled,
+			versions,
+			mainContent,
+			healthAutoupdaterServiceTempFlag,
+			autoupdaterServiceTempFlag,
+			tproxyConfigPresent,
+			mainConfigUrl,
+		] = await Promise.all([
+			execService('sing-box', 'status'),
+			isServiceActive('singbox-ui-health-autoupdater-service'),
+			isServiceActive('singbox-ui-autoupdater-service'),
+			isServiceActive('singbox-ui-memdoc-service'),
+			getVersions(),
+			loadFile('/etc/sing-box/config.json'),
+			readUciFlag('health_autoupdater_service_state'),
+			readUciFlag('autoupdater_service_state'),
+			isTproxyConfigPresent(),
+			loadFile('/etc/sing-box/url_config.json'),
+		]);
 
-    const [
-      singboxStatus,
-      healthAutoupdaterServiceEnabled,
-      autoupdaterServiceEnabled,
-      memdocServiceEnabled,
-      versions,
-      configContent,
-      healthAutoupdaterServiceTempFlag,
-      autoupdaterServiceTempFlag,
-      tproxyConfigPresent,
-      mainConfigUrl,
-      mainContent,
-      mainUrl
-    ] = await Promise.all([
-      execService('sing-box', 'status'),
-      isServiceActive('singbox-ui-health-autoupdater-service'),
-      isServiceActive('singbox-ui-autoupdater-service'),
-      isServiceActive('singbox-ui-memdoc-service'),
-      getPackageVersions(),
-      loadFile('/etc/sing-box/config.json'),
-      setUciOption('health_autoupdater_service_state', 'read', 'state'),
-      setUciOption('autoupdater_service_state', 'read', 'state'),
-      isTproxyConfigPresent(),
-      loadFile('/etc/sing-box/url_config.json'),
-      loadFile('/etc/sing-box/config.json'),
-      loadFile('/etc/sing-box/url_config.json')
-    ]);
+		const tproxyActive         = tproxyConfigPresent || await isTproxyTablePresent();
+		const isInitialConfigValid = await isValidConfig(mainContent.trim());
+		const mainUrl              = mainConfigUrl.trim();
 
-    const tproxyActive = tproxyConfigPresent || await isTproxyTablePresent();
-    const isInitialConfigValid = await isValidConfigFile(configContent.trim());
+		const state = {
+			versions,
+			singboxStatus,
+			singboxRunning:                   singboxStatus.includes('running'),
+			isInitialConfigValid,
+			tproxyConfigPresent,
+			tproxyActive,
+			mainConfigHasUrl:                 isValidUrl(mainUrl),
+			healthAutoupdaterServiceTempFlag,
+			autoupdaterServiceTempFlag,
+			autoupdaterEnabled,
+			healthAutoupdaterEnabled,
+			memdocEnabled,
+		};
 
-    const state = {
-      versions,
-      singboxStatus,
-      singboxRunning: singboxStatus === 'running',
-      isInitialConfigValid,
-      tproxyConfigPresent,
-      tproxyActive,
-      mainConfigHasUrl: isValidUrl(mainConfigUrl.trim()),
-      healthAutoupdaterServiceTempFlag,
-      autoupdaterServiceTempFlag,
-      autoupdaterEnabled: autoupdaterServiceEnabled,
-      healthAutoupdaterEnabled: healthAutoupdaterServiceEnabled,
-      memdocEnabled: memdocServiceEnabled
-    };
+		const page = document.createElement('div');
+		page.className = 'sbox-page';
+		page.innerHTML = PAGE_CSS + buildPageHtml(state);
 
-    const page = document.createElement('div');
-    page.className = 'sbox-page';
-    page.innerHTML = buildPageCss() + buildPageHtml(state, configs);
+		setTimeout(() => {
+			try {
+				initPage(page, state, mainContent, mainUrl);
+			} catch (e) {
+				console.error('[singbox-ui] initPage error:', e);
+				notify('error', 'Page init failed: ' + e.message);
+			}
+		}, 50);
 
-    setTimeout(() => initPage(page, state, configs, mainContent, mainUrl).catch(e => {
-      console.error('[singbox-ui] initPage error:', e);
-    }), 50);
-
-    return page;
-  }
+		return page;
+	},
 });
