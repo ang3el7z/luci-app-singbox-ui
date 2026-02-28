@@ -314,10 +314,30 @@ const PAGE_CSS = `<style>
   font-weight: 700;
   margin-bottom: 0.55rem;
 }
-.sbox-version {
-  font-size: 0.8em;
+.sbox-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3em 0.55em;
+  margin-bottom: 1rem;
+  font-size: 1em;
+  color: var(--muted, #aaa);
+}
+.sbox-header strong {
+  color: var(--text-color, #ddd);
+  font-weight: 600;
+}
+.sbox-header-dot {
+  color: var(--muted, #444);
+}
+.sbox-header-mode {
+  font-size: 0.78em;
+  padding: 0.15em 0.55em;
+  border-radius: 4px;
+  border: 1px solid var(--border-color, #333);
+  background: var(--card-bg-color, #1a1a1a);
   color: var(--muted, #888);
-  margin-bottom: 0.55rem;
+  font-weight: 500;
 }
 .sbox-row {
   display: flex;
@@ -406,10 +426,7 @@ const PAGE_CSS = `<style>
 // ============================================================
 
 function buildControlInner(state) {
-	const v           = state.versions;
-	const dot         = '\u00B7';
-	const proxyMode   = state.tproxyConfigPresent ? 'tproxy' : 'tun';
-	const sk          = state.singboxRunning
+	const sk = state.singboxRunning
 		? 'running'
 		: (state.singboxStatus === 'error' ? 'error' : 'inactive');
 	const statusLabel = sk === 'running' ? 'Running' : (sk === 'error' ? 'Error' : 'Inactive');
@@ -438,7 +455,6 @@ function buildControlInner(state) {
 	].filter(Boolean).join('');
 
 	return `
-  <div class="sbox-version">singbox-ui ${v.singboxUi} ${dot} sing-box ${v.singbox} ${dot} ${proxyMode} mode</div>
   <div class="sbox-card-title">Control</div>
   <div class="sbox-row">
     <span class="sbox-status sbox-color-${sk}">
@@ -486,11 +502,21 @@ function buildServiceInner(state) {
 }
 
 function buildPageHtml(state) {
-	const opts = CONFIGS.map(c => `<option value="${c.name}">${c.label}</option>`).join('');
-	const cbtn = (cls, action, label) =>
+	const v         = state.versions;
+	const dot       = '<span class="sbox-header-dot">\u00B7</span>';
+	const proxyMode = state.tproxyConfigPresent ? 'tproxy' : 'tun';
+	const opts      = CONFIGS.map(c => `<option value="${c.name}">${c.label}</option>`).join('');
+	const cbtn      = (cls, action, label) =>
 		`<button type="button" class="cbi-button cbi-button-${cls}" data-config-action="${action}">${label}</button>`;
 
 	return `
+<div class="sbox-header">
+  singbox-ui <strong>${v.singboxUi}</strong>
+  ${dot}
+  sing-box <strong>${v.singbox}</strong>
+  ${dot}
+  <span class="sbox-header-mode">${proxyMode} mode</span>
+</div>
 <div class="sbox-card" id="sbox-control">${buildControlInner(state)}</div>
 <div class="sbox-card" id="sbox-services">${buildServiceInner(state)}</div>
 <div class="sbox-card" id="sbox-config">
