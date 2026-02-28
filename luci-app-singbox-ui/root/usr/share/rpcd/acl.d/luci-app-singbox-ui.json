@@ -21,7 +21,8 @@
                 "/usr/bin/apk": ["exec"],
                 "/sbin/uci": ["exec"],
                 "/tmp/*": ["read"],
-                "/sys/class/net/*": ["read"]
+                "/sys/class/net/*": ["read"],
+                "/sbin/logread": ["exec"]
             },
             "uci": ["singbox-ui"]
         },

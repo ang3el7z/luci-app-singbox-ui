@@ -295,6 +295,33 @@ function showModeModal(options) {
 }
 
 // ============================================================
+// Logs
+// ============================================================
+
+async function loadSingboxLogs() {
+	try {
+		const r = await fs.exec('/sbin/logread', ['-e', 'sing-box']);
+		return String(r?.stdout ?? '').trim();
+	} catch { return ''; }
+}
+
+function colorizeLog(raw) {
+	if (!raw) return '<span class="sbox-log-debug">No logs yet.</span>';
+	return raw.split('\n').map(line => {
+		const esc = line
+			.replace(/&/g, '&amp;')
+			.replace(/</g, '&lt;')
+			.replace(/>/g, '&gt;');
+		if (/\b(FATA|FATAL|PANIC)\b/.test(line)) return `<span class="sbox-log-fatal">${esc}</span>`;
+		if (/\b(ERRO|ERROR)\b/.test(line))        return `<span class="sbox-log-error">${esc}</span>`;
+		if (/\b(WARN|WARNING)\b/.test(line))      return `<span class="sbox-log-warn">${esc}</span>`;
+		if (/\bINFO\b/.test(line))                return `<span class="sbox-log-info">${esc}</span>`;
+		if (/\b(DEBU|DEBUG)\b/.test(line))        return `<span class="sbox-log-debug">${esc}</span>`;
+		return esc;
+	}).join('\n');
+}
+
+// ============================================================
 // Version info
 // ============================================================
 
@@ -542,6 +569,89 @@ const PAGE_CSS = `<style>
   animation: sbox-spin 0.6s linear infinite;
   vertical-align: middle;
 }
+.sbox-card-tabs {
+  display: flex;
+  gap: 0.2rem;
+  margin-bottom: 0.75rem;
+  border-bottom: 1px solid var(--border-color, #2e2e2e);
+  padding-bottom: 0;
+}
+.sbox-tab {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: 0.3em 0.8em;
+  margin-bottom: -1px;
+  cursor: pointer;
+  color: var(--muted, #888);
+  font-size: 0.7em;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  transition: color 0.15s, border-color 0.15s;
+}
+.sbox-tab:hover { color: var(--text-color, #ddd); }
+.sbox-tab-active {
+  color: var(--text-color, #ddd);
+  border-bottom-color: var(--active-color, #4a9eff);
+}
+.sbox-log-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  flex-wrap: wrap;
+}
+.sbox-log-meta {
+  font-size: 0.75em;
+  color: var(--muted, #666);
+  margin-left: auto;
+}
+.sbox-log-viewer {
+  position: relative;
+}
+.sbox-log-content {
+  width: 100%;
+  height: 520px;
+  overflow-y: scroll;
+  overflow-x: auto;
+  background: #0d0d0d;
+  border: 1px solid var(--border-color, #2e2e2e);
+  border-radius: 6px;
+  padding: 0.65rem 0.85rem;
+  box-sizing: border-box;
+  margin: 0;
+  font-family: 'Cascadia Code', 'JetBrains Mono', 'Consolas', 'Menlo', monospace;
+  font-size: 11.5px;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  word-break: break-all;
+  color: #c9d1d9;
+}
+.sbox-log-info  { color: #3fb950; }
+.sbox-log-warn  { color: #d29922; }
+.sbox-log-error { color: #f85149; }
+.sbox-log-fatal { color: #f85149; font-weight: 700; }
+.sbox-log-debug { color: #6e7681; }
+.sbox-log-scroll-btn {
+  position: absolute;
+  bottom: 0.65rem;
+  right: 1.1rem;
+  background: var(--card-bg-color, #1a1a1a);
+  border: 1px solid var(--border-color, #444);
+  border-radius: 5px;
+  padding: 0.2em 0.6em;
+  font-size: 0.78em;
+  cursor: pointer;
+  color: var(--muted, #888);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s;
+}
+.sbox-log-scroll-btn.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
 </style>`;
 
 // ============================================================
@@ -649,20 +759,35 @@ function buildPageHtml(state) {
 <div class="sbox-card" id="sbox-control">${buildControlInner(state)}</div>
 <div class="sbox-card" id="sbox-services">${buildServiceInner(state)}</div>
 <div class="sbox-card" id="sbox-config">
-  <div class="sbox-card-title">Config</div>
-  <div class="sbox-cfg-top">
-    <select id="sbox-config-select" class="sbox-select">${opts}</select>
-    <input type="url" id="sbox-url" class="sbox-input" placeholder="Subscription URL: https://\u2026" />
-    ${cbtn('positive', 'saveUrl', 'Save URL')}
-    ${cbtn('reload',   'update',  'Update')}
+  <div class="sbox-card-tabs">
+    <button type="button" class="sbox-tab sbox-tab-active" data-tab="config">Config</button>
+    <button type="button" class="sbox-tab" data-tab="logs">Logs</button>
   </div>
-  <div id="sbox-ace" class="sbox-editor"></div>
-  <div class="sbox-actions">
-    ${cbtn('apply',    'format',   'Format')}
-    ${cbtn('positive', 'save',     'Save')}
-    <button type="button" class="cbi-button cbi-button-apply"
-      data-config-action="setAsMain" id="sbox-set-main-btn" style="display:none">Set as Main</button>
-    ${cbtn('negative', 'clear', 'Clear All')}
+  <div id="sbox-tab-config">
+    <div class="sbox-cfg-top">
+      <select id="sbox-config-select" class="sbox-select">${opts}</select>
+      <input type="url" id="sbox-url" class="sbox-input" placeholder="Subscription URL: https://\u2026" />
+      ${cbtn('positive', 'saveUrl', 'Save URL')}
+      ${cbtn('reload',   'update',  'Update')}
+    </div>
+    <div id="sbox-ace" class="sbox-editor"></div>
+    <div class="sbox-actions">
+      ${cbtn('apply',    'format',   'Format')}
+      ${cbtn('positive', 'save',     'Save')}
+      <button type="button" class="cbi-button cbi-button-apply"
+        data-config-action="setAsMain" id="sbox-set-main-btn" style="display:none">Set as Main</button>
+      ${cbtn('negative', 'clear', 'Clear All')}
+    </div>
+  </div>
+  <div id="sbox-tab-logs" style="display:none">
+    <div class="sbox-log-toolbar">
+      <button type="button" class="cbi-button cbi-button-reload" id="sbox-log-refresh-btn">Refresh</button>
+      <span class="sbox-log-meta" id="sbox-log-updated"></span>
+    </div>
+    <div class="sbox-log-viewer">
+      <pre id="sbox-log-content" class="sbox-log-content"></pre>
+      <button type="button" class="sbox-log-scroll-btn" id="sbox-log-scroll-btn" title="Scroll to bottom">\u2193 Bottom</button>
+    </div>
   </div>
 </div>`;
 }
@@ -1071,6 +1196,90 @@ function initPage(page, state, mainContent, mainUrl) {
 			});
 		}
 	}
+
+	// ---------------------------------------------------------------
+	// Config / Logs tab switching
+	// ---------------------------------------------------------------
+
+	const tabConfig  = page.querySelector('[data-tab="config"]');
+	const tabLogs    = page.querySelector('[data-tab="logs"]');
+	const paneConfig = page.querySelector('#sbox-tab-config');
+	const paneLogs   = page.querySelector('#sbox-tab-logs');
+	const logContent = page.querySelector('#sbox-log-content');
+	const logUpdated = page.querySelector('#sbox-log-updated');
+	const logRefreshBtn = page.querySelector('#sbox-log-refresh-btn');
+	const logScrollBtn  = page.querySelector('#sbox-log-scroll-btn');
+
+	let logTimer = null;
+
+	const isAtBottom = el => el.scrollHeight - el.scrollTop - el.clientHeight < 60;
+
+	const updateScrollBtn = () => {
+		if (!logScrollBtn || !logContent) return;
+		logScrollBtn.classList.toggle('visible', !isAtBottom(logContent));
+	};
+
+	async function refreshLogs() {
+		const atBottom = !logContent || isAtBottom(logContent);
+		try {
+			const raw = await loadSingboxLogs();
+			if (logContent) logContent.innerHTML = colorizeLog(raw);
+			if (logUpdated) {
+				const t = new Date();
+				logUpdated.textContent = `Updated ${t.getHours().toString().padStart(2,'0')}:${t.getMinutes().toString().padStart(2,'0')}:${t.getSeconds().toString().padStart(2,'0')}`;
+			}
+		} catch (_) {}
+		if (atBottom && logContent) logContent.scrollTop = logContent.scrollHeight;
+		updateScrollBtn();
+	}
+
+	function startLogRefresh() {
+		refreshLogs();
+		logTimer = setInterval(refreshLogs, 3000);
+	}
+
+	function stopLogRefresh() {
+		clearInterval(logTimer);
+		logTimer = null;
+	}
+
+	if (logContent) {
+		logContent.addEventListener('scroll', updateScrollBtn);
+	}
+
+	if (logScrollBtn && logContent) {
+		logScrollBtn.onclick = () => {
+			logContent.scrollTop = logContent.scrollHeight;
+			updateScrollBtn();
+		};
+	}
+
+	if (logRefreshBtn) {
+		logRefreshBtn.onclick = () => refreshLogs();
+	}
+
+	if (tabConfig && tabLogs && paneConfig && paneLogs) {
+		tabConfig.onclick = () => {
+			tabConfig.classList.add('sbox-tab-active');
+			tabLogs.classList.remove('sbox-tab-active');
+			paneConfig.style.display = '';
+			paneLogs.style.display = 'none';
+			stopLogRefresh();
+		};
+		tabLogs.onclick = () => {
+			tabLogs.classList.add('sbox-tab-active');
+			tabConfig.classList.remove('sbox-tab-active');
+			paneLogs.style.display = '';
+			paneConfig.style.display = 'none';
+			startLogRefresh();
+		};
+	}
+
+	document.addEventListener('visibilitychange', () => {
+		if (!paneLogs || paneLogs.style.display === 'none') return;
+		if (document.hidden) stopLogRefresh();
+		else startLogRefresh();
+	});
 
 	// Init Ace editor
 	const aceEl = page.querySelector('#sbox-ace');
