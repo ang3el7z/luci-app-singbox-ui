@@ -28,7 +28,17 @@ const isValidUrl = url => {
 	try { new URL(url); return true; } catch { return false; }
 };
 
-const notify = (type, msg) => ui.addNotification(null, msg, type);
+/**
+ * Show a LuCI notification.
+ * 'info' notifications auto-dismiss after 4 s — no manual close needed.
+ * 'error' notifications stay until the user closes them.
+ */
+const NOTIFY_TIMEOUT = 4000;
+const notify = (type, msg) => {
+	const node = ui.addNotification(null, msg, type);
+	if (type !== 'error' && node)
+		setTimeout(() => node.remove?.() ?? node.parentNode?.removeChild(node), NOTIFY_TIMEOUT);
+};
 
 /** Unique /tmp path to avoid race conditions on concurrent requests. */
 const tmpPath = prefix =>
