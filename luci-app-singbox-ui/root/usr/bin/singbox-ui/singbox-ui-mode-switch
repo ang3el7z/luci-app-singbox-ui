@@ -5,6 +5,18 @@
 NFT_RULE_FILE="/etc/nftables.d/singbox.nft"
 TUN_IFACE="singtun0"
 
+# ── UI helpers ────────────────────────────────────────────────────────────────
+
+FG_ACCENT='\033[38;5;85m'
+FG_SUCCESS='\033[38;5;41m'
+RESET='\033[0m'
+INDENT='  '
+ARROW='▸'
+CHECK='✓'
+
+step() { echo -e "${INDENT}${ARROW} ${FG_ACCENT}$1${RESET}"; }
+done_() { echo -e "${INDENT}${CHECK} ${FG_SUCCESS}$1${RESET}"; }
+
 # ── network.proxy UCI ────────────────────────────────────────────────────────
 
 configure_proxy() {
@@ -143,31 +155,51 @@ reload_network() {
 
 case "$1" in
     enable-tun)
+        step "Configuring network proxy interface..."
         configure_proxy
+        step "Configuring firewall TUN zone..."
         configure_firewall_tun
+        step "Reloading firewall..."
         reload_firewall
+        step "Reloading network..."
         reload_network
+        done_ "TUN mode enabled"
         echo "ok"
         ;;
     disable-tun)
+        step "Removing network proxy interface..."
         remove_configure_proxy
+        step "Removing firewall TUN zone..."
         remove_firewall_tun
+        step "Reloading firewall..."
         reload_firewall
+        step "Reloading network..."
         reload_network
+        done_ "TUN mode disabled"
         echo "ok"
         ;;
     enable-tproxy)
+        step "Setting up policy routing..."
         setup_tproxy_routing
+        step "Installing nftables rule..."
         install_nft_rule
+        step "Configuring firewall include..."
         ensure_tproxy_firewall_include
+        step "Reloading firewall..."
         reload_firewall
+        done_ "TPROXY mode enabled"
         echo "ok"
         ;;
     disable-tproxy)
+        step "Removing firewall include..."
         remove_tproxy_firewall_include
+        step "Reloading firewall..."
         reload_firewall
+        step "Uninstalling nftables rule..."
         uninstall_nft_rule
+        step "Cleaning up policy routing..."
         cleanup_tproxy_routing
+        done_ "TPROXY mode disabled"
         echo "ok"
         ;;
     *)

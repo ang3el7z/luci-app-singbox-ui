@@ -250,7 +250,9 @@ const MODE_SWITCH_BIN = '/usr/bin/singbox-ui/singbox-ui-mode-switch';
 
 async function execModeSwitch(action) {
 	const r = await fs.exec(MODE_SWITCH_BIN, [action]);
-	if (String(r?.stdout ?? '').trim() !== 'ok') {
+	const lines = String(r?.stdout ?? '').trim().split('\n');
+	const lastLine = lines[lines.length - 1].trim();
+	if (lastLine !== 'ok') {
 		throw new Error(String(r?.stderr ?? r?.stdout ?? 'mode switch failed').trim() || 'mode switch failed');
 	}
 }

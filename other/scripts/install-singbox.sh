@@ -10,7 +10,7 @@ PKG_DOWNLOADED=0
 MS_DOWNLOADED=0
 cleanup_lib() {
     if [ "${UI_DOWNLOADED:-0}" -eq 1 ] || [ "${PKG_DOWNLOADED:-0}" -eq 1 ] || [ "${MS_DOWNLOADED:-0}" -eq 1 ]; then
-        local cleanup_msg="${MSG_CLEANUP_UI:-Cleaning UI library...}"
+        local cleanup_msg="${MSG_CLEANUP_LIB:-Cleaning library...}"
         if command -v show_progress >/dev/null 2>&1; then
             show_progress "$cleanup_msg"
         else
@@ -135,7 +135,7 @@ init_language() {
             MSG_FIREWALL_APPLIED="Правила фаервола применены"
             MSG_RESTART_FIREWALL="Перезапуск firewall..."
             MSG_RESTART_NETWORK="Перезапуск network..."
-            MSG_CLEANUP_UI="Очистка UI библиотеки..."
+            MSG_CLEANUP_LIB="Очистка библиотек..."
             MSG_CLEANUP="Очистка файлов..."
             MSG_CLEANUP_DONE="Файлы удалены!"
             MSG_WAITING="Ожидание %d сек"
@@ -253,7 +253,7 @@ init_language() {
             MSG_FIREWALL_APPLIED="Firewall rules applied"
             MSG_RESTART_FIREWALL="Restarting firewall..."
             MSG_RESTART_NETWORK="Restarting network..."
-            MSG_CLEANUP_UI="Cleaning UI library..."
+            MSG_CLEANUP_LIB="Cleaning library..."
             MSG_CLEANUP="Cleaning up files..."
             MSG_CLEANUP_DONE="Files removed!"
             MSG_WAITING="Waiting %d sec"

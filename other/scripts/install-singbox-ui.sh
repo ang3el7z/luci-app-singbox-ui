@@ -8,7 +8,7 @@ UI_DOWNLOADED=0
 PKG_DOWNLOADED=0
 cleanup_lib() {
     if [ "${UI_DOWNLOADED:-0}" -eq 1 ] || [ "${PKG_DOWNLOADED:-0}" -eq 1 ]; then
-        local cleanup_msg="${MSG_CLEANUP_UI:-Cleaning UI library...}"
+        local cleanup_msg="${MSG_CLEANUP_LIB:-Cleaning library...}"
         if command -v show_progress >/dev/null 2>&1; then
             show_progress "$cleanup_msg"
         else
@@ -106,7 +106,7 @@ init_language() {
             MSG_OPTION_4="4) Runner сборка из Pull Request (тестовая)"
             MSG_INVALID_CHOICE="Неверный выбор"
             MSG_INSTALL_COMPLETE="Установка завершена"
-            MSG_CLEANUP_UI="Очистка UI библиотеки..."
+            MSG_CLEANUP_LIB="Очистка библиотек..."
             MSG_CLEANUP="Очистка файлов..."
             MSG_CLEANUP_DONE="Файлы удалены!"
             MSG_SELECT_RUNNER="Выберите Runner сборку для установки:"
@@ -173,7 +173,7 @@ init_language() {
             MSG_INVALID_CHOICE="Invalid choice"
             MSG_INSTALL_LATEST="Installing stable version latest"
             MSG_DOWNLOAD_ERROR="Download failed. Installation aborted."
-            MSG_CLEANUP_UI="Cleaning UI library..."
+            MSG_CLEANUP_LIB="Cleaning library..."
             MSG_WAITING="Waiting %d sec"
             MSG_YOUR_CHOICE="Your choice: "
             MSG_COMPLETE="Completed! ($script_name)"
