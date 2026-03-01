@@ -5,24 +5,31 @@
             "file": {
                 "/etc/init.d/sing-box": ["exec"],
                 "/etc/init.d/singbox-ui-autoupdater-service": ["exec"],
-                "/etc/init.d/singbox-ui-memdoc-service": ["exec"],
                 "/etc/init.d/singbox-ui-health-autoupdater-service": ["exec"],
+                "/etc/init.d/singbox-ui-memdoc-service": ["exec"],
                 "/etc/init.d/*": ["read"],
                 "/etc/nftables.d/*": ["read"],
                 "/etc/sing-box/*": ["read"],
                 "/usr/bin/singbox-ui/*": ["exec"],
+                "/sbin/service": ["exec"],
+                "/sbin/ip": ["exec"],
+                "/usr/sbin/ip": ["exec"],
                 "/usr/bin/sing-box": ["exec"],
                 "/usr/sbin/nft": ["exec"],
+                "/usr/bin/nft": ["exec"],
                 "/bin/opkg": ["exec"],
                 "/usr/bin/apk": ["exec"],
                 "/sbin/uci": ["exec"],
-                "/tmp/*": ["read"]
+                "/tmp/*": ["read"],
+                "/sys/class/net/*": ["read"],
+                "/sbin/logread": ["exec"]
             },
             "uci": ["singbox-ui"]
         },
         "write": {
             "file": {
                 "/etc/sing-box/*": ["write"],
+                "/etc/nftables.d/*": ["write"],
                 "/sbin/uci": ["exec"],
                 "/tmp/*": ["write", "exec"]
             },

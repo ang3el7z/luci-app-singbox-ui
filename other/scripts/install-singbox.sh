@@ -4,17 +4,19 @@ BRANCH="${BRANCH:-main}"
 SCRIPT_DIR="$(cd -- "$(dirname -- "$0")" && pwd)"
 UI_PATH="$SCRIPT_DIR/lib/ui.sh"
 PKG_PATH="$SCRIPT_DIR/lib/pkg.sh"
+MS_PATH="$SCRIPT_DIR/lib/singbox-ui-mode-switch"
 UI_DOWNLOADED=0
 PKG_DOWNLOADED=0
+MS_DOWNLOADED=0
 cleanup_lib() {
-    if [ "${UI_DOWNLOADED:-0}" -eq 1 ] || [ "${PKG_DOWNLOADED:-0}" -eq 1 ]; then
-        local cleanup_msg="${MSG_CLEANUP_UI:-Cleaning UI library...}"
+    if [ "${UI_DOWNLOADED:-0}" -eq 1 ] || [ "${PKG_DOWNLOADED:-0}" -eq 1 ] || [ "${MS_DOWNLOADED:-0}" -eq 1 ]; then
+        local cleanup_msg="${MSG_CLEANUP_LIB:-Cleaning library...}"
         if command -v show_progress >/dev/null 2>&1; then
             show_progress "$cleanup_msg"
         else
             echo "$cleanup_msg"
         fi
-        rm -f -- "$UI_PATH" "$PKG_PATH"
+        rm -f -- "$UI_PATH" "$PKG_PATH" "$MS_PATH"
         rmdir -- "$SCRIPT_DIR/lib" 2>/dev/null || true
     fi
 }
@@ -61,12 +63,32 @@ ensure_pkg_library() {
     detect_pkg_manager || return 1
 }
 
+ensure_mode_switch() {
+    mkdir -p "$SCRIPT_DIR/lib" 2>/dev/null
+    local ms_url="https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/$BRANCH/luci-app-singbox-ui/root/usr/bin/singbox-ui/singbox-ui-mode-switch"
+    if command -v wget >/dev/null 2>&1; then
+        wget -O "$MS_PATH" "$ms_url" || return 1
+    elif command -v curl >/dev/null 2>&1; then
+        curl -fsSL -o "$MS_PATH" "$ms_url" || return 1
+    else
+        echo "Missing mode-switch and downloader (wget/curl)" >&2
+        return 1
+    fi
+    chmod +x "$MS_PATH"
+    MODE_SWITCH="$MS_PATH"
+    MS_DOWNLOADED=1
+}
+
 ensure_ui_library || {
     echo "Missing UI library: $UI_PATH" >&2
     exit 1
 }
 ensure_pkg_library || {
     echo "Missing pkg library: $PKG_PATH" >&2
+    exit 1
+}
+ensure_mode_switch || {
+    echo "Missing mode-switch: $MS_PATH" >&2
     exit 1
 }
 trap cleanup_lib EXIT HUP INT TERM
@@ -113,7 +135,7 @@ init_language() {
             MSG_FIREWALL_APPLIED="Правила фаервола применены"
             MSG_RESTART_FIREWALL="Перезапуск firewall..."
             MSG_RESTART_NETWORK="Перезапуск network..."
-            MSG_CLEANUP_UI="Очистка UI библиотеки..."
+            MSG_CLEANUP_LIB="Очистка библиотек..."
             MSG_CLEANUP="Очистка файлов..."
             MSG_CLEANUP_DONE="Файлы удалены!"
             MSG_WAITING="Ожидание %d сек"
@@ -181,7 +203,7 @@ init_language() {
             MSG_SINGBOX_MANUAL_STEP_1="1. Загрузите sing-box.ipk из вашего репозитория"
             MSG_SINGBOX_MANUAL_STEP_2="2. Загрузите файл в папку /tmp на устройство OpenWrt"
             MSG_SINGBOX_MANUAL_STEP_3="3. Нажмите 1 для продолжения установки"
-            MSG_SINGBOX_FILE_NOT_FOUND="Файлы sing-box*.ipk / sing-box*.apk не найдены в /tmp!"
+            MSG_SINGBOX_FILE_NOT_FOUND="Файлы sing-box*.${PKG_EXT} не найдены в /tmp!"
             MSG_SINGBOX_UPLOAD_INSTRUCTIONS="Пожалуйста, загрузите файл сначала!"
             MSG_SINGBOX_FILE_FOUND="Найден файл:"
             MSG_SINGBOX_MULTIPLE_FILES_FOUND="Найдено несколько файлов. Выберите один:"
@@ -205,6 +227,11 @@ init_language() {
             MSG_SINGBOX_DOWNLOAD_ERROR_FILE="Не удалось скачать '%s'. Проверьте подключение к интернету."
             MSG_INVALID_INPUT="Ошибка: Некорректный ввод"
             MSG_REPEAT_INPUT="Повторите ввод"
+            MSG_INSTALL_SINGBOX_FILE="Установка выбранного файла sing-box..."
+            MSG_IPV6_DISABLE_PROMPT="Отключить IPv6? [1-Да, 2-Нет] (по умолчанию: 1 - Отключить): "
+            MSG_IPV6_SKIP="IPv6 оставлен без изменений"
+            MSG_IPV6_RESTORE_CHECK="Проверка необходимости восстановления IPv6..."
+            MSG_IPV6_RESTORE_SKIP="IPv6 не был отключён, восстановление не требуется"
             ;;
         *)
             MSG_INSTALL_TITLE="Starting! ($script_name)"
@@ -226,7 +253,7 @@ init_language() {
             MSG_FIREWALL_APPLIED="Firewall rules applied"
             MSG_RESTART_FIREWALL="Restarting firewall..."
             MSG_RESTART_NETWORK="Restarting network..."
-            MSG_CLEANUP_UI="Cleaning UI library..."
+            MSG_CLEANUP_LIB="Cleaning library..."
             MSG_CLEANUP="Cleaning up files..."
             MSG_CLEANUP_DONE="Files removed!"
             MSG_WAITING="Waiting %d sec"
@@ -294,7 +321,7 @@ init_language() {
             MSG_SINGBOX_MANUAL_STEP_1="1. Download the sing-box.ipk from your repository"
             MSG_SINGBOX_MANUAL_STEP_2="2. Upload the file to the /tmp folder on your OpenWrt device"
             MSG_SINGBOX_MANUAL_STEP_3="3. Press 1 to continue the installation"
-            MSG_SINGBOX_FILE_NOT_FOUND="No sing-box*.ipk / sing-box*.apk files found in /tmp!"
+            MSG_SINGBOX_FILE_NOT_FOUND="No sing-box*.${PKG_EXT} files found in /tmp!"
             MSG_SINGBOX_UPLOAD_INSTRUCTIONS="Please upload the file first!"
             MSG_SINGBOX_FILE_FOUND="File found:"
             MSG_SINGBOX_MULTIPLE_FILES_FOUND="Multiple files found. Please select one:"
@@ -318,6 +345,11 @@ init_language() {
             MSG_SINGBOX_DOWNLOAD_ERROR_FILE="Failed to download '%s'. Please check your internet connection."
             MSG_INVALID_INPUT="Error: Invalid input"
             MSG_REPEAT_INPUT="Repeat input"
+            MSG_INSTALL_SINGBOX_FILE="Installing selected sing-box file..."
+            MSG_IPV6_DISABLE_PROMPT="Disable IPv6? [1-Yes, 2-No] (default: 1 - Disable): "
+            MSG_IPV6_SKIP="IPv6 left unchanged"
+            MSG_IPV6_RESTORE_CHECK="Checking if IPv6 restore is needed..."
+            MSG_IPV6_RESTORE_SKIP="IPv6 was not disabled, restore not needed"
             ;;
     esac
 }
@@ -585,12 +617,34 @@ EOF
                         show_progress "$(printf "$MSG_SINGBOX_DOWNLOADING" "$selected_pkg_name")"
                         if wget -O "$dst_file" "$download_url"; then
                             show_success "$(printf "$MSG_SINGBOX_DOWNLOAD_SUCCESS_FILE" "$selected_pkg_name")"
-                            break
+                            show_progress "$MSG_INSTALL_SINGBOX_FILE"
+                            if pkg_install_file "$dst_file"; then
+                                show_success "$MSG_INSTALL_SINGBOX_SUCCESS"
+                                rm -f "$dst_file"
+                                return 0
+                            else
+                                show_error "$MSG_INSTALL_SINGBOX_ERROR"
+                                [ -f "$dst_file" ] && rm -f "$dst_file"
+                                show_message ""
+                                show_message "$MSG_SINGBOX_ERROR_OPTIONS"
+                                show_message "1) $MSG_SINGBOX_TRY_ANOTHER_FILE"
+                                show_message "2) $MSG_SINGBOX_USE_STORE"
+                                show_message "3) $MSG_SINGBOX_EXIT"
+                                while true; do
+                                    read_input "$MSG_SINGBOX_ERROR_CHOICE" INST_ERR_CHOICE
+                                    case $INST_ERR_CHOICE in
+                                        1) RETRY_CHOICE="3"; break ;;
+                                        2) SINGBOX_INSTALL_MODE="1"; install_singbox; return ;;
+                                        3) exit 1 ;;
+                                        *) show_error "$MSG_INVALID_INPUT. $MSG_REPEAT_INPUT" ;;
+                                    esac
+                                done
+                            fi
                         else
                             show_error "$(printf "$MSG_SINGBOX_DOWNLOAD_ERROR_FILE" "$selected_pkg_name")"
                             [ -f "$dst_file" ] && rm -f "$dst_file"
-                            break
                         fi
+                        break
                         ;;
                     2)
                         SINGBOX_INSTALL_MODE="1"
@@ -658,7 +712,7 @@ EOF
         done
         
         if [ "$SINGBOX_MANUAL_CONFIRM" = "1" ]; then
-            show_progress "$MSG_INSTALL_SINGBOX"
+            show_progress "$MSG_INSTALL_SINGBOX_FILE"
             
             if pkg_install_file "$selected_file"; then
                 show_success "$MSG_INSTALL_SINGBOX_SUCCESS"
@@ -763,114 +817,38 @@ restore_ipv6() {
     show_success "$MSG_IPV6_RESTORED"
 }
 
-# Создание сетевого интерфейса / Create network interface
-configure_proxy() {
-    show_progress "$MSG_NETWORK_CONFIG"
-    uci set network.proxy=interface
-    uci set network.proxy.proto="none"
-    uci set network.proxy.device="singtun0"
-    uci set network.proxy.defaultroute="0"
-    uci set network.proxy.delegate="0"
-    uci set network.proxy.peerdns="0"
-    uci set network.proxy.auto="1"
-    uci commit network
-}
-
-# Удаление сетевого интерфейса / Remove network interface
-remove_configure_proxy() {
-    show_progress "$MSG_REMOVING_NETWORK_CONFIG"
-    uci -q delete network.proxy
-    uci commit network
-}
-
-# Настройка фаервола / Configure firewall
-configure_firewall() {
-    show_progress "$MSG_FIREWALL_CONFIG"
-    
-    if ! uci -q get firewall.proxy >/dev/null; then
-        uci add firewall zone >/dev/null
-        uci set firewall.@zone[-1].name="proxy"
-        uci set firewall.@zone[-1].forward="REJECT"
-        uci set firewall.@zone[-1].output="ACCEPT"
-        uci set firewall.@zone[-1].input="ACCEPT"
-        uci set firewall.@zone[-1].masq="1"
-        uci set firewall.@zone[-1].mtu_fix="1"
-        uci set firewall.@zone[-1].device="singtun0"
-        uci set firewall.@zone[-1].family="ipv4"
-        uci add_list firewall.@zone[-1].network="singtun0"
-    fi
-
-    if ! uci -q get firewall.@forwarding[-1].dest="proxy" >/dev/null; then
-        uci add firewall forwarding >/dev/null
-        uci set firewall.@forwarding[-1].dest="proxy"
-        uci set firewall.@forwarding[-1].src="lan"
-        uci set firewall.@forwarding[-1].family="ipv4"
-    fi
-    uci commit firewall >/dev/null 2>&1
-    show_success "$MSG_FIREWALL_APPLIED"
-}
-
-
-# Удаление правил фаервола / Remove firewall rules
-remove_firewall_rules() {
-    show_progress "$MSG_REMOVING_FIREWALL_RULES"
-    
-    # Удаление зоны proxy / Remove zone proxy
-    local zone_id
-    zone_id=$(uci -q show firewall | grep -E "firewall\.@zone\[.*\].name='proxy'" | cut -d'[' -f2 | cut -d']' -f1)
-    [ -n "$zone_id" ] && uci -q delete firewall.@zone[$zone_id]
-    
-    # Удаление правил переадресации / Remove forwarding rules
-    local fwd_id
-    fwd_id=$(uci -q show firewall | grep -E "firewall\.@forwarding\[.*\].dest='proxy'" | cut -d'[' -f2 | cut -d']' -f1)
-    [ -n "$fwd_id" ] && uci -q delete firewall.@forwarding[$fwd_id]
-    
-    uci commit firewall
-}
-
-# Перезагрузка firewall / Restart firewall
-restart_firewall() {
-    show_progress "$MSG_RESTART_FIREWALL"
-    service firewall reload >/dev/null 2>&1
-}
-
-# Перезагрузка network / Restart network
-restart_network() {
-    # Спросить только при первом использовании
-    if [ -z "$RESTART_MODE" ]; then
-        while true; do
-            show_message ""
-            show_message "$MSG_NET_CHOOSE"
-            show_message "$MSG_NET_OPTION1"
-            show_message "$MSG_NET_OPTION2"
-
-            read_input "$MSG_NET_PROMPT" RESTART_MODE
-            # Если пусто, используем значение по умолчанию (2)
-            if [ -z "$RESTART_MODE" ]; then
-                RESTART_MODE="2"
+# Спросить пользователя про отключение IPv6 (дефолт — отключить) / Ask user about IPv6 disable (default — disable)
+maybe_disable_ipv6() {
+    while true; do
+        read_input "$MSG_IPV6_DISABLE_PROMPT" IPV6_CHOICE
+        if [ -z "$IPV6_CHOICE" ]; then
+            IPV6_CHOICE="1"
+        fi
+        case "$IPV6_CHOICE" in
+            1)
+                disabled_ipv6
                 break
-            fi
-            case "$RESTART_MODE" in
-                1|2)
-                    break
-                    ;;
-                *)
-                    show_error "$MSG_INVALID_INPUT. $MSG_REPEAT_INPUT"
-                    ;;
-            esac
-        done
-    fi
+                ;;
+            2)
+                show_progress "$MSG_IPV6_SKIP"
+                break
+                ;;
+            *)
+                show_error "$MSG_INVALID_INPUT. $MSG_REPEAT_INPUT"
+                ;;
+        esac
+    done
+}
 
-    show_progress "$MSG_RESTART_NETWORK"
-
-    if [ "$RESTART_MODE" = "1" ]; then
-        # Безопасный reload: не рвёт Wi-Fi и слабые SSH-клиенты
-        uci commit network
-        /etc/init.d/network reload
-        ifup proxy 2>/dev/null || true
+# Восстановить IPv6 только если он был отключён / Restore IPv6 only if it was disabled
+maybe_restore_ipv6() {
+    show_progress "$MSG_IPV6_RESTORE_CHECK"
+    local ipv6_val
+    ipv6_val=$(uci -q get network.lan.ipv6 2>/dev/null)
+    if [ "$ipv6_val" = "0" ]; then
+        restore_ipv6
     else
-        # Полный restart: современные SSH-клиенты переподключатся
-        service network restart
+        show_progress "$MSG_IPV6_RESTORE_SKIP"
     fi
 }
 
@@ -900,88 +878,6 @@ remove_singbox_data() {
 uninstall_existing_files(){
     show_progress "$MSG_UNINSTALL_EXISTING_FILES"
     [ -f /etc/config/sing-box.old ] && rm -f /etc/config/sing-box.old
-}
-
-# Установка правил nft / Install nft rules
-install_nft_rule() {
-    nft_rule_file="/etc/nftables.d/singbox.nft"
-
-    mkdir -p /etc/nftables.d
-
-    cat << 'EOF' > "$nft_rule_file"
-define PROXY_FWMARK = 1
-define BYPASS_MARK = 2
-define RESERVED_IP = {
-    0.0.0.0/8,
-    10.0.0.0/8,
-    100.64.0.0/10,
-    127.0.0.0/8,
-    169.254.0.0/16,
-    172.16.0.0/12,
-    192.168.0.0/16,
-    192.0.0.0/24,
-    192.0.2.0/24,
-    198.18.0.0/15,
-    198.51.100.0/24,
-    203.0.113.0/24,
-    224.0.0.0/4,
-    240.0.0.0/4,
-    255.255.255.255/32
-}
-
-table ip singbox {
-    chain prerouting {
-        type filter hook prerouting priority mangle; policy accept;
-        ip daddr $RESERVED_IP return
-        meta mark $BYPASS_MARK return
-        ip protocol tcp tproxy to 127.0.0.1:2080 meta mark set $PROXY_FWMARK
-        ip protocol udp tproxy to 127.0.0.1:2080 meta mark set $PROXY_FWMARK
-    }
-}
-EOF
-
-    chmod +x "$nft_rule_file"
-    if ! nft -f "$nft_rule_file"; then
-        show_error "$MSG_TPROXY_RULE_APPLY_ERROR"
-        exit 1
-    fi
-}
-
-# Удаление правил nft / Remove nft rules
-uninstall_nft_rule() {
-    nft delete table ip singbox 2>/dev/null
-    rm -f /etc/nftables.d/singbox.nft
-}
-
-# Настройка policy routing для TPROXY / Configure policy routing for TPROXY
-setup_tproxy_routing() {
-    show_progress "$MSG_TPROXY_ROUTE_SETUP"
-    ip rule add fwmark 1 table 100 2>/dev/null || true
-    ip route add local 0.0.0.0/0 dev lo table 100 2>/dev/null || true
-}
-
-# Удаление policy routing для TPROXY / Remove policy routing for TPROXY
-cleanup_tproxy_routing() {
-    show_progress "$MSG_TPROXY_ROUTE_CLEANUP"
-    ip rule del fwmark 1 table 100 2>/dev/null || true
-    ip route flush table 100 2>/dev/null || true
-}
-
-ensure_tproxy_firewall_include() {
-    local section="singbox_tproxy"
-    if ! uci -q get firewall.$section >/dev/null; then
-        uci set firewall.$section=include
-    fi
-    uci set firewall.$section.type="nftables"
-    uci set firewall.$section.path="/etc/nftables.d/singbox.nft"
-    uci set firewall.$section.enabled="1"
-    uci commit firewall
-}
-
-remove_tproxy_firewall_include() {
-    local section="singbox_tproxy"
-    uci -q delete firewall.$section
-    uci commit firewall
 }
 
 # Выбор режима / Choose mode
@@ -1019,10 +915,7 @@ definition_mode() {
 # Установка tun mode / Install tun mode
 installed_tun_mode() {
     show_progress "$MSG_INSTALLING_TUN_MODE"
-    configure_proxy
-    configure_firewall
-    restart_firewall
-    restart_network
+    "$MODE_SWITCH" enable-tun
     network_check
     enable_singbox
 }
@@ -1030,10 +923,7 @@ installed_tun_mode() {
 # Удаление tun mode / Uninstall tun mode
 uninstalled_tun_mode() {
     show_progress "$MSG_UNINSTALLING_TUN_MODE"
-    remove_configure_proxy
-    remove_firewall_rules
-    restart_firewall
-    restart_network
+    "$MODE_SWITCH" disable-tun
     network_check
 }
 
@@ -1041,20 +931,14 @@ uninstalled_tun_mode() {
 installed_tproxy_mode() {
     show_progress "$MSG_INSTALLING_TPROXY_MODE"
     enable_singbox
-    setup_tproxy_routing
-    install_nft_rule
-    ensure_tproxy_firewall_include
-    restart_firewall
+    "$MODE_SWITCH" enable-tproxy
     network_check
 }
 
 # Удаление tproxy mode / Uninstall tproxy mode
 uninstalled_tproxy_mode() {
     show_progress "$MSG_UNINSTALLING_TPROXY_MODE"
-    remove_tproxy_firewall_include
-    restart_firewall
-    uninstall_nft_rule
-    cleanup_tproxy_routing
+    "$MODE_SWITCH" disable-tproxy
 }
 
 # Выбор режима установки / Choose install mode
@@ -1098,7 +982,7 @@ install() {
     disable_singbox_service
     clean_singbox_config
     perform_install_mode
-    disabled_ipv6
+    maybe_disable_ipv6
     network_check
     show_success "$MSG_INSTALL_SUCCESS"
 }
@@ -1112,7 +996,7 @@ uninstall() {
     unset MODE
     remove_singbox_data
     uninstall_existing_files
-    restore_ipv6
+    maybe_restore_ipv6
     network_check
     show_success "$MSG_UNINSTALL_SUCCESS"
 }

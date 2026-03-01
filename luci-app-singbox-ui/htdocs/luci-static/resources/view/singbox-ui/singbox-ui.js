@@ -8,6 +8,7 @@
 // ============================================================
 
 const TPROXY_RULE_FILE = '/etc/nftables.d/singbox.nft';
+const TUN_INTERFACE    = 'singtun0';
 const SINGBOX_BIN      = '/usr/bin/sing-box';
 const UPDATER_BIN      = '/usr/bin/singbox-ui/singbox-ui-updater';
 const UCI_CONFIG       = 'singbox-ui';
@@ -151,17 +152,28 @@ async function isServiceActive(name) {
 
 async function runNft(args) {
 	try { return await fs.exec('/usr/sbin/nft', args); }
-	catch { return await fs.exec('nft', args); }
-}
-
-async function isTproxyConfigPresent() {
-	try { await fs.stat(TPROXY_RULE_FILE); return true; }
-	catch { return false; }
+	catch { return await fs.exec('/usr/bin/nft', args); }
 }
 
 async function isTproxyTablePresent() {
-	try { await runNft(['list', 'table', 'ip', 'singbox']); return true; }
-	catch { return false; }
+	try {
+		const result = await runNft(['list', 'table', 'ip', 'singbox']);
+		return (result?.code ?? 1) === 0;
+	} catch { return false; }
+}
+
+async function isTproxyUciPresent() {
+	try {
+		const r = await fs.exec('/sbin/uci', ['get', 'firewall.singbox_tproxy']);
+		return (r?.code ?? 1) === 0;
+	} catch { return false; }
+}
+
+async function isTunUciPresent() {
+	try {
+		const r = await fs.exec('/sbin/uci', ['get', 'network.proxy.device']);
+		return String(r?.stdout ?? '').trim() === TUN_INTERFACE;
+	} catch { return false; }
 }
 
 async function disableTproxy() {
@@ -232,6 +244,108 @@ async function formatConfig(content) {
 	} finally {
 		try { await fs.remove(tmp); } catch (_) {}
 	}
+}
+
+// ============================================================
+// Mode switching
+// ============================================================
+
+const MODE_SWITCH_BIN = '/usr/bin/singbox-ui/singbox-ui-mode-switch';
+
+async function execModeSwitch(action) {
+	const r = await fs.exec(MODE_SWITCH_BIN, [action]);
+	const lines = String(r?.stdout ?? '').trim().split('\n');
+	const lastLine = lines[lines.length - 1].trim();
+	if (lastLine !== 'ok') {
+		throw new Error(String(r?.stderr ?? r?.stdout ?? 'mode switch failed').trim() || 'mode switch failed');
+	}
+}
+
+/**
+ * Show a modal dialog.
+ * options: { title, body, buttons: [{ cls, label, action }] }
+ * Returns a close() function.
+ */
+function showModeModal(options) {
+	const overlay = document.createElement('div');
+	overlay.className = 'sbox-modal-overlay';
+
+	const btns = options.buttons.map((b, i) =>
+		`<button type="button" class="cbi-button cbi-button-${b.cls}" data-mi="${i}">${b.label}</button>`
+	).join('');
+
+	overlay.innerHTML = `
+<div class="sbox-modal">
+  <div class="sbox-modal-title">${options.title}</div>
+  <div class="sbox-modal-body">${options.body}</div>
+  <div class="sbox-modal-actions">
+    ${btns}
+    <button type="button" class="cbi-button cbi-button-neutral" data-cancel>Cancel</button>
+  </div>
+</div>`;
+
+	const close = () => overlay.remove();
+
+	overlay.querySelector('[data-cancel]').onclick = close;
+	overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+
+	options.buttons.forEach((b, i) => {
+		overlay.querySelector(`[data-mi="${i}"]`).onclick = async btn => {
+			close();
+			const el = btn.currentTarget;
+			el.disabled = true;
+			try { await b.action(); } catch (e) { notify('error', e.message); }
+		};
+	});
+
+	document.body.appendChild(overlay);
+	return close;
+}
+
+// ============================================================
+// Logs
+// ============================================================
+
+async function loadSingboxLogs() {
+	try {
+		const r   = await fs.exec('/sbin/logread');
+		const raw = String(r?.stdout ?? '');
+		if (!raw) return '';
+		return raw.split('\n')
+			.filter(l => l.includes('sing-box') || l.includes('singbox-ui'))
+			.join('\n')
+			.trim();
+	} catch { return ''; }
+}
+
+// Strip ANSI SGR escape sequences (e.g. \x1b[36m, \x1b[38;5;135m, \x1b[0m)
+const ANSI_RE = /\x1b\[[0-9;]*m/g;
+// sing-box redundant UTC timestamp: "+0000 2026-03-01 01:31:11 "
+const SBOX_TS_RE   = /\+\d{4} \d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} /g;
+// sing-box connection trace ID + elapsed: "[3346304225 5.2s] "
+const SBOX_CONN_RE = /\[\d+ \d+\.\d+s\] /g;
+// logrus seconds-since-start counter appended to level: "INFO[0000]" → "INFO"
+const SBOX_LVL_RE  = /\b(INFO|WARN|ERRO|FATA|DEBU)\[\d+\]/g;
+
+function colorizeLog(raw) {
+	if (!raw) return '<span class="sbox-log-debug">No logs yet.</span>';
+	return raw.split('\n').map(line => {
+		const clean = line
+			.replace(ANSI_RE, '')
+			.replace(SBOX_TS_RE, '')
+			.replace(SBOX_CONN_RE, '')
+			.replace(SBOX_LVL_RE, '$1');
+		const esc = clean
+			.replace(/&/g, '&amp;')
+			.replace(/</g, '&lt;')
+			.replace(/>/g, '&gt;');
+		if (/\b(FATA|FATAL|PANIC)\b/.test(clean)) return `<span class="sbox-log-fatal">${esc}</span>`;
+		if (/\b(ERRO|ERROR)\b/.test(clean))        return `<span class="sbox-log-error">${esc}</span>`;
+		if (/\b(WARN|WARNING)\b/.test(clean))      return `<span class="sbox-log-warn">${esc}</span>`;
+		if (/\bINFO\b/.test(clean))                return `<span class="sbox-log-info">${esc}</span>`;
+		if (/\b(DEBU|DEBUG)\b/.test(clean))        return `<span class="sbox-log-debug">${esc}</span>`;
+		return esc;
+	}).join('\n');
 }
 
 // ============================================================
@@ -351,6 +465,53 @@ const PAGE_CSS = `<style>
   color: var(--muted, #888);
   font-weight: 500;
 }
+.sbox-header-mode-conflict {
+  border-color: #e74c3c;
+  color: #e74c3c;
+}
+.sbox-header-mode-btn {
+  cursor: pointer;
+}
+.sbox-header-mode-btn:hover {
+  border-color: var(--active-color, #4a9eff);
+  color: var(--active-color, #4a9eff);
+}
+.sbox-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.65);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.sbox-modal {
+  background: var(--card-bg-color, #1a1a1a);
+  border: 1px solid var(--border-color, #2e2e2e);
+  border-radius: 10px;
+  padding: 1.5rem 1.75rem;
+  min-width: 280px;
+  max-width: 420px;
+  width: 90vw;
+  box-sizing: border-box;
+}
+.sbox-modal-title {
+  font-size: 0.95em;
+  font-weight: 600;
+  margin-bottom: 0.6rem;
+  color: var(--text-color, #ddd);
+}
+.sbox-modal-body {
+  font-size: 0.85em;
+  color: var(--muted, #aaa);
+  margin-bottom: 1.1rem;
+  line-height: 1.5;
+}
+.sbox-modal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
 .sbox-header-dash {
   font-size: 0.78em;
   padding: 0.15em 0.65em;
@@ -435,6 +596,88 @@ const PAGE_CSS = `<style>
   animation: sbox-spin 0.6s linear infinite;
   vertical-align: middle;
 }
+.sbox-card-tabs {
+  display: flex;
+  gap: 0.2rem;
+  margin-bottom: 0.75rem;
+  border-bottom: 1px solid var(--border-color, #2e2e2e);
+  padding-bottom: 0;
+}
+.sbox-tab {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: 0.3em 0.8em;
+  margin-bottom: -1px;
+  cursor: pointer;
+  color: var(--muted, #888);
+  font-size: 0.7em;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  transition: color 0.15s, border-color 0.15s;
+}
+.sbox-tab:hover { color: var(--text-color, #ddd); }
+.sbox-tab-active {
+  color: var(--text-color, #ddd);
+  border-bottom-color: var(--active-color, #4a9eff);
+}
+.sbox-log-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+  flex-wrap: wrap;
+}
+.sbox-log-meta {
+  font-size: 0.75em;
+  color: var(--muted, #666);
+  margin-left: auto;
+}
+.sbox-log-viewer {
+  position: relative;
+}
+.sbox-log-content {
+  width: 100%;
+  height: 520px;
+  overflow-y: scroll;
+  overflow-x: auto;
+  background: #0d0d0d;
+  border: 1px solid var(--border-color, #2e2e2e);
+  border-radius: 6px;
+  padding: 0.65rem 0.85rem;
+  box-sizing: border-box;
+  margin: 0;
+  font-family: 'Cascadia Code', 'JetBrains Mono', 'Consolas', 'Menlo', monospace;
+  font-size: 11.5px;
+  line-height: 1.55;
+  white-space: pre;
+  color: #c9d1d9;
+}
+.sbox-log-info  { color: #3fb950; }
+.sbox-log-warn  { color: #d29922; }
+.sbox-log-error { color: #f85149; }
+.sbox-log-fatal { color: #f85149; font-weight: 700; }
+.sbox-log-debug { color: #6e7681; }
+.sbox-log-scroll-btn {
+  position: absolute;
+  bottom: 0.65rem;
+  right: 1.1rem;
+  background: var(--card-bg-color, #1a1a1a);
+  border: 1px solid var(--border-color, #444);
+  border-radius: 5px;
+  padding: 0.2em 0.6em;
+  font-size: 0.78em;
+  cursor: pointer;
+  color: var(--muted, #888);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s;
+}
+.sbox-log-scroll-btn.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
 </style>`;
 
 // ============================================================
@@ -452,9 +695,9 @@ function buildControlInner(state) {
 		`<button type="button" class="cbi-button cbi-button-${cls}" data-action="${action}"${title ? ` title="${title}"` : ''}>${label}</button>`;
 
 	const svcLabel = () => {
-		if (state.healthAutoupdaterServiceTempFlag) return 'Sing\u2011Box & Health Autoupdater';
-		if (state.autoupdaterServiceTempFlag)       return 'Sing\u2011Box & Autoupdater';
-		return 'Sing\u2011Box';
+		if (state.healthAutoupdaterServiceTempFlag) return 'Sing-Box & Health Autoupdater';
+		if (state.autoupdaterServiceTempFlag)       return 'Sing-Box & Autoupdater';
+		return 'Sing-Box';
 	};
 
 	const ctrlBtns = [
@@ -470,7 +713,6 @@ function buildControlInner(state) {
 	].filter(Boolean).join('');
 
 	return `
-  <div class="sbox-card-title">Control</div>
   <div class="sbox-row">
     <span class="sbox-status sbox-color-${sk}">
       <span class="sbox-dot sbox-dot-${sk}"></span>${statusLabel}
@@ -512,14 +754,15 @@ function buildServiceInner(state) {
 	].filter(Boolean).join('');
 
 	return `
-  <div class="sbox-card-title">Services</div>
   <div class="sbox-row">${svcBtns}</div>`;
 }
 
 function buildPageHtml(state) {
 	const v         = state.versions;
 	const dot       = '<span class="sbox-header-dot">\u00B7</span>';
-	const proxyMode = state.tproxyConfigPresent ? 'tproxy' : 'tun';
+	const proxyMode = (state.tproxyActive && state.tunActive)
+		? 'conflict'
+		: (state.tproxyActive ? 'tproxy' : (state.tunActive ? 'tun' : 'custom'));
 	const opts      = CONFIGS.map(c => `<option value="${c.name}">${c.label}</option>`).join('');
 	const cbtn      = (cls, action, label) =>
 		`<button type="button" class="cbi-button cbi-button-${cls}" data-config-action="${action}">${label}</button>`;
@@ -530,26 +773,50 @@ function buildPageHtml(state) {
   ${dot}
   sing-box <strong>${v.singbox}</strong>
   ${dot}
-  <span class="sbox-header-mode">${proxyMode} mode</span>
+  <span id="sbox-mode-badge" class="sbox-header-mode${proxyMode === 'conflict' ? ' sbox-header-mode-conflict' : ''}${proxyMode !== 'custom' ? ' sbox-header-mode-btn' : ''}" data-mode="${proxyMode}">${
+		proxyMode === 'custom'   ? 'custom setup' :
+		proxyMode === 'conflict' ? '\u26A0 fix: tproxy + tun conflict' :
+		proxyMode + ' mode'
+	}</span>
   <button type="button" id="sbox-header-dash" class="cbi-button cbi-button-apply sbox-header-dash"${(state.singboxRunning && state.dashboardPort) ? '' : ' style="display:none"'}>Dashboard</button>
 </div>
-<div class="sbox-card" id="sbox-control">${buildControlInner(state)}</div>
-<div class="sbox-card" id="sbox-services">${buildServiceInner(state)}</div>
-<div class="sbox-card" id="sbox-config">
-  <div class="sbox-card-title">Config</div>
-  <div class="sbox-cfg-top">
-    <select id="sbox-config-select" class="sbox-select">${opts}</select>
-    <input type="url" id="sbox-url" class="sbox-input" placeholder="Subscription URL: https://\u2026" />
-    ${cbtn('positive', 'saveUrl', 'Save URL')}
-    ${cbtn('reload',   'update',  'Update')}
+<div class="sbox-card" id="sbox-ctrl-svc">
+  <div class="sbox-card-tabs">
+    <button type="button" class="sbox-tab sbox-tab-active" data-tab="control">Control</button>
+    <button type="button" class="sbox-tab" data-tab="services">Services</button>
   </div>
-  <div id="sbox-ace" class="sbox-editor"></div>
-  <div class="sbox-actions">
-    ${cbtn('apply',    'format',   'Format')}
-    ${cbtn('positive', 'save',     'Save')}
-    <button type="button" class="cbi-button cbi-button-apply"
-      data-config-action="setAsMain" id="sbox-set-main-btn" style="display:none">Set as Main</button>
-    ${cbtn('negative', 'clear', 'Clear All')}
+  <div id="sbox-tab-control">${buildControlInner(state)}</div>
+  <div id="sbox-tab-services" style="display:none">${buildServiceInner(state)}</div>
+</div>
+<div class="sbox-card" id="sbox-config">
+  <div class="sbox-card-tabs">
+    <button type="button" class="sbox-tab sbox-tab-active" data-tab="config">Config</button>
+    <button type="button" class="sbox-tab" data-tab="logs">Logs</button>
+  </div>
+  <div id="sbox-tab-config">
+    <div class="sbox-cfg-top">
+      <select id="sbox-config-select" class="sbox-select">${opts}</select>
+      <input type="url" id="sbox-url" class="sbox-input" placeholder="Subscription URL: https://\u2026" />
+      ${cbtn('positive', 'saveUrl', 'Save URL')}
+      ${cbtn('reload',   'update',  'Update')}
+    </div>
+    <div id="sbox-ace" class="sbox-editor"></div>
+    <div class="sbox-actions">
+      ${cbtn('apply',    'format',   'Format')}
+      ${cbtn('positive', 'save',     'Save')}
+      <button type="button" class="cbi-button cbi-button-apply"
+        data-config-action="setAsMain" id="sbox-set-main-btn" style="display:none">Set as Main</button>
+      ${cbtn('negative', 'clear', 'Clear All')}
+    </div>
+  </div>
+  <div id="sbox-tab-logs" style="display:none">
+    <div class="sbox-log-toolbar">
+      <span class="sbox-log-meta" id="sbox-log-updated"></span>
+    </div>
+    <div class="sbox-log-viewer">
+      <pre id="sbox-log-content" class="sbox-log-content"></pre>
+      <button type="button" class="sbox-log-scroll-btn" id="sbox-log-scroll-btn" title="Scroll to bottom">\u2193 Bottom</button>
+    </div>
   </div>
 </div>`;
 }
@@ -567,12 +834,17 @@ function initPage(page, state, mainContent, mainUrl) {
 	// ----------------------------------------------------------
 
 	async function refreshControlCard() {
-		state.singboxStatus = await execService('sing-box', 'status');
-		state.singboxRunning = state.singboxStatus.includes('running');
-		if (state.singboxRunning)
-			state.tproxyActive = state.tproxyConfigPresent || await isTproxyTablePresent();
+		const [singboxStatus, tproxyActive, tunActive] = await Promise.all([
+			execService('sing-box', 'status'),
+			isTproxyUciPresent(),
+			isTunUciPresent(),
+		]);
+		state.singboxStatus  = singboxStatus;
+		state.singboxRunning = singboxStatus.includes('running');
+		state.tproxyActive   = tproxyActive;
+		state.tunActive      = tunActive;
 
-		const card = page.querySelector('#sbox-control');
+		const card = page.querySelector('#sbox-tab-control');
 		if (card) { card.innerHTML = buildControlInner(state); bindControlCard(); }
 
 		updateDashBtn();
@@ -595,15 +867,15 @@ function initPage(page, state, mainContent, mainUrl) {
 								await execServiceLifecycle('singbox-ui-autoupdater-service', 'stop');
 							else if (state.healthAutoupdaterServiceTempFlag)
 								await execServiceLifecycle('singbox-ui-health-autoupdater-service', 'stop');
-							notify('info', 'Sing\u2011Box stopped');
+							notify('info', 'Sing-Box stopped');
 						} else {
 							await execService('sing-box', 'start');
-							if (state.tproxyConfigPresent) await enableTproxy();
+							if (state.tproxyActive) await enableTproxy();
 							if (state.autoupdaterServiceTempFlag)
 								await execServiceLifecycle('singbox-ui-autoupdater-service', 'start');
 							else if (state.healthAutoupdaterServiceTempFlag)
 								await execServiceLifecycle('singbox-ui-health-autoupdater-service', 'start');
-							notify('info', 'Sing\u2011Box started');
+							notify('info', 'Sing-Box started');
 						}
 					} catch (e) {
 						notify('error', 'Operation failed: ' + e.message);
@@ -620,7 +892,7 @@ function initPage(page, state, mainContent, mainUrl) {
 							await execServiceLifecycle('singbox-ui-autoupdater-service', 'restart');
 						else if (state.healthAutoupdaterServiceTempFlag)
 							await execServiceLifecycle('singbox-ui-health-autoupdater-service', 'restart');
-						notify('info', 'Sing\u2011Box restarted');
+						notify('info', 'Sing-Box restarted');
 					} catch (e) {
 						notify('error', 'Restart failed: ' + e.message);
 					}
@@ -633,7 +905,7 @@ function initPage(page, state, mainContent, mainUrl) {
 			},
 		};
 
-		page.querySelectorAll('#sbox-control [data-action]').forEach(b => {
+		page.querySelectorAll('#sbox-tab-control [data-action]').forEach(b => {
 			const fn = actions[b.dataset.action];
 			if (fn) b.onclick = () => fn(b).catch(() => {});
 		});
@@ -648,7 +920,7 @@ function initPage(page, state, mainContent, mainUrl) {
 		state.healthAutoupdaterEnabled = await isServiceActive('singbox-ui-health-autoupdater-service');
 		state.memdocEnabled            = await isServiceActive('singbox-ui-memdoc-service');
 
-		const card = page.querySelector('#sbox-services');
+		const card = page.querySelector('#sbox-tab-services');
 		if (card) { card.innerHTML = buildServiceInner(state); bindServiceCard(); }
 	}
 
@@ -708,7 +980,7 @@ function initPage(page, state, mainContent, mainUrl) {
 			},
 		};
 
-		page.querySelectorAll('#sbox-services [data-action]').forEach(b => {
+		page.querySelectorAll('#sbox-tab-services [data-action]').forEach(b => {
 			const fn = actions[b.dataset.action];
 			if (fn) b.onclick = () => fn(b).catch(() => {});
 		});
@@ -749,7 +1021,7 @@ function initPage(page, state, mainContent, mainUrl) {
 						notify('info', currentConfig.label + ' updated');
 				if (currentConfig.name === 'config.json') {
 						await execService('sing-box', 'reload');
-						notify('info', 'Sing\u2011Box reloaded');
+						notify('info', 'Sing-Box reloaded');
 						state.isInitialConfigValid = await isValidConfig(newContent);
 						state.mainConfigHasUrl = true;
 						state.dashboardPort = parseDashboardPort(newContent);
@@ -778,7 +1050,7 @@ function initPage(page, state, mainContent, mainUrl) {
 					notify('info', currentConfig.label + ' updated');
 					if (currentConfig.name === 'config.json') {
 						await execService('sing-box', 'reload');
-						notify('info', 'Sing\u2011Box reloaded');
+						notify('info', 'Sing-Box reloaded');
 						state.isInitialConfigValid = await isValidConfig(newContent);
 						state.dashboardPort = parseDashboardPort(newContent);
 						await refreshControlCard();
@@ -814,7 +1086,7 @@ function initPage(page, state, mainContent, mainUrl) {
 					notify('info', 'Config saved');
 					if (currentConfig.name === 'config.json') {
 						await execService('sing-box', 'reload');
-						notify('info', 'Sing\u2011Box reloaded');
+						notify('info', 'Sing-Box reloaded');
 						state.isInitialConfigValid = true;
 						state.dashboardPort = parseDashboardPort(val);
 						await refreshControlCard();
@@ -847,29 +1119,34 @@ function initPage(page, state, mainContent, mainUrl) {
 			});
 		},
 
-		async clear(b) {
-			if (!confirm(
-				`Clear all data for "${currentConfig.label}"?\n` +
-				`Config and URL will be erased. This cannot be undone.`
-			)) return;
-			await withButtons(b, async () => {
-				try {
-					await saveFile('/etc/sing-box/' + currentConfig.name,     '{}');
-					await saveFile('/etc/sing-box/url_' + currentConfig.name, '');
-					if (currentConfig.name === 'config.json') {
-						if (await isTproxyTablePresent()) await disableTproxy();
-						await execService('sing-box', 'stop');
-						await execServiceLifecycle('singbox-ui-autoupdater-service', 'stop');
-						await execServiceLifecycle('singbox-ui-health-autoupdater-service', 'stop');
-						notify('info', 'Config cleared, services stopped');
-					} else {
-						notify('info', currentConfig.label + ' cleared');
-					}
-				} catch (e) {
-					notify('error', 'Clear failed: ' + e.message);
-				} finally {
-					reloadPage();
-				}
+		clear(b) {
+			showModeModal({
+				title: 'Clear all data?',
+				body:  `Config and URL for <b>${currentConfig.label}</b> will be erased.<br>This cannot be undone.`,
+				buttons: [{
+					cls: 'remove', label: 'Clear',
+					action: async () => {
+						await withButtons(b, async () => {
+							try {
+								await saveFile('/etc/sing-box/' + currentConfig.name,     '{}');
+								await saveFile('/etc/sing-box/url_' + currentConfig.name, '');
+								if (currentConfig.name === 'config.json') {
+									if (await isTproxyTablePresent()) await disableTproxy();
+									await execService('sing-box', 'stop');
+									await execServiceLifecycle('singbox-ui-autoupdater-service', 'stop');
+									await execServiceLifecycle('singbox-ui-health-autoupdater-service', 'stop');
+									notify('info', 'Config cleared, services stopped');
+								} else {
+									notify('info', currentConfig.label + ' cleared');
+								}
+							} catch (e) {
+								notify('error', 'Clear failed: ' + e.message);
+							} finally {
+								reloadPage();
+							}
+						});
+					},
+				}],
 			});
 		},
 	};
@@ -906,6 +1183,162 @@ function initPage(page, state, mainContent, mainUrl) {
 			window.open(`${window.location.protocol}//${window.location.hostname}:${state.dashboardPort}/ui/`, '_blank');
 	};
 
+	// Mode badge click handler
+	const modeBadge = page.querySelector('#sbox-mode-badge');
+	if (modeBadge) {
+		const mode = modeBadge.dataset.mode;
+
+		const switchTo = async (disable, enable) => {
+			notify('info', 'Switching mode\u2026');
+			try {
+				if (disable) await execModeSwitch(disable);
+				if (enable)  await execModeSwitch(enable);
+				notify('info', 'Mode switched, reloading\u2026');
+				reloadPage(1200);
+			} catch (e) {
+				notify('error', 'Mode switch failed: ' + e.message);
+			}
+		};
+
+		if (mode === 'tun') {
+			modeBadge.onclick = () => showModeModal({
+				title: 'Switch to tproxy mode?',
+				body:  'tun interface <b>singtun0</b> will be removed.<br>tproxy nft rules and policy routing will be applied.',
+				buttons: [{
+					cls: 'apply', label: 'Switch to tproxy',
+					action: () => switchTo('disable-tun', 'enable-tproxy'),
+				}],
+			});
+		} else if (mode === 'tproxy') {
+			modeBadge.onclick = () => showModeModal({
+				title: 'Switch to tun mode?',
+				body:  'tproxy nft rules will be removed.<br>tun interface <b>singtun0</b> and firewall zone will be configured.',
+				buttons: [{
+					cls: 'apply', label: 'Switch to tun',
+					action: () => switchTo('disable-tproxy', 'enable-tun'),
+				}],
+			});
+		} else if (mode === 'conflict') {
+			modeBadge.onclick = () => showModeModal({
+				title: '\u26A0 Conflict: tproxy + tun both active',
+				body:  'Both modes are active simultaneously. Disable one to resolve:',
+				buttons: [
+					{
+						cls: 'apply', label: 'Keep tproxy (disable tun)',
+						action: () => switchTo('disable-tun', null),
+					},
+					{
+						cls: 'reload', label: 'Keep tun (disable tproxy)',
+						action: () => switchTo('disable-tproxy', null),
+					},
+				],
+			});
+		}
+	}
+
+	// ---------------------------------------------------------------
+	// Control / Services tab switching
+	// ---------------------------------------------------------------
+
+	const tabControl   = page.querySelector('[data-tab="control"]');
+	const tabServices  = page.querySelector('[data-tab="services"]');
+	const paneControl  = page.querySelector('#sbox-tab-control');
+	const paneServices = page.querySelector('#sbox-tab-services');
+
+	if (tabControl && tabServices && paneControl && paneServices) {
+		tabControl.onclick = () => {
+			tabControl.classList.add('sbox-tab-active');
+			tabServices.classList.remove('sbox-tab-active');
+			paneControl.style.display  = '';
+			paneServices.style.display = 'none';
+		};
+		tabServices.onclick = () => {
+			tabServices.classList.add('sbox-tab-active');
+			tabControl.classList.remove('sbox-tab-active');
+			paneServices.style.display = '';
+			paneControl.style.display  = 'none';
+		};
+	}
+
+	// ---------------------------------------------------------------
+	// Config / Logs tab switching
+	// ---------------------------------------------------------------
+
+	const tabConfig  = page.querySelector('[data-tab="config"]');
+	const tabLogs    = page.querySelector('[data-tab="logs"]');
+	const paneConfig = page.querySelector('#sbox-tab-config');
+	const paneLogs   = page.querySelector('#sbox-tab-logs');
+	const logContent = page.querySelector('#sbox-log-content');
+	const logUpdated = page.querySelector('#sbox-log-updated');
+	const logScrollBtn  = page.querySelector('#sbox-log-scroll-btn');
+
+	let logTimer = null;
+
+	const isAtBottom = el => el.scrollHeight - el.scrollTop - el.clientHeight < 60;
+
+	const updateScrollBtn = () => {
+		if (!logScrollBtn || !logContent) return;
+		logScrollBtn.classList.toggle('visible', !isAtBottom(logContent));
+	};
+
+	async function refreshLogs() {
+		const atBottom = !logContent || isAtBottom(logContent);
+		try {
+			const raw = await loadSingboxLogs();
+			if (logContent) logContent.innerHTML = colorizeLog(raw);
+			if (logUpdated) {
+				const t = new Date();
+				logUpdated.textContent = `Updated ${t.getHours().toString().padStart(2,'0')}:${t.getMinutes().toString().padStart(2,'0')}:${t.getSeconds().toString().padStart(2,'0')}`;
+			}
+		} catch (_) {}
+		if (atBottom && logContent) logContent.scrollTop = logContent.scrollHeight;
+		updateScrollBtn();
+	}
+
+	function startLogRefresh() {
+		refreshLogs();
+		logTimer = setInterval(refreshLogs, 3000);
+	}
+
+	function stopLogRefresh() {
+		clearInterval(logTimer);
+		logTimer = null;
+	}
+
+	if (logContent) {
+		logContent.addEventListener('scroll', updateScrollBtn);
+	}
+
+	if (logScrollBtn && logContent) {
+		logScrollBtn.onclick = () => {
+			logContent.scrollTop = logContent.scrollHeight;
+			updateScrollBtn();
+		};
+	}
+
+	if (tabConfig && tabLogs && paneConfig && paneLogs) {
+		tabConfig.onclick = () => {
+			tabConfig.classList.add('sbox-tab-active');
+			tabLogs.classList.remove('sbox-tab-active');
+			paneConfig.style.display = '';
+			paneLogs.style.display = 'none';
+			stopLogRefresh();
+		};
+		tabLogs.onclick = () => {
+			tabLogs.classList.add('sbox-tab-active');
+			tabConfig.classList.remove('sbox-tab-active');
+			paneLogs.style.display = '';
+			paneConfig.style.display = 'none';
+			startLogRefresh();
+		};
+	}
+
+	document.addEventListener('visibilitychange', () => {
+		if (!paneLogs || paneLogs.style.display === 'none') return;
+		if (document.hidden) stopLogRefresh();
+		else startLogRefresh();
+	});
+
 	// Init Ace editor
 	const aceEl = page.querySelector('#sbox-ace');
 	if (aceEl) {
@@ -935,7 +1368,6 @@ return view.extend({
 			mainContent,
 			healthAutoupdaterServiceTempFlag,
 			autoupdaterServiceTempFlag,
-			tproxyConfigPresent,
 			mainConfigUrl,
 		] = await Promise.all([
 			execService('sing-box', 'status'),
@@ -946,12 +1378,14 @@ return view.extend({
 			loadFile('/etc/sing-box/config.json'),
 			readUciFlag('health_autoupdater_service_state'),
 			readUciFlag('autoupdater_service_state'),
-			isTproxyConfigPresent(),
 			loadFile('/etc/sing-box/url_config.json'),
 		]);
 
-		const tproxyActive         = tproxyConfigPresent || await isTproxyTablePresent();
-		const isInitialConfigValid = await isValidConfig(mainContent.trim());
+		const [tproxyActive, tunActive, isInitialConfigValid] = await Promise.all([
+			isTproxyUciPresent(),
+			isTunUciPresent(),
+			isValidConfig(mainContent.trim()),
+		]);
 		const mainUrl              = mainConfigUrl.trim();
 
 		const state = {
@@ -959,8 +1393,8 @@ return view.extend({
 			singboxStatus,
 			singboxRunning:                   singboxStatus.includes('running'),
 			isInitialConfigValid,
-			tproxyConfigPresent,
 			tproxyActive,
+			tunActive,
 			mainConfigHasUrl:                 isValidUrl(mainUrl),
 			dashboardPort:                    parseDashboardPort(mainContent),
 			healthAutoupdaterServiceTempFlag,

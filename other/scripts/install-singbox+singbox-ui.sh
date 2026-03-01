@@ -8,7 +8,7 @@ UI_DOWNLOADED=0
 PKG_DOWNLOADED=0
 cleanup_lib() {
     if [ "${UI_DOWNLOADED:-0}" -eq 1 ] || [ "${PKG_DOWNLOADED:-0}" -eq 1 ]; then
-        local cleanup_msg="${MSG_CLEANUP_UI:-Cleaning UI library...}"
+        local cleanup_msg="${MSG_CLEANUP_LIB:-Cleaning library...}"
         if command -v show_progress >/dev/null 2>&1; then
             show_progress "$cleanup_msg"
         else
@@ -101,7 +101,7 @@ init_language() {
         MSG_SINGBOX_INSTALL="Переход к скрипту install-singbox.sh..."
         MSG_SINGBOX_RETURN="Вернулись к основному скрипту"
         MSG_SINGBOX_UI_INSTALL="Переход к скрипту install-singbox-ui.sh..."
-        MSG_CLEANUP_UI="Очистка UI библиотеки..."
+        MSG_CLEANUP_LIB="Очистка библиотек..."
         MSG_CLEANUP="Очистка файлов..."
         MSG_CLEANUP_DONE="Файлы удалены!"
         MSG_COMPLETE="Выполнено! ($script_name)"
@@ -134,7 +134,7 @@ init_language() {
         MSG_SINGBOX_INSTALL="Proceeding to script install-singbox.sh..."
         MSG_SINGBOX_RETURN="Returned to main script"
         MSG_SINGBOX_UI_INSTALL="Proceeding to script install-singbox-ui.sh..."
-        MSG_CLEANUP_UI="Cleaning UI library..."
+        MSG_CLEANUP_LIB="Cleaning library..."
         MSG_CLEANUP="Cleaning up files..."
         MSG_CLEANUP_DONE="Files removed!"
         MSG_COMPLETE="Done! ($script_name)"

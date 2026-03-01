@@ -9,7 +9,7 @@ readonly CHECK_INTERVAL=10
 last_restart=0
 
 wait_for_singbox() {
-	while ! pgrep -x sing-box >/dev/null 2>&1; do
+	while ! pidof sing-box >/dev/null 2>&1; do
 		logger -t "$SERVICE_NAME" "waiting for sing-box..."
 		sleep 30
 	done

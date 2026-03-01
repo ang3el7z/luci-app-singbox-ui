@@ -8,7 +8,7 @@ UI_DOWNLOADED=0
 PKG_DOWNLOADED=0
 cleanup_lib() {
     if [ "${UI_DOWNLOADED:-0}" -eq 1 ] || [ "${PKG_DOWNLOADED:-0}" -eq 1 ]; then
-        local cleanup_msg="${MSG_CLEANUP_UI:-Cleaning UI library...}"
+        local cleanup_msg="${MSG_CLEANUP_LIB:-Cleaning library...}"
         if command -v show_progress >/dev/null 2>&1; then
             show_progress "$cleanup_msg"
         else
@@ -105,7 +105,7 @@ init_language() {
             MSG_REMOVE_KEY="Удаляем старый ключ хоста для"
             MSG_CONNECTING="Подключаемся к роутеру и выполняем установку..."
             MSG_COMPLETE="Выполнено! ($script_name)"
-            MSG_CLEANUP_UI="Очистка UI библиотеки..."
+            MSG_CLEANUP_LIB="Очистка библиотек..."
             MSG_CLEANUP="Очистка и удаление скрипта..."
             MSG_CLEANUP_DONE="Готово! Скрипт удален."
             MSG_SSH_ERROR="Ошибка подключения к роутеру"
@@ -133,7 +133,7 @@ init_language() {
             MSG_REMOVE_KEY="Removing old host key for"
             MSG_CONNECTING="Connecting to router and installing..."
             MSG_COMPLETE="Done! ($script_name)"
-            MSG_CLEANUP_UI="Cleaning UI library..."
+            MSG_CLEANUP_LIB="Cleaning library..."
             MSG_CLEANUP="Cleaning up and removing script..."
             MSG_CLEANUP_DONE="Done! Script removed."
             MSG_SSH_ERROR="Failed to connect to router"
