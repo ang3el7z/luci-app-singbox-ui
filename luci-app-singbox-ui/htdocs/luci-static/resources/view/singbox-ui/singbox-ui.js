@@ -314,12 +314,22 @@ async function loadSingboxLogs() {
 
 // Strip ANSI SGR escape sequences (e.g. \x1b[36m, \x1b[38;5;135m, \x1b[0m)
 const ANSI_RE = /\x1b\[[0-9;]*m/g;
+// sing-box redundant UTC timestamp: "+0000 2026-03-01 01:31:11 "
+const SBOX_TS_RE   = /\+\d{4} \d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} /g;
+// sing-box connection trace ID + elapsed: "[3346304225 5.2s] "
+const SBOX_CONN_RE = /\[\d+ \d+\.\d+s\] /g;
+// logrus seconds-since-start counter appended to level: "INFO[0000]" → "INFO"
+const SBOX_LVL_RE  = /\b(INFO|WARN|ERRO|FATA|DEBU)\[\d+\]/g;
 
 function colorizeLog(raw) {
 	if (!raw) return '<span class="sbox-log-debug">No logs yet.</span>';
 	return raw.split('\n').map(line => {
-		const clean = line.replace(ANSI_RE, '');
-		const esc   = clean
+		const clean = line
+			.replace(ANSI_RE, '')
+			.replace(SBOX_TS_RE, '')
+			.replace(SBOX_CONN_RE, '')
+			.replace(SBOX_LVL_RE, '$1');
+		const esc = clean
 			.replace(/&/g, '&amp;')
 			.replace(/</g, '&lt;')
 			.replace(/>/g, '&gt;');
