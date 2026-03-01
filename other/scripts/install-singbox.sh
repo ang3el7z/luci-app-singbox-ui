@@ -181,7 +181,7 @@ init_language() {
             MSG_SINGBOX_MANUAL_STEP_1="1. Загрузите sing-box.ipk из вашего репозитория"
             MSG_SINGBOX_MANUAL_STEP_2="2. Загрузите файл в папку /tmp на устройство OpenWrt"
             MSG_SINGBOX_MANUAL_STEP_3="3. Нажмите 1 для продолжения установки"
-            MSG_SINGBOX_FILE_NOT_FOUND="Файлы sing-box*.ipk / sing-box*.apk не найдены в /tmp!"
+            MSG_SINGBOX_FILE_NOT_FOUND="Файлы sing-box*.${PKG_EXT} не найдены в /tmp!"
             MSG_SINGBOX_UPLOAD_INSTRUCTIONS="Пожалуйста, загрузите файл сначала!"
             MSG_SINGBOX_FILE_FOUND="Найден файл:"
             MSG_SINGBOX_MULTIPLE_FILES_FOUND="Найдено несколько файлов. Выберите один:"
@@ -205,6 +205,11 @@ init_language() {
             MSG_SINGBOX_DOWNLOAD_ERROR_FILE="Не удалось скачать '%s'. Проверьте подключение к интернету."
             MSG_INVALID_INPUT="Ошибка: Некорректный ввод"
             MSG_REPEAT_INPUT="Повторите ввод"
+            MSG_INSTALL_SINGBOX_FILE="Установка выбранного файла sing-box..."
+            MSG_IPV6_DISABLE_PROMPT="Отключить IPv6? [1-Да, 2-Нет] (по умолчанию: 1 - Отключить): "
+            MSG_IPV6_SKIP="IPv6 оставлен без изменений"
+            MSG_IPV6_RESTORE_CHECK="Проверка необходимости восстановления IPv6..."
+            MSG_IPV6_RESTORE_SKIP="IPv6 не был отключён, восстановление не требуется"
             ;;
         *)
             MSG_INSTALL_TITLE="Starting! ($script_name)"
@@ -294,7 +299,7 @@ init_language() {
             MSG_SINGBOX_MANUAL_STEP_1="1. Download the sing-box.ipk from your repository"
             MSG_SINGBOX_MANUAL_STEP_2="2. Upload the file to the /tmp folder on your OpenWrt device"
             MSG_SINGBOX_MANUAL_STEP_3="3. Press 1 to continue the installation"
-            MSG_SINGBOX_FILE_NOT_FOUND="No sing-box*.ipk / sing-box*.apk files found in /tmp!"
+            MSG_SINGBOX_FILE_NOT_FOUND="No sing-box*.${PKG_EXT} files found in /tmp!"
             MSG_SINGBOX_UPLOAD_INSTRUCTIONS="Please upload the file first!"
             MSG_SINGBOX_FILE_FOUND="File found:"
             MSG_SINGBOX_MULTIPLE_FILES_FOUND="Multiple files found. Please select one:"
@@ -318,6 +323,11 @@ init_language() {
             MSG_SINGBOX_DOWNLOAD_ERROR_FILE="Failed to download '%s'. Please check your internet connection."
             MSG_INVALID_INPUT="Error: Invalid input"
             MSG_REPEAT_INPUT="Repeat input"
+            MSG_INSTALL_SINGBOX_FILE="Installing selected sing-box file..."
+            MSG_IPV6_DISABLE_PROMPT="Disable IPv6? [1-Yes, 2-No] (default: 1 - Disable): "
+            MSG_IPV6_SKIP="IPv6 left unchanged"
+            MSG_IPV6_RESTORE_CHECK="Checking if IPv6 restore is needed..."
+            MSG_IPV6_RESTORE_SKIP="IPv6 was not disabled, restore not needed"
             ;;
     esac
 }
@@ -585,12 +595,34 @@ EOF
                         show_progress "$(printf "$MSG_SINGBOX_DOWNLOADING" "$selected_pkg_name")"
                         if wget -O "$dst_file" "$download_url"; then
                             show_success "$(printf "$MSG_SINGBOX_DOWNLOAD_SUCCESS_FILE" "$selected_pkg_name")"
-                            break
+                            show_progress "$MSG_INSTALL_SINGBOX_FILE"
+                            if pkg_install_file "$dst_file"; then
+                                show_success "$MSG_INSTALL_SINGBOX_SUCCESS"
+                                rm -f "$dst_file"
+                                return 0
+                            else
+                                show_error "$MSG_INSTALL_SINGBOX_ERROR"
+                                [ -f "$dst_file" ] && rm -f "$dst_file"
+                                show_message ""
+                                show_message "$MSG_SINGBOX_ERROR_OPTIONS"
+                                show_message "1) $MSG_SINGBOX_TRY_ANOTHER_FILE"
+                                show_message "2) $MSG_SINGBOX_USE_STORE"
+                                show_message "3) $MSG_SINGBOX_EXIT"
+                                while true; do
+                                    read_input "$MSG_SINGBOX_ERROR_CHOICE" INST_ERR_CHOICE
+                                    case $INST_ERR_CHOICE in
+                                        1) RETRY_CHOICE="3"; break ;;
+                                        2) SINGBOX_INSTALL_MODE="1"; install_singbox; return ;;
+                                        3) exit 1 ;;
+                                        *) show_error "$MSG_INVALID_INPUT. $MSG_REPEAT_INPUT" ;;
+                                    esac
+                                done
+                            fi
                         else
                             show_error "$(printf "$MSG_SINGBOX_DOWNLOAD_ERROR_FILE" "$selected_pkg_name")"
                             [ -f "$dst_file" ] && rm -f "$dst_file"
-                            break
                         fi
+                        break
                         ;;
                     2)
                         SINGBOX_INSTALL_MODE="1"
@@ -658,7 +690,7 @@ EOF
         done
         
         if [ "$SINGBOX_MANUAL_CONFIRM" = "1" ]; then
-            show_progress "$MSG_INSTALL_SINGBOX"
+            show_progress "$MSG_INSTALL_SINGBOX_FILE"
             
             if pkg_install_file "$selected_file"; then
                 show_success "$MSG_INSTALL_SINGBOX_SUCCESS"
@@ -761,6 +793,41 @@ restore_ipv6() {
     /etc/init.d/odhcpd enable
     uci commit
     show_success "$MSG_IPV6_RESTORED"
+}
+
+# Спросить пользователя про отключение IPv6 (дефолт — отключить) / Ask user about IPv6 disable (default — disable)
+maybe_disable_ipv6() {
+    while true; do
+        read_input "$MSG_IPV6_DISABLE_PROMPT" IPV6_CHOICE
+        if [ -z "$IPV6_CHOICE" ]; then
+            IPV6_CHOICE="1"
+        fi
+        case "$IPV6_CHOICE" in
+            1)
+                disabled_ipv6
+                break
+                ;;
+            2)
+                show_progress "$MSG_IPV6_SKIP"
+                break
+                ;;
+            *)
+                show_error "$MSG_INVALID_INPUT. $MSG_REPEAT_INPUT"
+                ;;
+        esac
+    done
+}
+
+# Восстановить IPv6 только если он был отключён / Restore IPv6 only if it was disabled
+maybe_restore_ipv6() {
+    show_progress "$MSG_IPV6_RESTORE_CHECK"
+    local ipv6_val
+    ipv6_val=$(uci -q get network.lan.ipv6 2>/dev/null)
+    if [ "$ipv6_val" = "0" ]; then
+        restore_ipv6
+    else
+        show_progress "$MSG_IPV6_RESTORE_SKIP"
+    fi
 }
 
 # Создание сетевого интерфейса / Create network interface
@@ -1098,7 +1165,7 @@ install() {
     disable_singbox_service
     clean_singbox_config
     perform_install_mode
-    disabled_ipv6
+    maybe_disable_ipv6
     network_check
     show_success "$MSG_INSTALL_SUCCESS"
 }
@@ -1112,7 +1179,7 @@ uninstall() {
     unset MODE
     remove_singbox_data
     uninstall_existing_files
-    restore_ipv6
+    maybe_restore_ipv6
     network_check
     show_success "$MSG_UNINSTALL_SUCCESS"
 }
