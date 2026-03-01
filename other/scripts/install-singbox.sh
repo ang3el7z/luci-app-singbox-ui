@@ -4,22 +4,21 @@ BRANCH="${BRANCH:-main}"
 SCRIPT_DIR="$(cd -- "$(dirname -- "$0")" && pwd)"
 UI_PATH="$SCRIPT_DIR/lib/ui.sh"
 PKG_PATH="$SCRIPT_DIR/lib/pkg.sh"
-MS_TMP="/tmp/singbox-ui-mode-switch"
+MS_PATH="$SCRIPT_DIR/lib/singbox-ui-mode-switch"
 UI_DOWNLOADED=0
 PKG_DOWNLOADED=0
 MS_DOWNLOADED=0
 cleanup_lib() {
-    if [ "${UI_DOWNLOADED:-0}" -eq 1 ] || [ "${PKG_DOWNLOADED:-0}" -eq 1 ]; then
+    if [ "${UI_DOWNLOADED:-0}" -eq 1 ] || [ "${PKG_DOWNLOADED:-0}" -eq 1 ] || [ "${MS_DOWNLOADED:-0}" -eq 1 ]; then
         local cleanup_msg="${MSG_CLEANUP_UI:-Cleaning UI library...}"
         if command -v show_progress >/dev/null 2>&1; then
             show_progress "$cleanup_msg"
         else
             echo "$cleanup_msg"
         fi
-        rm -f -- "$UI_PATH" "$PKG_PATH"
+        rm -f -- "$UI_PATH" "$PKG_PATH" "$MS_PATH"
         rmdir -- "$SCRIPT_DIR/lib" 2>/dev/null || true
     fi
-    [ "${MS_DOWNLOADED:-0}" -eq 1 ] && rm -f -- "$MS_TMP"
 }
 ensure_ui_library() {
     if [ -f "$UI_PATH" ]; then
@@ -65,17 +64,18 @@ ensure_pkg_library() {
 }
 
 ensure_mode_switch() {
+    mkdir -p "$SCRIPT_DIR/lib" 2>/dev/null
     local ms_url="https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/$BRANCH/luci-app-singbox-ui/root/usr/bin/singbox-ui/singbox-ui-mode-switch"
     if command -v wget >/dev/null 2>&1; then
-        wget -O "$MS_TMP" "$ms_url" || return 1
+        wget -O "$MS_PATH" "$ms_url" || return 1
     elif command -v curl >/dev/null 2>&1; then
-        curl -fsSL -o "$MS_TMP" "$ms_url" || return 1
+        curl -fsSL -o "$MS_PATH" "$ms_url" || return 1
     else
         echo "Missing mode-switch and downloader (wget/curl)" >&2
         return 1
     fi
-    chmod +x "$MS_TMP"
-    MODE_SWITCH="$MS_TMP"
+    chmod +x "$MS_PATH"
+    MODE_SWITCH="$MS_PATH"
     MS_DOWNLOADED=1
 }
 
@@ -88,7 +88,7 @@ ensure_pkg_library || {
     exit 1
 }
 ensure_mode_switch || {
-    echo "Failed to download mode-switch" >&2
+    echo "Missing mode-switch: $MS_PATH" >&2
     exit 1
 }
 trap cleanup_lib EXIT HUP INT TERM
