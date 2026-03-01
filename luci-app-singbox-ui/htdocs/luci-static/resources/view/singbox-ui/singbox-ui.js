@@ -300,7 +300,7 @@ function showModeModal(options) {
 
 async function loadSingboxLogs() {
 	try {
-		const r = await fs.exec('/sbin/logread', ['-e', 'sing-box']);
+		const r = await fs.exec('/sbin/logread', ['-e', 'sing-box|singbox-ui']);
 		return String(r?.stdout ?? '').trim();
 	} catch { return ''; }
 }
@@ -781,7 +781,6 @@ function buildPageHtml(state) {
   </div>
   <div id="sbox-tab-logs" style="display:none">
     <div class="sbox-log-toolbar">
-      <button type="button" class="cbi-button cbi-button-reload" id="sbox-log-refresh-btn">Refresh</button>
       <span class="sbox-log-meta" id="sbox-log-updated"></span>
     </div>
     <div class="sbox-log-viewer">
@@ -1207,7 +1206,6 @@ function initPage(page, state, mainContent, mainUrl) {
 	const paneLogs   = page.querySelector('#sbox-tab-logs');
 	const logContent = page.querySelector('#sbox-log-content');
 	const logUpdated = page.querySelector('#sbox-log-updated');
-	const logRefreshBtn = page.querySelector('#sbox-log-refresh-btn');
 	const logScrollBtn  = page.querySelector('#sbox-log-scroll-btn');
 
 	let logTimer = null;
@@ -1252,10 +1250,6 @@ function initPage(page, state, mainContent, mainUrl) {
 			logContent.scrollTop = logContent.scrollHeight;
 			updateScrollBtn();
 		};
-	}
-
-	if (logRefreshBtn) {
-		logRefreshBtn.onclick = () => refreshLogs();
 	}
 
 	if (tabConfig && tabLogs && paneConfig && paneLogs) {
