@@ -645,8 +645,7 @@ const PAGE_CSS = `<style>
   font-family: 'Cascadia Code', 'JetBrains Mono', 'Consolas', 'Menlo', monospace;
   font-size: 11.5px;
   line-height: 1.55;
-  white-space: pre-wrap;
-  word-break: break-all;
+  white-space: pre;
   color: #c9d1d9;
 }
 .sbox-log-info  { color: #3fb950; }
