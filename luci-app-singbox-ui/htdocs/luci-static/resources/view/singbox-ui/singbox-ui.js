@@ -694,7 +694,6 @@ function buildControlInner(state) {
 	].filter(Boolean).join('');
 
 	return `
-  <div class="sbox-card-title">Control</div>
   <div class="sbox-row">
     <span class="sbox-status sbox-color-${sk}">
       <span class="sbox-dot sbox-dot-${sk}"></span>${statusLabel}
@@ -736,7 +735,6 @@ function buildServiceInner(state) {
 	].filter(Boolean).join('');
 
 	return `
-  <div class="sbox-card-title">Services</div>
   <div class="sbox-row">${svcBtns}</div>`;
 }
 
@@ -763,8 +761,14 @@ function buildPageHtml(state) {
 	}</span>
   <button type="button" id="sbox-header-dash" class="cbi-button cbi-button-apply sbox-header-dash"${(state.singboxRunning && state.dashboardPort) ? '' : ' style="display:none"'}>Dashboard</button>
 </div>
-<div class="sbox-card" id="sbox-control">${buildControlInner(state)}</div>
-<div class="sbox-card" id="sbox-services">${buildServiceInner(state)}</div>
+<div class="sbox-card" id="sbox-ctrl-svc">
+  <div class="sbox-card-tabs">
+    <button type="button" class="sbox-tab sbox-tab-active" data-tab="control">Control</button>
+    <button type="button" class="sbox-tab" data-tab="services">Services</button>
+  </div>
+  <div id="sbox-tab-control">${buildControlInner(state)}</div>
+  <div id="sbox-tab-services" style="display:none">${buildServiceInner(state)}</div>
+</div>
 <div class="sbox-card" id="sbox-config">
   <div class="sbox-card-tabs">
     <button type="button" class="sbox-tab sbox-tab-active" data-tab="config">Config</button>
@@ -816,7 +820,7 @@ function initPage(page, state, mainContent, mainUrl) {
 		if (state.singboxRunning)
 			state.tproxyActive = state.tproxyConfigPresent || await isTproxyTablePresent();
 
-		const card = page.querySelector('#sbox-control');
+		const card = page.querySelector('#sbox-tab-control');
 		if (card) { card.innerHTML = buildControlInner(state); bindControlCard(); }
 
 		updateDashBtn();
@@ -877,7 +881,7 @@ function initPage(page, state, mainContent, mainUrl) {
 			},
 		};
 
-		page.querySelectorAll('#sbox-control [data-action]').forEach(b => {
+		page.querySelectorAll('#sbox-tab-control [data-action]').forEach(b => {
 			const fn = actions[b.dataset.action];
 			if (fn) b.onclick = () => fn(b).catch(() => {});
 		});
@@ -892,7 +896,7 @@ function initPage(page, state, mainContent, mainUrl) {
 		state.healthAutoupdaterEnabled = await isServiceActive('singbox-ui-health-autoupdater-service');
 		state.memdocEnabled            = await isServiceActive('singbox-ui-memdoc-service');
 
-		const card = page.querySelector('#sbox-services');
+		const card = page.querySelector('#sbox-tab-services');
 		if (card) { card.innerHTML = buildServiceInner(state); bindServiceCard(); }
 	}
 
@@ -952,7 +956,7 @@ function initPage(page, state, mainContent, mainUrl) {
 			},
 		};
 
-		page.querySelectorAll('#sbox-services [data-action]').forEach(b => {
+		page.querySelectorAll('#sbox-tab-services [data-action]').forEach(b => {
 			const fn = actions[b.dataset.action];
 			if (fn) b.onclick = () => fn(b).catch(() => {});
 		});
@@ -1206,6 +1210,30 @@ function initPage(page, state, mainContent, mainUrl) {
 				],
 			});
 		}
+	}
+
+	// ---------------------------------------------------------------
+	// Control / Services tab switching
+	// ---------------------------------------------------------------
+
+	const tabControl   = page.querySelector('[data-tab="control"]');
+	const tabServices  = page.querySelector('[data-tab="services"]');
+	const paneControl  = page.querySelector('#sbox-tab-control');
+	const paneServices = page.querySelector('#sbox-tab-services');
+
+	if (tabControl && tabServices && paneControl && paneServices) {
+		tabControl.onclick = () => {
+			tabControl.classList.add('sbox-tab-active');
+			tabServices.classList.remove('sbox-tab-active');
+			paneControl.style.display  = '';
+			paneServices.style.display = 'none';
+		};
+		tabServices.onclick = () => {
+			tabServices.classList.add('sbox-tab-active');
+			tabControl.classList.remove('sbox-tab-active');
+			paneServices.style.display = '';
+			paneControl.style.display  = 'none';
+		};
 	}
 
 	// ---------------------------------------------------------------
