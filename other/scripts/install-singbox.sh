@@ -4,7 +4,6 @@ BRANCH="${BRANCH:-main}"
 SCRIPT_DIR="$(cd -- "$(dirname -- "$0")" && pwd)"
 UI_PATH="$SCRIPT_DIR/lib/ui.sh"
 PKG_PATH="$SCRIPT_DIR/lib/pkg.sh"
-MS_PATH="/usr/bin/singbox-ui/singbox-ui-mode-switch"
 MS_TMP="/tmp/singbox-ui-mode-switch"
 UI_DOWNLOADED=0
 PKG_DOWNLOADED=0
@@ -66,8 +65,8 @@ ensure_pkg_library() {
 }
 
 ensure_mode_switch() {
-    if [ -x "$MS_PATH" ]; then
-        MODE_SWITCH="$MS_PATH"
+    if [ -x "/usr/bin/singbox-ui/singbox-ui-mode-switch" ]; then
+        MODE_SWITCH="/usr/bin/singbox-ui/singbox-ui-mode-switch"
         return 0
     fi
     local ms_url="https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/$BRANCH/luci-app-singbox-ui/root/usr/bin/singbox-ui/singbox-ui-mode-switch"
@@ -93,7 +92,7 @@ ensure_pkg_library || {
     exit 1
 }
 ensure_mode_switch || {
-    echo "Missing mode-switch: $MS_PATH" >&2
+    echo "Missing mode-switch: /usr/bin/singbox-ui/singbox-ui-mode-switch" >&2
     exit 1
 }
 trap cleanup_lib EXIT HUP INT TERM
