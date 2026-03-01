@@ -2,6 +2,8 @@
 # Usage: singbox-ui-mode-switch <action>
 # Actions: enable-tun | disable-tun | enable-tproxy | disable-tproxy
 
+set -e
+
 NFT_RULE_FILE="/etc/nftables.d/singbox.nft"
 TUN_IFACE="singtun0"
 
@@ -9,13 +11,18 @@ TUN_IFACE="singtun0"
 
 FG_ACCENT='\033[38;5;85m'
 FG_SUCCESS='\033[38;5;41m'
+FG_ERROR='\033[38;5;203m'
 RESET='\033[0m'
 INDENT='  '
 ARROW='▸'
 CHECK='✓'
+CROSS='✗'
 
-step() { echo -e "${INDENT}${ARROW} ${FG_ACCENT}$1${RESET}"; }
+step()  { echo -e "${INDENT}${ARROW} ${FG_ACCENT}$1${RESET}"; }
 done_() { echo -e "${INDENT}${CHECK} ${FG_SUCCESS}$1${RESET}"; }
+die()   { echo -e "${INDENT}${CROSS} ${FG_ERROR}$1${RESET}" >&2; exit 1; }
+
+trap 'die "Mode switch failed (action: ${1:-unknown})"' ERR
 
 # ── network.proxy UCI ────────────────────────────────────────────────────────
 
@@ -60,10 +67,10 @@ configure_firewall_tun() {
 }
 
 remove_firewall_tun() {
-    zone_id=$(uci -q show firewall | grep "\.name='proxy'" | sed "s/firewall\.@zone\[\([0-9]*\)\].*/\1/")
+    zone_id=$(uci -q show firewall | grep "\.name='proxy'" | sed "s/firewall\.@zone\[\([0-9]*\)\].*/\1/" || true)
     [ -n "$zone_id" ] && uci -q delete firewall.@zone["$zone_id"]
 
-    fwd_id=$(uci -q show firewall | grep "\.dest='proxy'" | sed "s/firewall\.@forwarding\[\([0-9]*\)\].*/\1/")
+    fwd_id=$(uci -q show firewall | grep "\.dest='proxy'" | sed "s/firewall\.@forwarding\[\([0-9]*\)\].*/\1/" || true)
     [ -n "$fwd_id" ] && uci -q delete firewall.@forwarding["$fwd_id"]
 
     uci commit firewall
