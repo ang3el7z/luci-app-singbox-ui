@@ -171,8 +171,8 @@ async function isTproxyUciPresent() {
 
 async function isTunUciPresent() {
 	try {
-		const r = await fs.exec('/sbin/uci', ['get', 'network.proxy']);
-		return (r?.code ?? 1) === 0;
+		const r = await fs.exec('/sbin/uci', ['get', 'network.proxy.device']);
+		return String(r?.stdout ?? '').trim() === TUN_INTERFACE;
 	} catch { return false; }
 }
 
