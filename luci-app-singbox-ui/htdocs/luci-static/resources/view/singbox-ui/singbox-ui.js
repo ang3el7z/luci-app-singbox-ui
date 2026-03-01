@@ -161,8 +161,10 @@ async function isTproxyConfigPresent() {
 }
 
 async function isTproxyTablePresent() {
-	try { await runNft(['list', 'table', 'ip', 'singbox']); return true; }
-	catch { return false; }
+	try {
+		const result = await runNft(['list', 'table', 'ip', 'singbox']);
+		return (result?.code ?? 1) === 0;
+	} catch { return false; }
 }
 
 async function isTunInterfacePresent() {
