@@ -312,18 +312,22 @@ async function loadSingboxLogs() {
 	} catch { return ''; }
 }
 
+// Strip ANSI SGR escape sequences (e.g. \x1b[36m, \x1b[38;5;135m, \x1b[0m)
+const ANSI_RE = /\x1b\[[0-9;]*m/g;
+
 function colorizeLog(raw) {
 	if (!raw) return '<span class="sbox-log-debug">No logs yet.</span>';
 	return raw.split('\n').map(line => {
-		const esc = line
+		const clean = line.replace(ANSI_RE, '');
+		const esc   = clean
 			.replace(/&/g, '&amp;')
 			.replace(/</g, '&lt;')
 			.replace(/>/g, '&gt;');
-		if (/\b(FATA|FATAL|PANIC)\b/.test(line)) return `<span class="sbox-log-fatal">${esc}</span>`;
-		if (/\b(ERRO|ERROR)\b/.test(line))        return `<span class="sbox-log-error">${esc}</span>`;
-		if (/\b(WARN|WARNING)\b/.test(line))      return `<span class="sbox-log-warn">${esc}</span>`;
-		if (/\bINFO\b/.test(line))                return `<span class="sbox-log-info">${esc}</span>`;
-		if (/\b(DEBU|DEBUG)\b/.test(line))        return `<span class="sbox-log-debug">${esc}</span>`;
+		if (/\b(FATA|FATAL|PANIC)\b/.test(clean)) return `<span class="sbox-log-fatal">${esc}</span>`;
+		if (/\b(ERRO|ERROR)\b/.test(clean))        return `<span class="sbox-log-error">${esc}</span>`;
+		if (/\b(WARN|WARNING)\b/.test(clean))      return `<span class="sbox-log-warn">${esc}</span>`;
+		if (/\bINFO\b/.test(clean))                return `<span class="sbox-log-info">${esc}</span>`;
+		if (/\b(DEBU|DEBUG)\b/.test(clean))        return `<span class="sbox-log-debug">${esc}</span>`;
 		return esc;
 	}).join('\n');
 }
