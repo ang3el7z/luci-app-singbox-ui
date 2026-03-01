@@ -155,11 +155,6 @@ async function runNft(args) {
 	catch { return await fs.exec('/usr/bin/nft', args); }
 }
 
-async function isTproxyConfigPresent() {
-	try { await fs.stat(TPROXY_RULE_FILE); return true; }
-	catch { return false; }
-}
-
 async function isTproxyTablePresent() {
 	try {
 		const result = await runNft(['list', 'table', 'ip', 'singbox']);
@@ -167,9 +162,18 @@ async function isTproxyTablePresent() {
 	} catch { return false; }
 }
 
-async function isTunInterfacePresent() {
-	try { await fs.stat('/sys/class/net/' + TUN_INTERFACE); return true; }
-	catch { return false; }
+async function isTproxyUciPresent() {
+	try {
+		const r = await fs.exec('/sbin/uci', ['get', 'firewall.singbox_tproxy']);
+		return (r?.code ?? 1) === 0;
+	} catch { return false; }
+}
+
+async function isTunUciPresent() {
+	try {
+		const r = await fs.exec('/sbin/uci', ['get', 'network.proxy']);
+		return (r?.code ?? 1) === 0;
+	} catch { return false; }
 }
 
 async function disableTproxy() {
@@ -691,9 +695,9 @@ function buildControlInner(state) {
 		`<button type="button" class="cbi-button cbi-button-${cls}" data-action="${action}"${title ? ` title="${title}"` : ''}>${label}</button>`;
 
 	const svcLabel = () => {
-		if (state.healthAutoupdaterServiceTempFlag) return 'Sing\u2011Box & Health Autoupdater';
-		if (state.autoupdaterServiceTempFlag)       return 'Sing\u2011Box & Autoupdater';
-		return 'Sing\u2011Box';
+		if (state.healthAutoupdaterServiceTempFlag) return 'Sing-Box & Health Autoupdater';
+		if (state.autoupdaterServiceTempFlag)       return 'Sing-Box & Autoupdater';
+		return 'Sing-Box';
 	};
 
 	const ctrlBtns = [
@@ -756,9 +760,9 @@ function buildServiceInner(state) {
 function buildPageHtml(state) {
 	const v         = state.versions;
 	const dot       = '<span class="sbox-header-dot">\u00B7</span>';
-	const proxyMode = (state.tproxyActive && state.tunInterfacePresent)
+	const proxyMode = (state.tproxyActive && state.tunActive)
 		? 'conflict'
-		: (state.tproxyActive ? 'tproxy' : (state.tunInterfacePresent ? 'tun' : 'custom'));
+		: (state.tproxyActive ? 'tproxy' : (state.tunActive ? 'tun' : 'custom'));
 	const opts      = CONFIGS.map(c => `<option value="${c.name}">${c.label}</option>`).join('');
 	const cbtn      = (cls, action, label) =>
 		`<button type="button" class="cbi-button cbi-button-${cls}" data-config-action="${action}">${label}</button>`;
@@ -830,10 +834,15 @@ function initPage(page, state, mainContent, mainUrl) {
 	// ----------------------------------------------------------
 
 	async function refreshControlCard() {
-		state.singboxStatus = await execService('sing-box', 'status');
-		state.singboxRunning = state.singboxStatus.includes('running');
-		if (state.singboxRunning)
-			state.tproxyActive = state.tproxyConfigPresent || await isTproxyTablePresent();
+		const [singboxStatus, tproxyActive, tunActive] = await Promise.all([
+			execService('sing-box', 'status'),
+			isTproxyUciPresent(),
+			isTunUciPresent(),
+		]);
+		state.singboxStatus  = singboxStatus;
+		state.singboxRunning = singboxStatus.includes('running');
+		state.tproxyActive   = tproxyActive;
+		state.tunActive      = tunActive;
 
 		const card = page.querySelector('#sbox-tab-control');
 		if (card) { card.innerHTML = buildControlInner(state); bindControlCard(); }
@@ -858,15 +867,15 @@ function initPage(page, state, mainContent, mainUrl) {
 								await execServiceLifecycle('singbox-ui-autoupdater-service', 'stop');
 							else if (state.healthAutoupdaterServiceTempFlag)
 								await execServiceLifecycle('singbox-ui-health-autoupdater-service', 'stop');
-							notify('info', 'Sing\u2011Box stopped');
+							notify('info', 'Sing-Box stopped');
 						} else {
 							await execService('sing-box', 'start');
-							if (state.tproxyConfigPresent) await enableTproxy();
+							if (state.tproxyActive) await enableTproxy();
 							if (state.autoupdaterServiceTempFlag)
 								await execServiceLifecycle('singbox-ui-autoupdater-service', 'start');
 							else if (state.healthAutoupdaterServiceTempFlag)
 								await execServiceLifecycle('singbox-ui-health-autoupdater-service', 'start');
-							notify('info', 'Sing\u2011Box started');
+							notify('info', 'Sing-Box started');
 						}
 					} catch (e) {
 						notify('error', 'Operation failed: ' + e.message);
@@ -883,7 +892,7 @@ function initPage(page, state, mainContent, mainUrl) {
 							await execServiceLifecycle('singbox-ui-autoupdater-service', 'restart');
 						else if (state.healthAutoupdaterServiceTempFlag)
 							await execServiceLifecycle('singbox-ui-health-autoupdater-service', 'restart');
-						notify('info', 'Sing\u2011Box restarted');
+						notify('info', 'Sing-Box restarted');
 					} catch (e) {
 						notify('error', 'Restart failed: ' + e.message);
 					}
@@ -1012,7 +1021,7 @@ function initPage(page, state, mainContent, mainUrl) {
 						notify('info', currentConfig.label + ' updated');
 				if (currentConfig.name === 'config.json') {
 						await execService('sing-box', 'reload');
-						notify('info', 'Sing\u2011Box reloaded');
+						notify('info', 'Sing-Box reloaded');
 						state.isInitialConfigValid = await isValidConfig(newContent);
 						state.mainConfigHasUrl = true;
 						state.dashboardPort = parseDashboardPort(newContent);
@@ -1041,7 +1050,7 @@ function initPage(page, state, mainContent, mainUrl) {
 					notify('info', currentConfig.label + ' updated');
 					if (currentConfig.name === 'config.json') {
 						await execService('sing-box', 'reload');
-						notify('info', 'Sing\u2011Box reloaded');
+						notify('info', 'Sing-Box reloaded');
 						state.isInitialConfigValid = await isValidConfig(newContent);
 						state.dashboardPort = parseDashboardPort(newContent);
 						await refreshControlCard();
@@ -1077,7 +1086,7 @@ function initPage(page, state, mainContent, mainUrl) {
 					notify('info', 'Config saved');
 					if (currentConfig.name === 'config.json') {
 						await execService('sing-box', 'reload');
-						notify('info', 'Sing\u2011Box reloaded');
+						notify('info', 'Sing-Box reloaded');
 						state.isInitialConfigValid = true;
 						state.dashboardPort = parseDashboardPort(val);
 						await refreshControlCard();
@@ -1359,7 +1368,6 @@ return view.extend({
 			mainContent,
 			healthAutoupdaterServiceTempFlag,
 			autoupdaterServiceTempFlag,
-			tproxyConfigPresent,
 			mainConfigUrl,
 		] = await Promise.all([
 			execService('sing-box', 'status'),
@@ -1370,13 +1378,12 @@ return view.extend({
 			loadFile('/etc/sing-box/config.json'),
 			readUciFlag('health_autoupdater_service_state'),
 			readUciFlag('autoupdater_service_state'),
-			isTproxyConfigPresent(),
 			loadFile('/etc/sing-box/url_config.json'),
 		]);
 
-		const [tproxyActive, tunInterfacePresent, isInitialConfigValid] = await Promise.all([
-			isTproxyTablePresent(),
-			isTunInterfacePresent(),
+		const [tproxyActive, tunActive, isInitialConfigValid] = await Promise.all([
+			isTproxyUciPresent(),
+			isTunUciPresent(),
 			isValidConfig(mainContent.trim()),
 		]);
 		const mainUrl              = mainConfigUrl.trim();
@@ -1386,9 +1393,8 @@ return view.extend({
 			singboxStatus,
 			singboxRunning:                   singboxStatus.includes('running'),
 			isInitialConfigValid,
-			tproxyConfigPresent,
 			tproxyActive,
-			tunInterfacePresent,
+			tunActive,
 			mainConfigHasUrl:                 isValidUrl(mainUrl),
 			dashboardPort:                    parseDashboardPort(mainContent),
 			healthAutoupdaterServiceTempFlag,
