@@ -5,8 +5,8 @@
             "file": {
                 "/etc/init.d/sing-box": ["exec"],
                 "/etc/init.d/singbox-ui-autoupdater-service": ["exec"],
-                "/etc/init.d/singbox-ui-memdoc-service": ["exec"],
                 "/etc/init.d/singbox-ui-health-autoupdater-service": ["exec"],
+                "/etc/init.d/singbox-ui-memdoc-service": ["exec"],
                 "/etc/init.d/*": ["read"],
                 "/etc/nftables.d/*": ["read"],
                 "/etc/sing-box/*": ["read"],
