@@ -65,10 +65,6 @@ ensure_pkg_library() {
 }
 
 ensure_mode_switch() {
-    if [ -x "/usr/bin/singbox-ui/singbox-ui-mode-switch" ]; then
-        MODE_SWITCH="/usr/bin/singbox-ui/singbox-ui-mode-switch"
-        return 0
-    fi
     local ms_url="https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/$BRANCH/luci-app-singbox-ui/root/usr/bin/singbox-ui/singbox-ui-mode-switch"
     if command -v wget >/dev/null 2>&1; then
         wget -O "$MS_TMP" "$ms_url" || return 1
@@ -92,7 +88,7 @@ ensure_pkg_library || {
     exit 1
 }
 ensure_mode_switch || {
-    echo "Missing mode-switch: /usr/bin/singbox-ui/singbox-ui-mode-switch" >&2
+    echo "Failed to download mode-switch" >&2
     exit 1
 }
 trap cleanup_lib EXIT HUP INT TERM
