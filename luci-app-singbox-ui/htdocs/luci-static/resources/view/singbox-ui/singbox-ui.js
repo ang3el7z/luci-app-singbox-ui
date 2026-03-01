@@ -1091,29 +1091,34 @@ function initPage(page, state, mainContent, mainUrl) {
 			});
 		},
 
-		async clear(b) {
-			if (!confirm(
-				`Clear all data for "${currentConfig.label}"?\n` +
-				`Config and URL will be erased. This cannot be undone.`
-			)) return;
-			await withButtons(b, async () => {
-				try {
-					await saveFile('/etc/sing-box/' + currentConfig.name,     '{}');
-					await saveFile('/etc/sing-box/url_' + currentConfig.name, '');
-					if (currentConfig.name === 'config.json') {
-						if (await isTproxyTablePresent()) await disableTproxy();
-						await execService('sing-box', 'stop');
-						await execServiceLifecycle('singbox-ui-autoupdater-service', 'stop');
-						await execServiceLifecycle('singbox-ui-health-autoupdater-service', 'stop');
-						notify('info', 'Config cleared, services stopped');
-					} else {
-						notify('info', currentConfig.label + ' cleared');
-					}
-				} catch (e) {
-					notify('error', 'Clear failed: ' + e.message);
-				} finally {
-					reloadPage();
-				}
+		clear(b) {
+			showModeModal({
+				title: 'Clear all data?',
+				body:  `Config and URL for <b>${currentConfig.label}</b> will be erased.<br>This cannot be undone.`,
+				buttons: [{
+					cls: 'remove', label: 'Clear',
+					action: async () => {
+						await withButtons(b, async () => {
+							try {
+								await saveFile('/etc/sing-box/' + currentConfig.name,     '{}');
+								await saveFile('/etc/sing-box/url_' + currentConfig.name, '');
+								if (currentConfig.name === 'config.json') {
+									if (await isTproxyTablePresent()) await disableTproxy();
+									await execService('sing-box', 'stop');
+									await execServiceLifecycle('singbox-ui-autoupdater-service', 'stop');
+									await execServiceLifecycle('singbox-ui-health-autoupdater-service', 'stop');
+									notify('info', 'Config cleared, services stopped');
+								} else {
+									notify('info', currentConfig.label + ' cleared');
+								}
+							} catch (e) {
+								notify('error', 'Clear failed: ' + e.message);
+							} finally {
+								reloadPage();
+							}
+						});
+					},
+				}],
 			});
 		},
 	};
