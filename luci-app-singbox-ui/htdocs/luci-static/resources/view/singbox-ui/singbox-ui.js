@@ -302,8 +302,13 @@ function showModeModal(options) {
 
 async function loadSingboxLogs() {
 	try {
-		const r = await fs.exec('/sbin/logread', ['-e', 'sing-box|singbox-ui']);
-		return String(r?.stdout ?? '').trim();
+		const r   = await fs.exec('/sbin/logread');
+		const raw = String(r?.stdout ?? '');
+		if (!raw) return '';
+		return raw.split('\n')
+			.filter(l => l.includes('sing-box') || l.includes('singbox-ui'))
+			.join('\n')
+			.trim();
 	} catch { return ''; }
 }
 
