@@ -246,6 +246,64 @@ async function formatConfig(content) {
 	}
 }
 
+/**
+ * Strip // line comments and /* block comments from a JSON5 string,
+ * being careful not to touch content inside string literals.
+ */
+function stripJson5Comments(str) {
+	let out = '';
+	let i = 0;
+	const len = str.length;
+	while (i < len) {
+		const ch = str[i];
+		// String literal — copy verbatim including escaped chars
+		if (ch === '"' || ch === "'") {
+			out += str[i++];
+			while (i < len) {
+				if (str[i] === '\\') {
+					out += str[i++];
+					if (i < len) out += str[i++];
+				} else if (str[i] === ch) {
+					out += str[i++];
+					break;
+				} else {
+					out += str[i++];
+				}
+			}
+		// Line comment — skip until end of line
+		} else if (str[i] === '/' && str[i + 1] === '/') {
+			while (i < len && str[i] !== '\n') i++;
+		// Block comment — skip until */
+		} else if (str[i] === '/' && str[i + 1] === '*') {
+			i += 2;
+			while (i < len && !(str[i] === '*' && str[i + 1] === '/')) i++;
+			i += 2;
+		} else {
+			out += str[i++];
+		}
+	}
+	return out;
+}
+
+/**
+ * Pretty-print JSON5 content preserving key order.
+ * Strips comments and trailing commas (JSON5 extras), then re-formats
+ * with 2-space indentation using JSON.parse / JSON.stringify.
+ * Returns formatted string or null on parse error.
+ */
+function formatJson5(content) {
+	if (!content?.trim()) return null;
+	try {
+		const stripped = stripJson5Comments(content)
+			.replace(/,(\s*[\]}])/g, '$1');  // remove trailing commas
+		const obj = JSON.parse(stripped);
+		return JSON.stringify(obj, null, 2);
+	} catch (e) {
+		notify('error', 'JSON5 parse error: ' + e.message);
+		return null;
+	}
+}
+
 // ============================================================
 // Mode switching
 // ============================================================
@@ -1059,18 +1117,39 @@ function initPage(page, state, mainContent, mainUrl) {
 			});
 		},
 
-		async format(b) {
+		format(b) {
 			const ed = window.singboxEditor;
 			if (!ed) return notify('error', 'Editor not ready');
 			const val = ed.getValue();
 			if (!val?.trim()) return notify('info', 'Nothing to format');
-			await withButtons(b, async () => {
-				const formatted = await formatConfig(val);
+
+			const applyFormatted = async (formatted) => {
 				if (formatted != null) {
 					ed.setValue(formatted, -1);
 					ed.clearSelection();
 					notify('info', 'Formatted');
 				}
+			};
+
+			showModeModal({
+				title: 'Format config',
+				body: '<b>sing-box</b> — validates and reorders keys per schema.<br>'
+				    + '<b>JSON5 pretty-print</b> — fixes indentation, preserves key order.<br>'
+				    + '<small style="opacity:.7">Note: comments are stripped by JSON5 pretty-print.</small>',
+				buttons: [
+					{
+						cls: 'apply', label: 'sing-box',
+						action: () => withButtons(b, async () =>
+							applyFormatted(await formatConfig(val))
+						),
+					},
+					{
+						cls: 'positive', label: 'JSON5 pretty-print',
+						action: () => withButtons(b, async () =>
+							applyFormatted(formatJson5(val))
+						),
+					},
+				],
 			});
 		},
 
