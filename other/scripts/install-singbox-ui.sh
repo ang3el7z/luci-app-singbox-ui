@@ -406,7 +406,9 @@ choose_install_version() {
 install_singbox_ui() {
     show_progress "$MSG_INSTALL_UI"
     local pkg_file="/root/luci-app-singbox-ui.${PKG_EXT}"
-    if ! wget -O "$pkg_file" "$DOWNLOAD_URL"; then
+    # curl is guaranteed available (installed by update_pkgs above).
+    # Use -L to follow GitHub's redirect to the CDN download URL.
+    if ! curl -fL --max-time 120 -o "$pkg_file" "$DOWNLOAD_URL"; then
         show_error "$MSG_DOWNLOAD_ERROR"
         exit 1
     fi
