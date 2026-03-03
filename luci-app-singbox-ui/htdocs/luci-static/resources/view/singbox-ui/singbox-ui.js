@@ -247,61 +247,78 @@ async function formatConfig(content) {
 }
 
 /**
- * Strip // line comments and /* block comments from a JSON5 string,
- * being careful not to touch content inside string literals.
+ * Count net brace/bracket depth change in a line (ignoring strings and comments).
+ * Returns { delta, inBlockComment } where inBlockComment is true if line ends inside /* ... *\/.
  */
-function stripJson5Comments(str) {
-	let out = '';
+function getBraceDelta(line) {
+	let delta = 0;
 	let i = 0;
-	const len = str.length;
+	const len = line.length;
+	let inBlockComment = false;
 	while (i < len) {
-		const ch = str[i];
-		// String literal — copy verbatim including escaped chars
-		if (ch === '"' || ch === "'") {
-			out += str[i++];
+		const ch = line[i];
+		if (inBlockComment) {
+			if (ch === '*' && line[i + 1] === '/') { i += 2; inBlockComment = false; }
+			else i++;
+		} else if (ch === '"' || ch === "'") {
+			const q = ch;
+			i++;
 			while (i < len) {
-				if (str[i] === '\\') {
-					out += str[i++];
-					if (i < len) out += str[i++];
-				} else if (str[i] === ch) {
-					out += str[i++];
-					break;
-				} else {
-					out += str[i++];
-				}
+				if (line[i] === '\\') i += 2;
+				else if (line[i] === q) { i++; break; }
+				else i++;
 			}
-		// Line comment — skip until end of line
-		} else if (str[i] === '/' && str[i + 1] === '/') {
-			while (i < len && str[i] !== '\n') i++;
-		// Block comment — skip until */
-		} else if (str[i] === '/' && str[i + 1] === '*') {
+		} else if (ch === '/' && line[i + 1] === '/') {
+			break;
+		} else if (ch === '/' && line[i + 1] === '*') {
 			i += 2;
-			while (i < len && !(str[i] === '*' && str[i + 1] === '/')) i++;
-			i += 2;
+			inBlockComment = true;
 		} else {
-			out += str[i++];
+			if (ch === '{' || ch === '[') delta++;
+			else if (ch === '}' || ch === ']') delta--;
+			i++;
 		}
 	}
-	return out;
+	return { delta, inBlockComment };
 }
 
 /**
- * Pretty-print JSON5 content preserving key order.
- * Strips comments and trailing commas (JSON5 extras), then re-formats
- * with 2-space indentation using JSON.parse / JSON.stringify.
- * Returns formatted string or null on parse error.
+ * Format JSON5 by normalizing indentation (2 spaces per level).
+ * Preserves comments, trailing commas, and key order.
  */
 function formatJson5(content) {
 	if (!content?.trim()) return null;
-	try {
-		const stripped = stripJson5Comments(content)
-			.replace(/,(\s*[\]}])/g, '$1');  // remove trailing commas
-		const obj = JSON.parse(stripped);
-		return JSON.stringify(obj, null, 2);
-	} catch (e) {
-		notify('error', 'JSON5 parse error: ' + e.message);
-		return null;
+	const lines = content.split(/\r?\n/);
+	let depth = 0;
+	let inBlockComment = false;
+	const out = [];
+	for (let i = 0; i < lines.length; i++) {
+		let line = lines[i];
+		const trimmed = line.replace(/^\s*/, '');
+		if (inBlockComment) {
+			const end = trimmed.indexOf('*/');
+			if (end === -1) {
+				out.push('  '.repeat(depth) + trimmed);
+				continue;
+			}
+			out.push('  '.repeat(depth) + trimmed.slice(0, end + 2));
+			line = trimmed.slice(end + 2);
+			inBlockComment = false;
+			const rest = line.replace(/^\s*/, '');
+			if (rest) {
+				const { delta, inBlockComment: inBC } = getBraceDelta(rest);
+				out.push('  '.repeat(depth) + rest);
+				depth += delta;
+				inBlockComment = inBC;
+			}
+		} else {
+			const { delta, inBlockComment: inBC } = getBraceDelta(trimmed);
+			out.push('  '.repeat(depth) + trimmed);
+			depth += delta;
+			inBlockComment = inBC;
+		}
 	}
+	return out.join('\n');
 }
 
 // ============================================================
@@ -970,6 +987,34 @@ function initPage(page, state, mainContent, mainUrl) {
 	}
 
 	// ----------------------------------------------------------
+	// Lightweight status poll (catches external stop/start)
+	// ----------------------------------------------------------
+
+	const STATUS_POLL_MS = 5000;
+	let statusPollId = null;
+
+	function startStatusPoll() {
+		if (statusPollId) return;
+		statusPollId = setInterval(() => {
+			refreshControlCard().catch(() => {});
+		}, STATUS_POLL_MS);
+	}
+
+	function stopStatusPoll() {
+		if (statusPollId) {
+			clearInterval(statusPollId);
+			statusPollId = null;
+		}
+	}
+
+	startStatusPoll();
+
+	document.addEventListener('visibilitychange', () => {
+		if (document.hidden) stopStatusPoll();
+		else startStatusPoll();
+	});
+
+	// ----------------------------------------------------------
 	// Service card: re-render in place after toggle actions
 	// ----------------------------------------------------------
 
@@ -1134,8 +1179,7 @@ function initPage(page, state, mainContent, mainUrl) {
 			showModeModal({
 				title: 'Format config',
 				body: '<b>sing-box</b> — validates and reorders keys per schema.<br>'
-				    + '<b>JSON5 pretty-print</b> — fixes indentation, preserves key order.<br>'
-				    + '<small style="opacity:.7">Note: comments are stripped by JSON5 pretty-print.</small>',
+				    + '<b>JSON5</b> — fixes indentation, preserves comments and key order.',
 				buttons: [
 					{
 						cls: 'apply', label: 'sing-box',
@@ -1144,7 +1188,7 @@ function initPage(page, state, mainContent, mainUrl) {
 						),
 					},
 					{
-						cls: 'positive', label: 'JSON5 pretty-print',
+						cls: 'positive', label: 'JSON5',
 						action: () => withButtons(b, async () =>
 							applyFormatted(formatJson5(val))
 						),
