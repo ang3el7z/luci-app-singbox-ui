@@ -42,11 +42,13 @@ const parseDashboardPort = content => {
 /**
  * Show a LuCI notification.
  */
-const NOTIFY_TIMEOUT = { info: 2500, error: 5000 };
+const NOTIFY_TIMEOUT = { info: 6000, error: 10000 };
+let autoHideNotificationEnabled = true;
 const notify = (type, msg) => {
 	const node    = ui.addNotification(null, msg, type);
-	const timeout = NOTIFY_TIMEOUT[type] ?? 4000;
-	if (node) setTimeout(() => node.remove?.() ?? node.parentNode?.removeChild(node), timeout);
+	const timeout = NOTIFY_TIMEOUT[type] ?? 6000;
+	if (node && autoHideNotificationEnabled)
+		setTimeout(() => node.remove?.() ?? node.parentNode?.removeChild(node), timeout);
 };
 
 /** Unique /tmp path to avoid race conditions on concurrent requests. */
@@ -190,11 +192,15 @@ async function enableTproxy() {
 // UCI helpers
 // ============================================================
 
-async function readUciFlag(option) {
+async function readUciFlag(option, fallback = false) {
 	try {
 		const r = await fs.exec('/sbin/uci', ['get', `${UCI_CONFIG}.${UCI_SECTION}.${option}`]);
-		return String(r?.stdout ?? '').trim() === '1';
-	} catch { return false; }
+		if ((r?.code ?? 0) !== 0) return fallback;
+		const value = String(r?.stdout ?? '').trim();
+		if (value === '1') return true;
+		if (value === '0') return false;
+		return fallback;
+	} catch { return fallback; }
 }
 
 async function writeUciFlag(option, value) {
@@ -832,6 +838,18 @@ function buildServiceInner(state) {
   <div class="sbox-row">${svcBtns}</div>`;
 }
 
+function buildSettingsInner(state) {
+	const enabled = !!state.autoHideNotificationEnabled;
+	const cls     = enabled ? 'positive' : 'negative';
+	const label   = 'Auto Hide Notif';
+
+	return `
+  <div class="sbox-row">
+    <button type="button" class="cbi-button cbi-button-${cls}" data-action="toggleAutoHideNotification">${label}</button>
+    <span class="sbox-muted">Success: 6s, Error: 10s</span>
+  </div>`;
+}
+
 function buildPageHtml(state) {
 	const v         = state.versions;
 	const dot       = '<span class="sbox-header-dot">\u00B7</span>';
@@ -859,9 +877,11 @@ function buildPageHtml(state) {
   <div class="sbox-card-tabs">
     <button type="button" class="sbox-tab sbox-tab-active" data-tab="control">Control</button>
     <button type="button" class="sbox-tab" data-tab="services">Services</button>
+    <button type="button" class="sbox-tab" data-tab="settings">Settings</button>
   </div>
   <div id="sbox-tab-control">${buildControlInner(state)}</div>
   <div id="sbox-tab-services" style="display:none">${buildServiceInner(state)}</div>
+  <div id="sbox-tab-settings" style="display:none">${buildSettingsInner(state)}</div>
 </div>
 <div class="sbox-card" id="sbox-config">
   <div class="sbox-card-tabs">
@@ -1094,6 +1114,38 @@ function initPage(page, state, mainContent, mainUrl) {
 	// (setAsMain and clear still reload — they swap content)
 	// ----------------------------------------------------------
 
+	// ----------------------------------------------------------
+	// Settings card: notification behavior
+	// ----------------------------------------------------------
+
+	async function refreshSettingsCard() {
+		const card = page.querySelector('#sbox-tab-settings');
+		if (card) { card.innerHTML = buildSettingsInner(state); bindSettingsCard(); }
+	}
+
+	function bindSettingsCard() {
+		const actions = {
+			async toggleAutoHideNotification(b) {
+				await withButtons(b, async () => {
+					try {
+						state.autoHideNotificationEnabled = !state.autoHideNotificationEnabled;
+						autoHideNotificationEnabled = state.autoHideNotificationEnabled;
+						await writeUciFlag('autohide_notification', state.autoHideNotificationEnabled);
+						notify('info', 'Auto hide notifications ' + (state.autoHideNotificationEnabled ? 'enabled' : 'disabled'));
+					} catch (e) {
+						notify('error', 'Settings update failed: ' + e.message);
+					}
+					await refreshSettingsCard();
+				});
+			},
+		};
+
+		page.querySelectorAll('#sbox-tab-settings [data-action]').forEach(b => {
+			const fn = actions[b.dataset.action];
+			if (fn) b.onclick = () => fn(b).catch(() => {});
+		});
+	}
+
 	const urlEl      = page.querySelector('#sbox-url');
 	const selectEl   = page.querySelector('#sbox-config-select');
 	const setMainBtn = page.querySelector('#sbox-set-main-btn');
@@ -1299,6 +1351,7 @@ function initPage(page, state, mainContent, mainUrl) {
 	// Initial bind
 	bindControlCard();
 	bindServiceCard();
+	bindSettingsCard();
 
 	const dashBtn = page.querySelector('#sbox-header-dash');
 	if (dashBtn) dashBtn.onclick = () => {
@@ -1360,27 +1413,31 @@ function initPage(page, state, mainContent, mainUrl) {
 	}
 
 	// ---------------------------------------------------------------
-	// Control / Services tab switching
+	// Control / Services / Settings tab switching
 	// ---------------------------------------------------------------
 
 	const tabControl   = page.querySelector('[data-tab="control"]');
 	const tabServices  = page.querySelector('[data-tab="services"]');
+	const tabSettings  = page.querySelector('[data-tab="settings"]');
 	const paneControl  = page.querySelector('#sbox-tab-control');
 	const paneServices = page.querySelector('#sbox-tab-services');
+	const paneSettings = page.querySelector('#sbox-tab-settings');
 
-	if (tabControl && tabServices && paneControl && paneServices) {
-		tabControl.onclick = () => {
-			tabControl.classList.add('sbox-tab-active');
-			tabServices.classList.remove('sbox-tab-active');
-			paneControl.style.display  = '';
-			paneServices.style.display = 'none';
-		};
-		tabServices.onclick = () => {
-			tabServices.classList.add('sbox-tab-active');
-			tabControl.classList.remove('sbox-tab-active');
-			paneServices.style.display = '';
-			paneControl.style.display  = 'none';
-		};
+	const setCtrlSvcTab = name => {
+		if (!tabControl || !tabServices || !tabSettings || !paneControl || !paneServices || !paneSettings) return;
+
+		tabControl.classList.toggle('sbox-tab-active', name === 'control');
+		tabServices.classList.toggle('sbox-tab-active', name === 'services');
+		tabSettings.classList.toggle('sbox-tab-active', name === 'settings');
+		paneControl.style.display  = name === 'control' ? '' : 'none';
+		paneServices.style.display = name === 'services' ? '' : 'none';
+		paneSettings.style.display = name === 'settings' ? '' : 'none';
+	};
+
+	if (tabControl && tabServices && tabSettings && paneControl && paneServices && paneSettings) {
+		tabControl.onclick  = () => setCtrlSvcTab('control');
+		tabServices.onclick = () => setCtrlSvcTab('services');
+		tabSettings.onclick = () => setCtrlSvcTab('settings');
 	}
 
 	// ---------------------------------------------------------------
@@ -1492,6 +1549,7 @@ return view.extend({
 			healthAutoupdaterServiceTempFlag,
 			autoupdaterServiceTempFlag,
 			mainConfigUrl,
+			autoHideNotificationEnabled,
 		] = await Promise.all([
 			execService('sing-box', 'status'),
 			isServiceActive('singbox-ui-health-autoupdater-service'),
@@ -1502,6 +1560,7 @@ return view.extend({
 			readUciFlag('health_autoupdater_service_state'),
 			readUciFlag('autoupdater_service_state'),
 			loadFile('/etc/sing-box/url_config.json'),
+			readUciFlag('autohide_notification'),
 		]);
 
 		const [tproxyActive, tunActive, isInitialConfigValid] = await Promise.all([
@@ -1525,7 +1584,9 @@ return view.extend({
 			autoupdaterEnabled,
 			healthAutoupdaterEnabled,
 			memdocEnabled,
+			autoHideNotificationEnabled,
 		};
+		autoHideNotificationEnabled = !!state.autoHideNotificationEnabled;
 
 		const page = document.createElement('div');
 		page.className = 'sbox-page';
