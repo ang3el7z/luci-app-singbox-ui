@@ -1586,7 +1586,6 @@ return view.extend({
 			memdocEnabled,
 			autoHideNotificationEnabled,
 		};
-		autoHideNotificationEnabled = !!state.autoHideNotificationEnabled;
 
 		const page = document.createElement('div');
 		page.className = 'sbox-page';
