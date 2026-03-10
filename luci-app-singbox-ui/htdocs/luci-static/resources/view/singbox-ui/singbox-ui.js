@@ -192,15 +192,11 @@ async function enableTproxy() {
 // UCI helpers
 // ============================================================
 
-async function readUciFlag(option, fallback = false) {
+async function readUciFlag(option) {
 	try {
 		const r = await fs.exec('/sbin/uci', ['get', `${UCI_CONFIG}.${UCI_SECTION}.${option}`]);
-		if ((r?.code ?? 0) !== 0) return fallback;
-		const value = String(r?.stdout ?? '').trim();
-		if (value === '1') return true;
-		if (value === '0') return false;
-		return fallback;
-	} catch { return fallback; }
+		return String(r?.stdout ?? '').trim() === '1';
+	} catch { return false; }
 }
 
 async function writeUciFlag(option, value) {
@@ -1130,7 +1126,7 @@ function initPage(page, state, mainContent, mainUrl) {
 					try {
 						state.autoHideNotificationEnabled = !state.autoHideNotificationEnabled;
 						autoHideNotificationEnabled = state.autoHideNotificationEnabled;
-						await writeUciFlag('autohide_notification', state.autoHideNotificationEnabled);
+						await writeUciFlag('autohide_notification_state', state.autoHideNotificationEnabled);
 						notify('info', 'Auto hide notifications ' + (state.autoHideNotificationEnabled ? 'enabled' : 'disabled'));
 					} catch (e) {
 						notify('error', 'Settings update failed: ' + e.message);
@@ -1560,7 +1556,7 @@ return view.extend({
 			readUciFlag('health_autoupdater_service_state'),
 			readUciFlag('autoupdater_service_state'),
 			loadFile('/etc/sing-box/url_config.json'),
-			readUciFlag('autohide_notification'),
+			readUciFlag('autohide_notification_state'),
 		]);
 
 		const [tproxyActive, tunActive, isInitialConfigValid] = await Promise.all([
