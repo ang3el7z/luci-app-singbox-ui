@@ -4,10 +4,16 @@
 
 Web interface for managing Sing-Box on OpenWrt 23/24/25.
 
+## Screenshot
+
+<img width="972" height="858" alt="luci-app-singbox-ui screenshot" src="https://github.com/user-attachments/assets/198efa7a-6861-4f5f-9685-c717f3bb82a1" />
+
 ## Disclaimer
 
-This project is for educational and research use.
-Use at your own risk. The author is not responsible for misuse or damage.
+> **Disclaimer**  
+> This project is intended **strictly for educational and research purposes**.  
+> The author **takes no responsibility** for misuse, damage to devices, or any consequences of use.  
+> You use everything at **your own risk**. Commercial or malicious use is **not encouraged**.
 
 ## Features
 
@@ -64,3 +70,7 @@ Issues and pull requests are welcome.
 ## License
 
 GNU General Public License v2.0 (GPL-2.0-only). See [LICENSE](./LICENSE).
+
+## Stargazers over time
+
+[![Stargazers over time](https://starchart.cc/ang3el7z/luci-app-singbox-ui.svg?variant=adaptive)](https://starchart.cc/ang3el7z/luci-app-singbox-ui)
