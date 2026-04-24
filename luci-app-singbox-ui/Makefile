@@ -10,7 +10,7 @@ LUCI_PKGARCH:=all
 LUCI_LANG.ru:=Русский (Russian)
 LUCI_LANG.en:=English
 
-PKG_LICENSE:=GPL-2.0-or-later
+PKG_LICENSE:=GPL-2.0-only
 PKG_MAINTAINER:=Ang3el <singboxui@ang3el.world>
 LUCI_LANGUAGES:=en ru
 

@@ -87,7 +87,7 @@ You can also create a Pull Request or Issue. And don’t forget to click the sta
 
 ## License
 
-MIT License - see [LICENSE](./LICENSE) file for details
+GNU General Public License v2.0 (GPL-2.0-only) - see [LICENSE](./LICENSE) file for details
 
 ---
 

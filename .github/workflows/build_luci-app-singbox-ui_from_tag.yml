@@ -180,22 +180,10 @@ jobs:
           name: pkg-apk
           path: release-apk/
 
-      - name: Generate Release Notes
-        shell: bash
-        run: |
-          cat > release_notes.md <<'EOF'
-          ## singbox-ui ${{ github.ref_name }}
-
-          - Tag version: `${{ needs.sync-version.outputs.tag_version }}`
-          - Source branch: `${{ needs.sync-version.outputs.target_branch }}`
-          - Source commit: `${{ needs.sync-version.outputs.sync_sha }}`
-          EOF
-
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2.4.0
         with:
           tag_name: ${{ github.ref_name }}
-          body_path: release_notes.md
           files: |
             release-ipk/*.ipk
             release-apk/*.apk
