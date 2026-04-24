@@ -1,91 +1,66 @@
-# 🌐 luci-app-singbox-ui
+# luci-app-singbox-ui
 
 [Read in English](./README.md)
 
-Веб-интерфейс для Sing-Box под **OpenWrt 23/24 и 25**
+Веб-интерфейс для управления Sing-Box на OpenWrt 23/24/25.
 
-**luci-app-singbox-ui** — это простой персональный веб-интерфейс для управления сервисом **Sing-Box** на OpenWRT.
+## Предупреждение
 
-> ⚠️ **Предупреждение**  
-> Этот материал предоставлен **исключительно в образовательных и исследовательских целях**.  
-> Автор **не несёт ответственности** за распространение, неправильное использование, поломку устройств или иные последствия.  
-> Вы используете всё содержимое **на свой страх и риск**.  
-> Коммерческое или вредоносное использование **не поощряется**.
+Проект предназначен для образовательного и исследовательского использования.
+Вы используете его на свой риск. Автор не несет ответственности за ущерб или неправильное применение.
 
----
+## Возможности
 
-## 📸 Screenshots
+- Запуск, остановка и перезапуск сервиса Sing-Box
+- Добавление подписок по URL или вручную через JSON
+- Хранение и редактирование нескольких конфигов в браузере
+- Автоматическое обновление сервиса Sing-Box
+- Проверка состояния сервиса и бинарника
+- Автоперезапуск при нехватке памяти
 
-<img width="972" height="858" alt="chrome_T3g08LVqwe" src="https://github.com/user-attachments/assets/026aca3e-ba20-479a-b8bd-3e42344f9eff" />
+## Установка
 
----
-
-## ✨ Возможности
-
-- ✅ Старт / Стоп / Перезапуск сервиса Sing-Box
-- 🔧 Добавление подписок через URL или вручную (JSON)
-- 💾 Хранение и редактирование нескольких конфигураций в браузере
-- ♻️ Автоматическое обновление сервиса
-- 🔍 Проверка состояния сервиса и бинарника
-- 🧠 Перезапуск при нехватке памяти
-
----
-
-## ⚙️ Установка
-
-### 1. Запустите установочный скрипт:
 ```bash
 wget -O /root/install.sh https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/install.sh && chmod 0755 /root/install.sh && BRANCH="main" sh /root/install.sh
 ```
 
-### 2. Выберите режим:
+После запуска скрипта:
+
+1. Выберите режим:
 - `Singbox-ui`
 - `Singbox (tproxy/tun mode)`
 - `Singbox (tproxy/tun mode) + singbox-ui`
+2. Выберите действие:
+- `Установить`
+- `Удалить`
+- `Переустановить / Обновить`
 
-### 3. Выберите операцию:
-- Установка
-- Удаление
-- Переустановка / Обновление
+## Быстрые подсказки
 
----
+Очистить старый SSH-ключ:
 
-## 🧩 Подсказки для пользователей
-
-### 🔑 Очистка SSH-ключа:
-```bash 
-ssh-keygen -R 192.168.1.1 
+```bash
+ssh-keygen -R 192.168.1.1
 ```
 
-### 🛜 Подключение к роутеру:
+Подключиться к роутеру:
+
 ```bash
 ssh root@192.168.1.1
 ```
 
-### 🔄 Обновление OpenWrt-интерфейса (если плагин не виден, нужно сбросить кэш):
-`Ctrl + Shift + I`
+Если страница LuCI не появилась после установки, выполните жесткое обновление страницы в браузере.
 
-Или нажмите F12, чтобы открыть DevTools, затем кликните правой кнопкой на кнопку «Обновить» и выберите «Жёсткая перезагрузка».
+## Шаблоны конфигураций
 
-### 🗂️ Шаблоны конфигураций
+- [openwrt-template](https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/file/openwrt-template.json)
+- [openwrt-template-tproxy](https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/file/openwrt-template-tproxy.json)
+- [Sing-Box Configuration](https://sing-box.sagernet.org/configuration/)
 
-- [`openwrt-template`](https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/file/openwrt-template.json)
-- [`openwrt-template-tproxy`](https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/file/openwrt-template-tproxy.json)
-> Изучайте официальную документацию и статьи по ссылке: [`Sing-Box Configuration`](https://sing-box.sagernet.org/configuration/)
+## Вклад
 
-### 🛠️ Исправления
+Issue и pull request приветствуются.
 
-- [`Исправление низкой скорости в tun-режиме`](https://github.com/ang3el7z/luci-app-singbox-ui/issues/1)
-- `установите tun в конфиге -> singtun0`
+## Лицензия
 
----
-
-## 🙏 Благодарности
-
-Вы также можете создать Pull Request или Issue. И не забудьте нажать на значок звезды ⭐, чтобы поддержать проект.
-
----
-
-## Stargazers over time
-
-[![Stargazers over time](https://starchart.cc/ang3el7z/luci-app-singbox-ui.svg?variant=adaptive)](https://starchart.cc/ang3el7z/luci-app-singbox-ui)
+GNU General Public License v2.0 (GPL-2.0-only). См. [LICENSE](./LICENSE).
