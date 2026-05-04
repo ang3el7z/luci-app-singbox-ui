@@ -87,13 +87,79 @@ async function withButtons(btns, fn) {
 // File helpers
 // ============================================================
 
+/**
+ * uhttpd limits JSON-RPC POST bodies for `/ubus` (see UH_UBUS_MAX_POST_SIZE in OpenWrt uhttpd, ~64 KiB).
+ * Every `fs.write` / `fs.exec` is one RPC; larger payloads fail or reset the connection.
+ * We keep each request under this budget; big files are written as multiple small writes plus one merge shell.
+ */
+const UHTTPD_UBUS_SAFE_UTF8_BYTES = 52 * 1024;
+
+/** ASCII base64 slice length per chunk (fits in ubus POST with JSON envelope). */
+const SAVE_FILE_B64_CHUNK_CHARS = 45 * 1024;
+
+function utf8ByteLength(str) {
+	return new TextEncoder().encode(str).length;
+}
+
+/** UTF-8 string → base64 (binary-safe in the browser). */
+function utf8ToBase64(str) {
+	try {
+		return btoa(unescape(encodeURIComponent(str)));
+	} catch (e) {
+		throw new Error('base64 encode: ' + e.message);
+	}
+}
+
 async function loadFile(path) {
 	try { return (await fs.read(path)) || ''; }
 	catch { return ''; }
 }
 
+/**
+ * Write `val` to `path`. Small payloads use `fs.write` directly.
+ * Large payloads: base64 fragments under /tmp, then `openssl base64 -d` into the destination
+ * (OpenWrt often has no standalone `base64` applet; `openssl` is commonly installed with sing-box).
+ */
 async function saveFile(path, val) {
-	await fs.write(path, val);
+	const s = String(val ?? '');
+	if (utf8ByteLength(s) <= UHTTPD_UBUS_SAFE_UTF8_BYTES) {
+		await fs.write(path, s);
+		return;
+	}
+
+	const b64   = utf8ToBase64(s);
+	const stamp = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+	const prefix = `/tmp/.sbxw-${stamp}-`;
+	const pad5  = n => String(n).padStart(5, '0');
+
+	try {
+		for (let i = 0, part = 0; i < b64.length; i += SAVE_FILE_B64_CHUNK_CHARS, part++) {
+			await fs.write(
+				`${prefix}${pad5(part)}.b64`,
+				b64.slice(i, i + SAVE_FILE_B64_CHUNK_CHARS),
+			);
+		}
+
+		// $1 = fragment prefix, $2 = destination path (avoids shell-quoting arbitrary paths in -c string).
+		const mergeScript =
+			'set -e; p="$1"; t="$2"; '
+			+ 'for f in "${p}"*.b64; do [ -f "$f" ] || continue; cat "$f"; done '
+			+ '| openssl base64 -d -A > "$t"; '
+			+ 'chmod 644 "$t"; '
+			+ 'rm -f "${p}"*.b64';
+
+		const r = await fs.exec('/bin/sh', ['-c', mergeScript, '_', prefix, path]);
+		if (r && (r.code | 0) !== 0) {
+			throw new Error(
+				String(r.stderr || r.stdout || '').trim() || 'chunked save: merge step failed',
+			);
+		}
+	} catch (e) {
+		try {
+			await fs.exec('/bin/sh', ['-c', 'rm -f "$1"*.b64', '_', prefix]);
+		} catch (_) {}
+		throw e;
+	}
 }
 
 // ============================================================
@@ -224,7 +290,7 @@ async function isValidConfig(content) {
 	if (!content?.trim()) return false;
 	const tmp = tmpPath('singbox-check');
 	try {
-		await fs.write(tmp, content);
+		await saveFile(tmp, content);
 		const r = await fs.exec(SINGBOX_BIN, ['check', '-c', tmp]);
 		if (r.code === 0) return true;
 		let msg = String(r.stderr || '').trim();
@@ -243,7 +309,7 @@ async function formatConfig(content) {
 	if (!content?.trim()) return null;
 	const tmp = tmpPath('singbox-fmt');
 	try {
-		await fs.write(tmp, content);
+		await saveFile(tmp, content);
 		const r = await fs.exec(SINGBOX_BIN, ['format', '-w', '-c', tmp]);
 		if (r.code !== 0) {
 			let msg = String(r.stderr || r.stdout || '').trim();

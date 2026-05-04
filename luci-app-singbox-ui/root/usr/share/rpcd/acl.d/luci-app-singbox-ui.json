@@ -29,7 +29,9 @@
             "file": {
                 "/etc/sing-box/*": ["write"],
                 "/sbin/uci": ["exec"],
-                "/tmp/*": ["write", "exec"]
+                "/tmp/*": ["write", "exec"],
+                "/bin/sh": ["exec"],
+                "/usr/bin/openssl": ["exec"]
             },
             "uci": ["singbox-ui"]
         }
