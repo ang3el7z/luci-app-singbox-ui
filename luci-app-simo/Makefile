@@ -48,7 +48,6 @@ define Package/$(PKG_NAME)/conffiles
 /opt/simo/cores/singbox/url_config.json
 /opt/simo/cores/singbox/url_config2.json
 /opt/simo/cores/singbox/url_config3.json
-/opt/simo/cores/singbox/tproxy.nft
 endef
 
 define Package/$(PKG_NAME)/install
@@ -64,7 +63,7 @@ define Package/$(PKG_NAME)/install
 	$(INSTALL_DIR) $(1)/etc/hotplug.d/iface
 	$(INSTALL_BIN) ./rootfs/etc/hotplug.d/iface/40-simo-mihomo $(1)/etc/hotplug.d/iface/
 	$(INSTALL_DIR) $(1)/etc/hotplug.d/net
-	$(INSTALL_BIN) ./rootfs/etc/hotplug.d/net/99-simo-mihomo-tun $(1)/etc/hotplug.d/net/
+	$(INSTALL_BIN) ./rootfs/etc/hotplug.d/net/99-simo-tun $(1)/etc/hotplug.d/net/
 
 	$(INSTALL_DIR) $(1)/opt/simo/cores
 	$(CP) ./rootfs/opt/simo/cores/* $(1)/opt/simo/cores/
@@ -77,6 +76,8 @@ define Package/$(PKG_NAME)/install
 	$(INSTALL_DIR) $(1)/usr/libexec/simo/cores
 	$(CP) ./rootfs/usr/libexec/simo/cores/* $(1)/usr/libexec/simo/cores/
 	find $(1)/usr/libexec/simo/cores -name core.sh -type f -exec chmod 0755 {} \;
+	$(INSTALL_DIR) $(1)/usr/libexec/simo/net
+	$(INSTALL_BIN) ./rootfs/usr/libexec/simo/net/* $(1)/usr/libexec/simo/net/
 
 	$(INSTALL_DIR) $(1)/usr/share/luci/menu.d
 	$(INSTALL_DATA) ./rootfs/usr/share/luci/menu.d/luci-app-simo.json $(1)/usr/share/luci/menu.d/
@@ -98,6 +99,7 @@ define Package/$(PKG_NAME)/postinst
 	mkdir -p /opt/simo/cores/mihomo/bin /opt/simo/cores/mihomo/lst
 	mkdir -p /opt/simo/cores/singbox/bin
 	[ -f /opt/simo/cores/singbox/config.json ] || printf '{}\n' > /opt/simo/cores/singbox/config.json
+	rm -f /etc/hotplug.d/net/99-simo-mihomo-tun 2>/dev/null
 	[ -f /etc/config/simo ] || {
 		uci set simo.main=simo
 		uci set simo.main.core='mihomo'

@@ -100,6 +100,17 @@ update_config() {
 	/usr/bin/simo/simo-updater "$CORE_ID" "$url_file" "$target"
 }
 
+netenv() {
+	printf "%s\n" \
+		"SIMO_CORE='mihomo'" \
+		"SIMO_TUN_IFACE='simo-mihomo-tun'" \
+		"SIMO_TPROXY_PORT='7894'" \
+		"SIMO_REDIR_PORT='7892'" \
+		"SIMO_DNS_PORT='7874'" \
+		"SIMO_BYPASS_MARK='0x0002'" \
+		"SIMO_RULE_PORTS='{7890, 7891, 7892, 7893, 7894}'"
+}
+
 set_setting() {
 	local key="$1"
 	local value="$2"
@@ -139,6 +150,11 @@ rules() {
 			set_setting PROXY_MODE tproxy
 			"$RULES" restart
 			;;
+		enable-mixed)
+			set_simo_mode mixed
+			set_setting PROXY_MODE mixed
+			"$RULES" restart
+			;;
 		disable-tun|disable-tproxy)
 			"$RULES" stop
 			;;
@@ -153,6 +169,7 @@ case "${1:-status}" in
 	bin) echo "$BIN" ;;
 	config) echo "$CONFIG" ;;
 	url) echo "$URL_CONFIG" ;;
+	netenv) netenv ;;
 	prepare) prepare ;;
 	run) run ;;
 	check) check ;;
@@ -162,5 +179,5 @@ case "${1:-status}" in
 	rules|mode) shift; rules "$@" ;;
 	cleanup) cleanup ;;
 	status) [ -x "$BIN" ] && echo installed || echo missing ;;
-	*) echo "Usage: $0 {id|bin|config|url|prepare|run|check|version|install_latest|update_config|rules|cleanup|status}" >&2; exit 1 ;;
+	*) echo "Usage: $0 {id|bin|config|url|netenv|prepare|run|check|version|install_latest|update_config|rules|cleanup|status}" >&2; exit 1 ;;
 esac

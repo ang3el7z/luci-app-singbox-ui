@@ -209,6 +209,7 @@ function renderHtml(state) {
       <button class="cbi-button cbi-button-apply" data-mode="enable-tun">Enable TUN</button>
       <button class="cbi-button cbi-button-neutral" data-mode="disable-tun">Disable TUN</button>
       <button class="cbi-button cbi-button-apply" data-mode="enable-tproxy">Enable TPROXY</button>
+      <button class="cbi-button cbi-button-apply" data-mode="enable-mixed">Enable Mixed</button>
       <button class="cbi-button cbi-button-neutral" data-mode="disable-tproxy">Disable TPROXY</button>
       <button class="cbi-button cbi-button-reload" data-mode="repair_policy">Repair Policy</button>
       <button class="cbi-button cbi-button-neutral" data-mode="validate_policy">Validate Policy</button>

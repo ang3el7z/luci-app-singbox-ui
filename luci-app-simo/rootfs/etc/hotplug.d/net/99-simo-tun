@@ -1,0 +1,16 @@
+#!/bin/sh
+# Restore Simo TUN policy routes when the active core creates its TUN device.
+
+[ "$ACTION" = "add" ] || exit 0
+[ -x /usr/bin/simo/simo-core ] || exit 0
+[ -x /usr/libexec/simo/net/openwrt.sh ] || exit 0
+
+core="$(uci -q get simo.main.core 2>/dev/null || echo mihomo)"
+env="$(/usr/bin/simo/simo-core "$core" netenv 2>/dev/null)" || exit 0
+eval "$env"
+
+[ -n "$SIMO_TUN_IFACE" ] || exit 0
+[ "$INTERFACE" = "$SIMO_TUN_IFACE" ] || [ "$DEVICE" = "$SIMO_TUN_IFACE" ] || exit 0
+
+/usr/libexec/simo/net/openwrt.sh "$core" tun_route_setup >/dev/null 2>&1 || true
+/usr/libexec/simo/net/openwrt.sh "$core" repair_policy >/dev/null 2>&1 || true

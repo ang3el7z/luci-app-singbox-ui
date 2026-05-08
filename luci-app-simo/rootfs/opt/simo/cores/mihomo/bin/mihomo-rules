@@ -2681,11 +2681,10 @@ update_rules() {
 # TUN route lifecycle
 # -------------------
 # simo-mihomo-tun is created by mihomo after the process starts, not by us.
-# The package ships a static hotplug script:
-#   /etc/hotplug.d/net/99-simo-mihomo-tun
-# When the kernel raises RTM_NEWLINK for simo-mihomo-tun, OpenWrt runs that script
-# with ACTION=add INTERFACE=simo-mihomo-tun, which calls `mihomo-rules tun_route_setup`
-# synchronously.  No background processes, no polling.
+# The package ships a generic static hotplug script:
+#   /etc/hotplug.d/net/99-simo-tun
+# When the active core creates its TUN device, OpenWrt runs that script with
+# ACTION=add and calls the shared simo-net policy route hook synchronously.
 #
 # service_started() → tun_route_watch covers the fast-respawn edge case where
 # simo-mihomo-tun is still up when procd fires the callback (interface did not

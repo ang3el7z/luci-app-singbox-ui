@@ -7,6 +7,9 @@ BIN="$CORE_DIR/bin/sing-box"
 RULES="$CORE_DIR/bin/singbox-rules"
 CONFIG="$CORE_DIR/config.json"
 URL_CONFIG="$CORE_DIR/url_config.json"
+TPROXY_PORT="2080"
+DNS_PORT="1053"
+TUN_IFACE="singtun0"
 RELEASE_API="https://api.github.com/repos/SagerNet/sing-box/releases/latest"
 
 arch_name() {
@@ -39,7 +42,69 @@ prepare() {
 		echo "sing-box core is not installed: $BIN" >&2
 		return 1
 	}
-	"$RULES" start >/dev/null 2>&1 || true
+	prepare_runtime_config
+	case "$(active_mode)" in
+		tun) "$RULES" enable-tun >/dev/null 2>&1 || true ;;
+		mixed) "$RULES" enable-mixed >/dev/null 2>&1 || true ;;
+		tproxy) "$RULES" enable-tproxy >/dev/null 2>&1 || true ;;
+		*) "$RULES" start >/dev/null 2>&1 || true ;;
+	esac
+}
+
+active_mode() {
+	uci -q get simo.main.mode 2>/dev/null || echo tproxy
+}
+
+prepare_runtime_config() {
+	local mode tmp
+	mode="$(active_mode)"
+	tmp="$CONFIG.tmp.$$"
+	jq \
+		--arg mode "$mode" \
+		--arg tun_iface "$TUN_IFACE" \
+		--argjson tproxy_port "$TPROXY_PORT" \
+		'
+		.log = (.log // {"level":"info"})
+		| .outbounds = (
+			(.outbounds // [])
+			| if any(.[]; .tag == "direct") then . else . + [{"type":"direct","tag":"direct"}] end
+		)
+		| .route = (.route // {})
+		| .route.final = (.route.final // "direct")
+		| .inbounds = (
+			(.inbounds // [])
+			| map(select(.tag != "simo-tproxy-in" and .tag != "simo-tun-in"))
+			| if $mode == "tun" then
+				. + [{
+					"type":"tun",
+					"tag":"simo-tun-in",
+					"interface_name":$tun_iface,
+					"address":["172.19.0.1/30"],
+					"mtu":9000,
+					"auto_route":false,
+					"strict_route":false,
+					"stack":"system"
+				}]
+			  elif $mode == "mixed" then
+				. + [
+					{"type":"tproxy","tag":"simo-tproxy-in","listen":"0.0.0.0","listen_port":$tproxy_port},
+					{
+						"type":"tun",
+						"tag":"simo-tun-in",
+						"interface_name":$tun_iface,
+						"address":["172.19.0.1/30"],
+						"mtu":9000,
+						"auto_route":false,
+						"strict_route":false,
+						"stack":"system"
+					}
+				]
+			  else
+				. + [{"type":"tproxy","tag":"simo-tproxy-in","listen":"0.0.0.0","listen_port":$tproxy_port}]
+			  end
+		)
+		' "$CONFIG" > "$tmp"
+	mv "$tmp" "$CONFIG"
 }
 
 run() {
@@ -105,6 +170,16 @@ update_config() {
 	/usr/bin/simo/simo-updater "$CORE_ID" "$url_file" "$target"
 }
 
+netenv() {
+	printf "%s\n" \
+		"SIMO_CORE='singbox'" \
+		"SIMO_TUN_IFACE='$TUN_IFACE'" \
+		"SIMO_TPROXY_PORT='$TPROXY_PORT'" \
+		"SIMO_DNS_PORT='$DNS_PORT'" \
+		"SIMO_BYPASS_MARK='0x0002'" \
+		"SIMO_RULE_PORTS='{2080, 1053}'"
+}
+
 cleanup() {
 	[ -x "$RULES" ] && "$RULES" full_cleanup >/dev/null 2>&1 || true
 }
@@ -114,7 +189,16 @@ rules() {
 		echo "singbox-rules script is not installed: $RULES" >&2
 		return 1
 	}
+	local action="${1:-}"
 	"$RULES" "$@"
+	case "$action" in
+		enable-tun|enable-tproxy|enable-mixed)
+			prepare_runtime_config
+			if /etc/init.d/simo status 2>/dev/null | grep -q running; then
+				/etc/init.d/simo restart >/dev/null 2>&1 || true
+			fi
+			;;
+	esac
 }
 
 case "${1:-status}" in
@@ -122,6 +206,7 @@ case "${1:-status}" in
 	bin) echo "$BIN" ;;
 	config) echo "$CONFIG" ;;
 	url) echo "$URL_CONFIG" ;;
+	netenv) netenv ;;
 	prepare) prepare ;;
 	run) run ;;
 	check) check ;;
@@ -131,5 +216,5 @@ case "${1:-status}" in
 	rules|mode) shift; rules "$@" ;;
 	cleanup) cleanup ;;
 	status) [ -x "$BIN" ] && echo installed || echo missing ;;
-	*) echo "Usage: $0 {id|bin|config|url|prepare|run|check|version|install_latest|update_config|cleanup|status}" >&2; exit 1 ;;
+	*) echo "Usage: $0 {id|bin|config|url|netenv|prepare|run|check|version|install_latest|update_config|cleanup|status}" >&2; exit 1 ;;
 esac

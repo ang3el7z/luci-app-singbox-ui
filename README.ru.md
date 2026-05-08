@@ -24,11 +24,17 @@ Simo - LuCI-менеджер прокси для OpenWrt с подключаем
 /usr/libexec/simo/cores/
   mihomo/core.sh
   singbox/core.sh
+
+/usr/libexec/simo/net/
+  openwrt.sh
 ```
 
 Чтобы добавить новое ядро, нужно добавить соседнюю папку и реализовать тот же
 интерфейс: `prepare`, `run`, `check`, `version`, `install_latest`,
-`update_config`, `url`, `rules`, `cleanup`.
+`update_config`, `url`, `netenv`, `rules`, `cleanup`.
+
+OpenWrt-слой для TUN, TPROXY, firewall, policy-routing и guard общий в
+`simo-net`; каждое ядро публикует только свои сетевые параметры через `netenv`.
 
 ## Возможности
 

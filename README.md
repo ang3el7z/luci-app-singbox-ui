@@ -25,11 +25,18 @@ Mihomo and sing-box live side by side:
 /usr/libexec/simo/cores/
   mihomo/core.sh
   singbox/core.sh
+
+/usr/libexec/simo/net/
+  openwrt.sh
 ```
 
 To add another core, add a new folder under both trees and implement the same
 provider interface: `prepare`, `run`, `check`, `version`, `install_latest`,
-`update_config`, `url`, `rules`, and `cleanup`.
+`update_config`, `url`, `netenv`, `rules`, and `cleanup`.
+
+OpenWrt-specific TUN, TPROXY, firewall, policy-routing and guard work is shared
+through `simo-net`; providers only publish their network parameters through
+`netenv`.
 
 ## Features
 

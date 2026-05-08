@@ -67,6 +67,7 @@
         "/etc/init.d/simo-memdoc-service": ["exec"],
         "/usr/bin/simo/*": ["exec"],
         "/sbin/uci": ["exec"],
+        "/usr/libexec/simo/net/*": ["exec"],
         "/usr/libexec/simo/cores/*/core.sh": ["exec"],
         "/usr/bin/curl": ["exec"],
         "/bin/gzip": ["exec"],
