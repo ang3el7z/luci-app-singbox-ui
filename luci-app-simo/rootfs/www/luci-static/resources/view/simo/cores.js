@@ -4,15 +4,35 @@
 'require ui';
 
 const CORES = [
-	{ id: 'mihomo', title: 'Mihomo', config: '/opt/simo/cores/mihomo/config.yaml' },
-	{ id: 'singbox', title: 'sing-box', config: '/opt/simo/cores/singbox/config.json' },
+	{
+		id: 'mihomo',
+		title: 'Mihomo',
+		bin: '/opt/simo/cores/mihomo/bin/mihomo',
+		rules: '/opt/simo/cores/mihomo/bin/mihomo-rules',
+		config: '/opt/simo/cores/mihomo/config.yaml',
+		urlConfig: '/opt/simo/cores/mihomo/url_config.yaml',
+	},
+	{
+		id: 'singbox',
+		title: 'sing-box',
+		bin: '/opt/simo/cores/singbox/bin/sing-box',
+		rules: '/opt/simo/cores/singbox/bin/singbox-rules',
+		config: '/opt/simo/cores/singbox/config.json',
+		urlConfig: '/opt/simo/cores/singbox/url_config.json',
+	},
 ];
+
+const CORE_MANIFEST_DIR = '/usr/libexec/simo/cores';
 
 const SERVICE_FLAGS = [
 	{ id: 'autoupdater', title: 'Autoupdate', option: 'autoupdater_service_state', service: 'simo-autoupdater-service' },
 	{ id: 'health', title: 'Health', option: 'health_autoupdater_service_state', service: 'simo-health-autoupdater-service' },
 	{ id: 'memdoc', title: 'Memory', option: 'memdoc_service_state', service: 'simo-memdoc-service' },
 ];
+
+function basename(path) {
+	return String(path || '').replace(/\/$/, '').split('/').pop();
+}
 
 function esc(value) {
 	return String(value == null ? '' : value)
@@ -43,6 +63,41 @@ async function readUci(option, fallback) {
 	}
 }
 
+function normalizeManifest(data, fallbackId) {
+	const item = data || {};
+	const id = String(item.id || fallbackId || '').trim();
+	if (!id) return null;
+	return {
+		id,
+		title: String(item.title || id),
+		bin: String(item.bin || ''),
+		rules: String(item.rules || ''),
+		config: String(item.mainConfig || item.config || ''),
+		urlConfig: String(item.urlConfig || ''),
+	};
+}
+
+async function loadCores() {
+	try {
+		const entries = await fs.list(CORE_MANIFEST_DIR);
+		const names = (entries || [])
+			.map(item => item.name || item.filename || item.path || '')
+			.map(basename)
+			.filter(Boolean)
+			.sort();
+		const cores = [];
+		for (const name of names) {
+			try {
+				const raw = await fs.read(CORE_MANIFEST_DIR + '/' + name + '/manifest.json');
+				const core = normalizeManifest(JSON.parse(raw), name);
+				if (core) cores.push(core);
+			} catch (_) {}
+		}
+		if (cores.length) return cores;
+	} catch (_) {}
+	return CORES.slice();
+}
+
 async function writeUci(option, value) {
 	await exec('/sbin/uci', ['set', 'simo.main.' + option + '=' + value]);
 	await exec('/sbin/uci', ['commit', 'simo']);
@@ -67,18 +122,20 @@ async function serviceRunning(name) {
 async function loadState() {
 	const activeCore = await readUci('core', 'mihomo');
 	const mode = await readUci('mode', 'tproxy');
+	const cores = await loadCores();
 	const flags = {};
 	for (const item of SERVICE_FLAGS)
 		flags[item.id] = await readUci(item.option, '0') === '1';
 	flags.guard = await readUci('internet_only', '0') === '1';
 
 	const statuses = {};
-	for (const core of CORES)
+	for (const core of cores)
 		statuses[core.id] = await coreStatus(core.id);
 
 	return {
 		activeCore,
 		mode,
+		cores,
 		flags,
 		statuses,
 		running: await serviceRunning('simo'),
@@ -110,6 +167,7 @@ function coreCard(core, state) {
   <div class="simo-muted">Binary: <span class="simo-code">${esc(status.status)}</span></div>
   <div class="simo-muted">Version: <span class="simo-code">${esc(status.version)}</span></div>
   <div class="simo-muted">Config: <span class="simo-code">${esc(core.config)}</span></div>
+  <div class="simo-muted">URL: <span class="simo-code">${esc(core.urlConfig || 'provider url')}</span></div>
   <div class="simo-row">
     <button class="cbi-button cbi-button-apply" data-core="${core.id}" data-action="activate">Activate</button>
     <button class="cbi-button cbi-button-positive" data-core="${core.id}" data-action="install">Install / Update Core</button>
@@ -126,7 +184,7 @@ function renderHtml(state) {
     <strong>Simo</strong>
     <span>active core</span>
     <select id="simo-active-core" class="simo-select">
-      ${CORES.map(c => `<option value="${c.id}"${state.activeCore === c.id ? ' selected' : ''}>${esc(c.title)}</option>`).join('')}
+      ${state.cores.map(c => `<option value="${c.id}"${state.activeCore === c.id ? ' selected' : ''}>${esc(c.title)}</option>`).join('')}
     </select>
     <span class="simo-pill ${state.running ? 'simo-pill-on' : 'simo-pill-off'}">${state.running ? 'running' : 'stopped'}</span>
   </div>
@@ -142,11 +200,11 @@ function renderHtml(state) {
     </div>
   </div>
 
-  <div class="simo-grid">${CORES.map(core => coreCard(core, state)).join('')}</div>
+  <div class="simo-grid">${state.cores.map(core => coreCard(core, state)).join('')}</div>
 
   <div class="simo-card">
     <h3>Core Rules</h3>
-    <div class="simo-muted">Actions are routed to the active provider: <span class="simo-code">/opt/simo/cores/${esc(state.activeCore)}/bin/${esc(state.activeCore === 'singbox' ? 'singbox-rules' : 'mihomo-rules')}</span></div>
+    <div class="simo-muted">Actions are routed to the active provider: <span class="simo-code">${esc((state.cores.find(c => c.id === state.activeCore) || {}).rules || 'provider rules')}</span></div>
     <div class="simo-row">
       <button class="cbi-button cbi-button-apply" data-mode="enable-tun">Enable TUN</button>
       <button class="cbi-button cbi-button-neutral" data-mode="disable-tun">Disable TUN</button>

@@ -38,6 +38,9 @@ define Package/$(PKG_NAME)/conffiles
 /opt/simo/cores/mihomo/config.yaml
 /opt/simo/cores/mihomo/config2.yaml
 /opt/simo/cores/mihomo/config3.yaml
+/opt/simo/cores/mihomo/url_config.yaml
+/opt/simo/cores/mihomo/url_config2.yaml
+/opt/simo/cores/mihomo/url_config3.yaml
 /opt/simo/cores/mihomo/settings
 /opt/simo/cores/singbox/config.json
 /opt/simo/cores/singbox/config2.json
@@ -63,34 +66,17 @@ define Package/$(PKG_NAME)/install
 	$(INSTALL_DIR) $(1)/etc/hotplug.d/net
 	$(INSTALL_BIN) ./rootfs/etc/hotplug.d/net/99-simo-mihomo-tun $(1)/etc/hotplug.d/net/
 
-	$(INSTALL_DIR) $(1)/opt/simo/cores/mihomo/bin
-	$(INSTALL_BIN) ./rootfs/opt/simo/cores/mihomo/bin/mihomo-rules $(1)/opt/simo/cores/mihomo/bin/
-	$(INSTALL_DIR) $(1)/opt/simo/cores/mihomo
-	$(INSTALL_DATA) ./rootfs/opt/simo/cores/mihomo/config.yaml $(1)/opt/simo/cores/mihomo/
-	$(INSTALL_DIR) $(1)/opt/simo/cores/mihomo/ui
-	$(CP) ./rootfs/opt/simo/cores/mihomo/ui/* $(1)/opt/simo/cores/mihomo/ui/
+	$(INSTALL_DIR) $(1)/opt/simo/cores
+	$(CP) ./rootfs/opt/simo/cores/* $(1)/opt/simo/cores/
+	find $(1)/opt/simo/cores -path '*/bin/*' -type f -exec chmod 0755 {} \;
 	$(INSTALL_DIR) $(1)/opt/simo/cores/mihomo/lst
-
-	$(INSTALL_DIR) $(1)/opt/simo/cores/singbox
-	$(INSTALL_DATA) ./rootfs/opt/simo/cores/singbox/config.json $(1)/opt/simo/cores/singbox/
-	$(INSTALL_DATA) ./rootfs/opt/simo/cores/singbox/config2.json $(1)/opt/simo/cores/singbox/
-	$(INSTALL_DATA) ./rootfs/opt/simo/cores/singbox/config3.json $(1)/opt/simo/cores/singbox/
-	$(INSTALL_DATA) ./rootfs/opt/simo/cores/singbox/url_config.json $(1)/opt/simo/cores/singbox/
-	$(INSTALL_DATA) ./rootfs/opt/simo/cores/singbox/url_config2.json $(1)/opt/simo/cores/singbox/
-	$(INSTALL_DATA) ./rootfs/opt/simo/cores/singbox/url_config3.json $(1)/opt/simo/cores/singbox/
-	$(INSTALL_DIR) $(1)/opt/simo/cores/singbox/bin
-	$(INSTALL_BIN) ./rootfs/opt/simo/cores/singbox/bin/singbox-rules $(1)/opt/simo/cores/singbox/bin/
 
 	$(INSTALL_DIR) $(1)/usr/bin/simo
 	$(INSTALL_BIN) ./rootfs/usr/bin/simo/* $(1)/usr/bin/simo/
 
-	$(INSTALL_DIR) $(1)/usr/libexec/simo/cores/mihomo
-	$(INSTALL_BIN) ./rootfs/usr/libexec/simo/cores/mihomo/core.sh $(1)/usr/libexec/simo/cores/mihomo/
-	$(INSTALL_DATA) ./rootfs/usr/libexec/simo/cores/mihomo/manifest.json $(1)/usr/libexec/simo/cores/mihomo/
-	$(INSTALL_DIR) $(1)/usr/libexec/simo/cores/singbox
-	$(INSTALL_BIN) ./rootfs/usr/libexec/simo/cores/singbox/core.sh $(1)/usr/libexec/simo/cores/singbox/
-	$(INSTALL_DATA) ./rootfs/usr/libexec/simo/cores/singbox/manifest.json $(1)/usr/libexec/simo/cores/singbox/
-	$(INSTALL_DATA) ./rootfs/usr/libexec/simo/cores/singbox/tproxy.nft $(1)/usr/libexec/simo/cores/singbox/
+	$(INSTALL_DIR) $(1)/usr/libexec/simo/cores
+	$(CP) ./rootfs/usr/libexec/simo/cores/* $(1)/usr/libexec/simo/cores/
+	find $(1)/usr/libexec/simo/cores -name core.sh -type f -exec chmod 0755 {} \;
 
 	$(INSTALL_DIR) $(1)/usr/share/luci/menu.d
 	$(INSTALL_DATA) ./rootfs/usr/share/luci/menu.d/luci-app-simo.json $(1)/usr/share/luci/menu.d/
@@ -136,8 +122,14 @@ define Package/$(PKG_NAME)/prerm
 	[ -x /etc/init.d/simo-health-autoupdater-service ] && /etc/init.d/simo-health-autoupdater-service stop >/dev/null 2>&1 || true
 	[ -x /etc/init.d/simo-memdoc-service ] && /etc/init.d/simo-memdoc-service stop >/dev/null 2>&1 || true
 	[ -x /etc/init.d/simo ] && /etc/init.d/simo stop >/dev/null 2>&1 || true
-	[ -x /usr/bin/simo/simo-core ] && /usr/bin/simo/simo-core mihomo rules full_cleanup >/dev/null 2>&1 || true
-	[ -x /usr/bin/simo/simo-core ] && /usr/bin/simo/simo-core singbox rules full_cleanup >/dev/null 2>&1 || true
+	if [ -x /usr/bin/simo/simo-core ]; then \
+		for provider in /usr/libexec/simo/cores/*/core.sh; do \
+			[ -f "$$provider" ] || continue; \
+			core="$${provider%/core.sh}"; \
+			core="$${core##*/}"; \
+			/usr/bin/simo/simo-core "$$core" rules full_cleanup >/dev/null 2>&1 || true; \
+		done; \
+	fi
 }
 exit 0
 endef
@@ -153,8 +145,7 @@ define Package/$(PKG_NAME)/postrm
 		upgrade|update)
 			;;
 		*)
-			rm -f /opt/simo/cores/mihomo/bin/mihomo
-			rm -f /opt/simo/cores/singbox/bin/sing-box
+			find /opt/simo/cores -mindepth 3 -maxdepth 3 -path '*/bin/*' -type f ! -name '*-rules' -delete 2>/dev/null || true
 			;;
 	esac
 }

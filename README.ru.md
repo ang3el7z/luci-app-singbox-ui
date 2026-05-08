@@ -10,10 +10,16 @@ Simo - LuCI-менеджер прокси для OpenWrt с подключаем
     bin/mihomo
     bin/mihomo-rules
     config.yaml
+    config2.yaml
+    config3.yaml
+    url_config.yaml
   singbox/
     bin/sing-box
     bin/singbox-rules
     config.json
+    config2.json
+    config3.json
+    url_config.json
 
 /usr/libexec/simo/cores/
   mihomo/core.sh
@@ -22,7 +28,7 @@ Simo - LuCI-менеджер прокси для OpenWrt с подключаем
 
 Чтобы добавить новое ядро, нужно добавить соседнюю папку и реализовать тот же
 интерфейс: `prepare`, `run`, `check`, `version`, `install_latest`,
-`update_config`, `rules`, `cleanup`.
+`update_config`, `url`, `rules`, `cleanup`.
 
 ## Возможности
 

@@ -1,2 +1,12 @@
 +opt/simo/cores/mihomo/config.yaml
++opt/simo/cores/mihomo/config2.yaml
++opt/simo/cores/mihomo/config3.yaml
++opt/simo/cores/mihomo/url_config.yaml
++opt/simo/cores/mihomo/url_config2.yaml
++opt/simo/cores/mihomo/url_config3.yaml
 +opt/simo/cores/singbox/config.json
++opt/simo/cores/singbox/config2.json
++opt/simo/cores/singbox/config3.json
++opt/simo/cores/singbox/url_config.json
++opt/simo/cores/singbox/url_config2.json
++opt/simo/cores/singbox/url_config3.json

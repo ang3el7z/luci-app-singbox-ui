@@ -11,10 +11,16 @@ Mihomo and sing-box live side by side:
     bin/mihomo
     bin/mihomo-rules
     config.yaml
+    config2.yaml
+    config3.yaml
+    url_config.yaml
   singbox/
     bin/sing-box
     bin/singbox-rules
     config.json
+    config2.json
+    config3.json
+    url_config.json
 
 /usr/libexec/simo/cores/
   mihomo/core.sh
@@ -23,7 +29,7 @@ Mihomo and sing-box live side by side:
 
 To add another core, add a new folder under both trees and implement the same
 provider interface: `prepare`, `run`, `check`, `version`, `install_latest`,
-`update_config`, `rules`, and `cleanup`.
+`update_config`, `url`, `rules`, and `cleanup`.
 
 ## Features
 

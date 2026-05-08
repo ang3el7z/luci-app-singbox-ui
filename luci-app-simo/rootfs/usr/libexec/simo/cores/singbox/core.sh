@@ -6,6 +6,7 @@ CORE_DIR="/opt/simo/cores/singbox"
 BIN="$CORE_DIR/bin/sing-box"
 RULES="$CORE_DIR/bin/singbox-rules"
 CONFIG="$CORE_DIR/config.json"
+URL_CONFIG="$CORE_DIR/url_config.json"
 RELEASE_API="https://api.github.com/repos/SagerNet/sing-box/releases/latest"
 
 arch_name() {
@@ -99,7 +100,7 @@ download_latest() {
 }
 
 update_config() {
-	local url_file="${1:-$CORE_DIR/url_config.json}"
+	local url_file="${1:-$URL_CONFIG}"
 	local target="${2:-$CONFIG}"
 	/usr/bin/simo/simo-updater "$CORE_ID" "$url_file" "$target"
 }
@@ -120,6 +121,7 @@ case "${1:-status}" in
 	id) echo "$CORE_ID" ;;
 	bin) echo "$BIN" ;;
 	config) echo "$CONFIG" ;;
+	url) echo "$URL_CONFIG" ;;
 	prepare) prepare ;;
 	run) run ;;
 	check) check ;;
@@ -129,5 +131,5 @@ case "${1:-status}" in
 	rules|mode) shift; rules "$@" ;;
 	cleanup) cleanup ;;
 	status) [ -x "$BIN" ] && echo installed || echo missing ;;
-	*) echo "Usage: $0 {id|bin|config|prepare|run|check|version|install_latest|update_config|cleanup|status}" >&2; exit 1 ;;
+	*) echo "Usage: $0 {id|bin|config|url|prepare|run|check|version|install_latest|update_config|cleanup|status}" >&2; exit 1 ;;
 esac

@@ -8,6 +8,7 @@
         "/usr/lib/opkg/status": ["read"],
         "/usr/lib/apk/db/installed": ["read"],
         "/lib/apk/db/installed": ["read"],
+        "/usr/libexec/simo/cores": ["list"],
         "/usr/libexec/simo/cores/*/manifest.json": ["read"],
         "/opt/simo/cores/mihomo/*": ["read", "stat"],
         "/opt/simo/cores/mihomo/bin/mihomo": ["read", "stat", "exec"],

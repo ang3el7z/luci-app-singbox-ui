@@ -15,10 +15,7 @@ active_core() {
 }
 
 url_file_for_core() {
-	case "$1" in
-		singbox) echo /opt/simo/cores/singbox/url_config.json ;;
-		mihomo) echo /opt/simo/cores/mihomo/url_config.yaml ;;
-	esac
+	/usr/bin/simo/simo-core "$1" url 2>/dev/null
 }
 
 check_server() {

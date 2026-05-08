@@ -48,7 +48,7 @@ let rulesetMainEditor = null;
 let rulesetWhitelistEditor = null;
 
 const appState = {
-	versions: { app: 'unknown', clash: 'unknown' },
+	versions: { app: 'unknown', mihomo: 'unknown' },
 	kernelStatus: { installed: false, version: null },
 	serviceRunning: false,
 	proxyMode: 'tproxy',
@@ -351,17 +351,17 @@ function normalizeAppVersion(version) {
 }
 
 async function getVersions() {
-	const info = { app: 'unknown', clash: 'unknown' };
+	const info = { app: 'unknown', mihomo: 'unknown' };
 	const packageName = 'luci-app-simo';
 
 	try {
-		const clashV = await fs.exec('/opt/simo/cores/mihomo/bin/mihomo', ['-v']);
-		const clashVersion = String(clashV.stdout || clashV.stderr || '');
-		if (clashVersion) {
-			info.clash = parseVersion(clashVersion, 'installed');
+		const mihomoV = await fs.exec('/opt/simo/cores/mihomo/bin/mihomo', ['-v']);
+		const mihomoVersion = String(mihomoV.stdout || mihomoV.stderr || '');
+		if (mihomoVersion) {
+			info.mihomo = parseVersion(mihomoVersion, 'installed');
 		} else {
 			const alt = await fs.exec('/opt/simo/cores/mihomo/bin/mihomo', ['version']);
-			info.clash = parseVersion(alt.stdout || alt.stderr, 'installed');
+			info.mihomo = parseVersion(alt.stdout || alt.stderr, 'installed');
 		}
 	} catch (e) {}
 
@@ -857,7 +857,7 @@ async function installKernelFromSettings() {
 	}
 
 	appState.kernelStatus = await getMihomoStatus();
-	appState.versions.clash = (appState.kernelStatus && appState.kernelStatus.version) || appState.versions.clash;
+	appState.versions.mihomo = (appState.kernelStatus && appState.kernelStatus.version) || appState.versions.mihomo;
 	await refreshHeaderAndControl();
 	await refreshReleaseMeta({ force: true });
 	return true;
@@ -1086,7 +1086,7 @@ function computeUiPath(externalUiName, externalUi) {
 
 async function getServiceStatus() {
 	try {
-		const instances = (await callServiceList('clash')).clash?.instances;
+		const instances = (await callServiceList('simo')).simo?.instances;
 		return Object.values(instances || {})[0]?.running || false;
 	} catch (e) {
 		return false;
@@ -2057,7 +2057,7 @@ async function switchProxyModeFromHeader(targetMode) {
 
 async function loadClashLogs() {
 	try {
-		const direct = await fs.exec('/sbin/logread', ['-e', 'clash']);
+		const direct = await fs.exec('/sbin/logread', ['-e', 'simo']);
 		if (direct.code === 0) return String(direct.stdout || '').trim();
 	} catch (e) {}
 
@@ -2066,7 +2066,7 @@ async function loadClashLogs() {
 		if (all.code === 0) {
 			return String(all.stdout || '')
 				.split('\n')
-				.filter((line) => /clash/i.test(line))
+				.filter((line) => /(simo|mihomo|sing-box|singbox|clash)/i.test(line))
 				.join('\n')
 				.trim();
 		}
@@ -2076,7 +2076,7 @@ async function loadClashLogs() {
 }
 
 const ANSI_RE = /\x1b\[[0-9;]*m/g;
-const SYSLOG_CLASH_RE = /^.*? ([\d:]{8}) .*?daemon\.(\w+)\s+(clash(?:-rules|-hotplug)?)\b(?:\[\d+\])?:\s*(.*)$/;
+const SYSLOG_CLASH_RE = /^.*? ([\d:]{8}) .*?daemon\.(\w+)\s+((?:simo|mihomo|sing-box|singbox|clash)(?:-[\w-]+)?)\b(?:\[\d+\])?:\s*(.*)$/;
 
 function normalizeLogMessage(message) {
 	let text = String(message || '').trim();
@@ -2116,12 +2116,12 @@ function formatLogLine(line) {
 		const time = (isoTime.match(/(\d{2}:\d{2}:\d{2})/) || [null, '--:--:--'])[1];
 
 		return {
-			text: '[' + time + '] [clash] [' + level + '] ' + message,
+			text: '[' + time + '] [mihomo] [' + level + '] ' + message,
 			level: level
 		};
 	}
 
-	if (!/clash/i.test(raw)) return null;
+	if (!/(simo|mihomo|sing-box|singbox|clash)/i.test(raw)) return null;
 
 	const fallbackLevel =
 		/\b(FATAL|PANIC|ERRO|ERROR)\b/i.test(raw) ? 'ERROR' :
@@ -2778,7 +2778,7 @@ function buildPageHtml() {
 	const versionApp = safeText(appState.versions.app || _('unknown'));
 	const versionKernel = safeText(
 		appState.kernelStatus && appState.kernelStatus.installed
-			? (appState.kernelStatus.version || appState.versions.clash || _('Installed'))
+			? (appState.kernelStatus.version || appState.versions.mihomo || _('Installed'))
 			: _('Not installed')
 	);
 
@@ -2932,7 +2932,7 @@ function updateHeaderAndControlDom() {
 	}
 	if (kernelVersion) {
 		kernelVersion.textContent = appState.kernelStatus && appState.kernelStatus.installed
-			? (appState.kernelStatus.version || appState.versions.clash || _('Installed'))
+			? (appState.kernelStatus.version || appState.versions.mihomo || _('Installed'))
 			: _('Not installed');
 	}
 	if (kernelAction && !kernelAction.classList.contains('sbox-version-action-busy')) {
@@ -3096,9 +3096,9 @@ function bindSettingsPaneEvents() {
 				if (!ok) return;
 				try {
 					await execService('restart');
-					notify('info', _('Settings saved and Clash service restarted.'));
+					notify('info', _('Settings saved and Simo service restarted.'));
 				} catch (e) {
-					notify('error', _('Settings saved, but failed to restart Clash service: %s').format(e.message));
+					notify('error', _('Settings saved, but failed to restart Simo service: %s').format(e.message));
 				}
 
 				appState.settings = await loadOperationalSettings();
@@ -3318,10 +3318,10 @@ function bindControlAndHeaderEvents() {
 	if (restartBtn) {
 		restartBtn.addEventListener('click', () => withButtons(restartBtn, async () => {
 			await execService('restart');
-			notify('info', _('Clash service restarted successfully.'));
+			notify('info', _('Simo service restarted successfully.'));
 			await refreshHeaderAndControl();
 		}).catch((e) => {
-			notify('error', _('Failed to restart Clash service: %s').format(e.message));
+			notify('error', _('Failed to restart Simo service: %s').format(e.message));
 		}));
 	}
 
@@ -4263,7 +4263,7 @@ return view.extend({
 		appState.uiTheme = savedTheme ? normalizeTheme(savedTheme) : detectInitialTheme();
 		appState.settings = data[3] || await loadOperationalSettings();
 		appState.interfaces = data[4] || [];
-		appState.versions = data[5] || { app: 'unknown', clash: 'unknown' };
+		appState.versions = data[5] || { app: 'unknown', mihomo: 'unknown' };
 		appState.kernelStatus = data[6] || { installed: false, version: null };
 		appState.serviceRunning = !!data[7];
 		appState.proxyMode = data[8] || 'tproxy';

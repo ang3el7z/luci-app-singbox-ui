@@ -5,5 +5,6 @@
   "rules": "/opt/simo/cores/singbox/bin/singbox-rules",
   "configDir": "/opt/simo/cores/singbox",
   "mainConfig": "/opt/simo/cores/singbox/config.json",
+  "urlConfig": "/opt/simo/cores/singbox/url_config.json",
   "releaseApi": "https://api.github.com/repos/SagerNet/sing-box/releases/latest"
 }

@@ -1,21 +1,21 @@
 #!/bin/sh
 #
-# /etc/hotplug.d/iface/40-clash
+# /etc/hotplug.d/iface/40-simo-mihomo
 #
-# Updates Clash proxy-providers (HTTP subscriptions only) and rule-providers
+# Updates Mihomo proxy-providers (HTTP subscriptions only) and rule-providers
 # via the mihomo REST API when a WAN interface comes up.
 #
 # Triggered on every ifup hotplug event, but only acts when a real default
 # route exists — the reliable indicator that internet is available.
 #
 # Test manually:
-#   ACTION=ifup INTERFACE=wan DEVICE=ppp0 sh /etc/hotplug.d/iface/40-clash
-#   logread | grep clash-hotplug
+#   ACTION=ifup INTERFACE=wan DEVICE=ppp0 sh /etc/hotplug.d/iface/40-simo-mihomo
+#   logread | grep simo-mihomo-hotplug
 
 # Only act on interface up events
 [ "$ACTION" = "ifup" ] || exit 0
 
-# Check that Clash is running
+# Check that Mihomo is running
 pgrep -f '/opt/simo/cores/mihomo/bin/mihomo -d' > /dev/null 2>&1 || exit 0
 
 # Check for a default route — the reliable sign that internet is available.
@@ -27,8 +27,8 @@ ip route show default | grep -q 'default via' || exit 0
 # ---------------------------------------------------------------------------
 # Logging helpers
 # ---------------------------------------------------------------------------
-msg()  { logger -p daemon.info -t clash-hotplug "$*"; }
-warn() { logger -p daemon.warn -t clash-hotplug "$*"; }
+msg()  { logger -p daemon.info -t simo-mihomo-hotplug "$*"; }
+warn() { logger -p daemon.warn -t simo-mihomo-hotplug "$*"; }
 
 msg "WAN up (iface=$INTERFACE dev=$DEVICE), scheduling provider update"
 
@@ -37,13 +37,13 @@ msg "WAN up (iface=$INTERFACE dev=$DEVICE), scheduling provider update"
 sleep 10
 
 # ---------------------------------------------------------------------------
-# Configuration — read from clash config file, no hardcoded values
+# Configuration: read from Mihomo config file, no hardcoded values
 # ---------------------------------------------------------------------------
 
-CLASH_CONFIG="/opt/simo/cores/mihomo/config.yaml"
+MIHOMO_CONFIG="/opt/simo/cores/mihomo/config.yaml"
 
 # Extract API port from external-controller (e.g. "0.0.0.0:9090" → "9090")
-api_port=$(grep -m1 '^\s*external-controller:' "$CLASH_CONFIG" 2>/dev/null \
+api_port=$(grep -m1 '^\s*external-controller:' "$MIHOMO_CONFIG" 2>/dev/null \
     | sed 's/.*:\([0-9][0-9]*\)\s*$/\1/')
 [ -n "$api_port" ] || api_port="9090"
 
@@ -52,7 +52,7 @@ api_port=$(grep -m1 '^\s*external-controller:' "$CLASH_CONFIG" 2>/dev/null \
 API="http://127.0.0.1:${api_port}"
 
 # Extract secret if configured; build the Authorization header value
-secret=$(grep -m1 '^\s*secret:' "$CLASH_CONFIG" 2>/dev/null \
+secret=$(grep -m1 '^\s*secret:' "$MIHOMO_CONFIG" 2>/dev/null \
     | sed 's/^\s*secret:\s*//' | tr -d '"'"'" | tr -d '[:space:]')
 
 # ---------------------------------------------------------------------------
@@ -140,7 +140,7 @@ update_proxy_providers() {
     local response
     response=$(api_get "/providers/proxies")
     if [ -z "$response" ]; then
-        warn "Failed to reach API at ${API} (Clash not ready yet?)"
+        warn "Failed to reach API at ${API} (Mihomo not ready yet?)"
         return 1
     fi
 

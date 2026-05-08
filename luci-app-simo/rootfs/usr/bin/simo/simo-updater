@@ -39,13 +39,8 @@ case "$CORE" in
 			exit 1
 		}
 		;;
-	mihomo)
-		mv "$TMP_RAW" "$TMP_FILE"
-		;;
 	*)
-		echo "Unknown core: $CORE" >&2
-		rm -f "$TMP_RAW" "$TMP_FILE"
-		exit 1
+		mv "$TMP_RAW" "$TMP_FILE"
 		;;
 esac
 
@@ -60,4 +55,3 @@ fi
 
 mv "$TMP_FILE" "$TARGET_FILE"
 exit 0
-
