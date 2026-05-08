@@ -1,0 +1,63 @@
+#!/bin/sh
+set -e
+
+MAX_FILESIZE='10485760'
+CURL_TIMEOUT='30'
+
+[ $# -eq 3 ] || {
+	echo "Usage: $0 <core> <url-file> <target-file>" >&2
+	exit 1
+}
+
+CORE="$1"
+URL_FILE="$2"
+TARGET_FILE="$3"
+
+[ -r "$URL_FILE" ] || {
+	echo "URL file not found: $URL_FILE" >&2
+	exit 1
+}
+
+CONFIG_URL="$(cat "$URL_FILE")"
+[ -n "$CONFIG_URL" ] || {
+	echo "Empty URL" >&2
+	exit 1
+}
+
+TMP_RAW="${TARGET_FILE}.tmp.$$.dl"
+TMP_FILE="${TARGET_FILE}.tmp.$$"
+
+curl -fsSL --max-time "$CURL_TIMEOUT" --max-filesize "$MAX_FILESIZE" "$CONFIG_URL" -o "$TMP_RAW" || {
+	rm -f "$TMP_RAW"
+	exit 1
+}
+
+case "$CORE" in
+	singbox)
+		jq . "$TMP_RAW" > "$TMP_FILE" || {
+			rm -f "$TMP_RAW" "$TMP_FILE"
+			exit 1
+		}
+		;;
+	mihomo)
+		mv "$TMP_RAW" "$TMP_FILE"
+		;;
+	*)
+		echo "Unknown core: $CORE" >&2
+		rm -f "$TMP_RAW" "$TMP_FILE"
+		exit 1
+		;;
+esac
+
+if [ -f "$TARGET_FILE" ]; then
+	old_hash="$(sha256sum "$TARGET_FILE" | cut -d' ' -f1)"
+	new_hash="$(sha256sum "$TMP_FILE" | cut -d' ' -f1)"
+	if [ "$old_hash" = "$new_hash" ]; then
+		rm -f "$TMP_FILE"
+		exit 2
+	fi
+fi
+
+mv "$TMP_FILE" "$TARGET_FILE"
+exit 0
+

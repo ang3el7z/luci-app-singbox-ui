@@ -1,64 +1,53 @@
-# luci-app-singbox-ui
+# Simo
 
-[Read in English](./README.md)
+Simo - LuCI-менеджер прокси для OpenWrt с подключаемыми ядрами.
 
-Веб-интерфейс для управления Sing-Box на OpenWrt 23/24/25.
+Проект строится на подходе MiClash, но ядра вынесены в простую provider-архитектуру:
 
-## Предупреждение
-> Этот проект предназначен **исключительно для образовательных и исследовательских целей**.  
-> Автор **не несет ответственности** за распространение, неправильное использование, поломку устройств или иные последствия.  
-> Вы используете проект **на свой страх и риск**. Коммерческое или вредоносное использование **не поощряется**.
+```text
+/opt/simo/cores/
+  mihomo/
+    bin/mihomo
+    bin/mihomo-rules
+    config.yaml
+  singbox/
+    bin/sing-box
+    config.json
 
-## Скриншот
-<img width="972" height="858" alt="Скриншот luci-app-singbox-ui" src="https://github.com/user-attachments/assets/026aca3e-ba20-479a-b8bd-3e42344f9eff" />
+/usr/libexec/simo/cores/
+  mihomo/core.sh
+  singbox/core.sh
+```
+
+Чтобы добавить новое ядро, нужно добавить соседнюю папку и реализовать тот же
+интерфейс: `prepare`, `run`, `check`, `version`, `install_latest`,
+`update_config`, `cleanup`.
 
 ## Возможности
-- Запуск, остановка и перезапуск сервиса Sing-Box
-- Добавление подписок по URL или вручную через JSON
-- Хранение и редактирование нескольких конфигов в браузере
-- Автоматическое обновление сервиса Sing-Box
-- Проверка состояния сервиса и бинарника
-- Автоперезапуск при нехватке памяти
+
+- база UI и логика Mihomo из MiClash;
+- переключение активного ядра: `mihomo` или `sing-box`;
+- установка и обновление ядра из LuCI;
+- общий сервис `/etc/init.d/simo`;
+- TUN/TPROXY для sing-box;
+- autoupdate service;
+- health service;
+- memory restart service;
+- без внешних install scripts.
 
 ## Установка
+
+OpenWrt 23/24:
 ```bash
-wget -O /root/install.sh https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/install.sh && chmod 0755 /root/install.sh && BRANCH="main" sh /root/install.sh
+opkg update
+wget -O /tmp/luci-app-simo.ipk https://github.com/ang3el7z/luci-app-simo/releases/latest/download/luci-app-simo.ipk
+opkg install /tmp/luci-app-simo.ipk
 ```
 
-После запуска скрипта:
-1. Выберите режим:
-- `Singbox-ui`
-- `Singbox (tproxy/tun mode)`
-- `Singbox (tproxy/tun mode) + singbox-ui`
-2. Выберите действие:
-- `Установить`
-- `Удалить`
-- `Переустановить / Обновить`
-
-## Быстрые подсказки
-
-Очистить старый SSH-ключ:
+OpenWrt 25:
 ```bash
-ssh-keygen -R 192.168.1.1
+wget -O /tmp/luci-app-simo.apk https://github.com/ang3el7z/luci-app-simo/releases/latest/download/luci-app-simo.apk
+apk add --allow-untrusted /tmp/luci-app-simo.apk
 ```
 
-Подключиться к роутеру:
-```bash
-ssh root@192.168.1.1
-```
-
-Если страница LuCI не появилась после установки, выполните жесткое обновление страницы в браузере.
-
-## Шаблоны конфигураций
-- [openwrt-template](https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/file/openwrt-template.json)
-- [openwrt-template-tproxy](https://raw.githubusercontent.com/ang3el7z/luci-app-singbox-ui/main/other/file/openwrt-template-tproxy.json)
-- [Sing-Box Configuration](https://sing-box.sagernet.org/configuration/)
-
-## Вклад
-Issue и pull request приветствуются.
-
-## Лицензия
-GNU General Public License v2.0 (GPL-2.0-only). См. [LICENSE](./LICENSE).
-
-## Stargazers over time
-[![Stargazers over time](https://starchart.cc/ang3el7z/luci-app-singbox-ui.svg?variant=adaptive)](https://starchart.cc/ang3el7z/luci-app-singbox-ui)
+После установки пакета откройте LuCI и установите нужное ядро из Simo.

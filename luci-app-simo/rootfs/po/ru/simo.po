@@ -1,0 +1,1102 @@
+# Russian translation for Simo
+# Copyright (C) 2024-2025 ZeroChaos
+# This file is distributed under the same license as the package.
+#
+msgid ""
+msgstr ""
+"Language: ru\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
+
+### Строки меню ###
+
+msgid "Configuration"
+msgstr "Конфигурация"
+
+msgid "Settings"
+msgstr "Настройки"
+
+msgid "Rulesets"
+msgstr "Списки правил"
+
+msgid "Log"
+msgstr "Журнал"
+
+### Общие строки ###
+
+msgid "Please wait"
+msgstr "Пожалуйста, подождите"
+
+msgid "Saving..."
+msgstr "Сохранение..."
+
+msgid "Deleting..."
+msgstr "Удаление..."
+
+msgid "Creating..."
+msgstr "Создание..."
+
+msgid "Cancel"
+msgstr "Отмена"
+
+msgid "Create"
+msgstr "Создать"
+
+msgid "Save"
+msgstr "Сохранить"
+
+msgid "Delete"
+msgstr "Удалить"
+
+### Модуль config.js ###
+
+msgid "Open Dashboard"
+msgstr "Открыть панель управления"
+
+msgid "Stop Service"
+msgstr "Остановить службу"
+
+msgid "Start Service"
+msgstr "Запустить службу"
+
+msgid "Clash is running"
+msgstr "Clash запущен"
+
+msgid "Clash stopped"
+msgstr "Clash остановлен"
+
+msgid "Clash Configuration"
+msgstr "Конфигурация Clash"
+
+msgid "Your current Clash config. When applied, the changes will be saved and the service will be restarted."
+msgstr "Ваша текущая конфигурация Clash. При применении изменения будут сохранены, а служба перезапущена."
+
+msgid "Save & Apply Configuration"
+msgstr "Сохранить и применить"
+
+msgid "Unable to start and enable service: %s"
+msgstr "Не удалось запустить и включить службу: %s"
+
+msgid "Unable to start service: %s"
+msgstr "Не удалось запустить службу: %s"
+
+msgid "Unable to stop and disable service: %s"
+msgstr "Не удалось остановить и отключить службу: %s"
+
+msgid "Popup was blocked. Please allow popups for this site."
+msgstr "Всплывающее окно заблокировано. Пожалуйста, разрешите всплывающие окна для этого сайта."
+
+msgid "Service is not running."
+msgstr "Служба не запущена."
+
+msgid "Error opening dashboard:"
+msgstr "Ошибка при открытии панели управления:"
+
+msgid "Failed to open dashboard: %s"
+msgstr "Не удалось открыть панель управления: %s"
+
+msgid "Configuration saved successfully."
+msgstr "Конфигурация успешно сохранена."
+
+msgid "Configuration test failed — service not reloaded. Please fix the errors below: %s"
+msgstr "Проверка конфигурации завершилась с ошибкой — служба не была перезагружена. Пожалуйста, исправьте следующие ошибки: %s"
+
+msgid "unknown error"
+msgstr "неизвестная ошибка"
+
+msgid "Service reloaded successfully."
+msgstr "Служба успешно перезагружена."
+
+msgid "Unable to save contents: %s"
+msgstr "Не удалось сохранить содержимое: %s"
+
+### Модуль log.js ###
+
+msgid "--- Log truncated, skipped %d older lines ---"
+msgstr "--- Лог урезан, пропущено %d старых строк ---"
+
+msgid "Error executing logread:"
+msgstr "Ошибка выполнения logread:"
+
+msgid "Error reading logs: %s"
+msgstr "Ошибка чтения логов: %s"
+
+### Модуль rulesets.js ###
+
+msgid "Local Rulesets"
+msgstr "Локальные списки правил"
+
+msgid "Create New List"
+msgstr "Создать новый список"
+
+msgid "Here you can manage local lists for use in rule-providers."
+msgstr "Здесь вы можете управлять локальными списками для использования в rule-providers."
+
+msgid "Example usage in your config.yaml:"
+msgstr "Пример использования в вашем config.yaml:"
+
+msgid "Editor not initialized."
+msgstr "Редактор не инициализирован."
+
+msgid "List \"%s\" saved successfully."
+msgstr "Список \"%s\" успешно сохранен."
+
+msgid "Failed to save list \"%s\": %s"
+msgstr "Не удалось сохранить список \"%s\": %s"
+
+msgid "Delete Ruleset"
+msgstr "Удалить список правил"
+
+msgid "Are you sure you want to delete the list \"%s\"? This action cannot be undone."
+msgstr "Вы уверены, что хотите удалить список \"%s\"? Это действие необратимо."
+
+msgid "List \"%s\" has been deleted."
+msgstr "Список \"%s\" был удален."
+
+msgid "Failed to delete list \"%s\": %s"
+msgstr "Не удалось удалить список \"%s\": %s"
+
+msgid "Create New Ruleset"
+msgstr "Создать новый список правил"
+
+msgid "e.g., my-custom-list"
+msgstr "например, my-custom-list"
+
+msgid "Invalid name. Only letters, numbers, underscores, and hyphens are allowed."
+msgstr "Некорректное имя. Разрешены только буквы, цифры, знак подчеркивания и дефисы."
+
+msgid "List Name"
+msgstr "Имя списка"
+
+msgid "New list \"%s\" created."
+msgstr "Новый список \"%s\" создан."
+
+msgid "Failed to create list: %s"
+msgstr "Не удалось создать список: %s"
+
+msgid "Cannot read ruleset directory: %s"
+msgstr "Не удается прочитать директорию списков правил: %s"
+
+msgid "A list with this name already exists."
+msgstr "Список с таким именем уже существует."
+
+msgid "TECHNICAL"
+msgstr "ТЕХНИЧЕСКИЙ"
+
+msgid "IP-CIDR List (fake-ip whitelist mode)"
+msgstr "Список IP-CIDR (режим fake-ip whitelist)"
+
+msgid "This list is used by the firewall (nftables/iptables) to mark traffic to specified IPs and subnets for proxying in fake-ip whitelist mode. Enter one IPv4 address or CIDR per line (e.g. 8.8.8.8 or 1.2.3.0/24). Lines starting with # are treated as comments. Saving applies changes immediately without restarting Mihomo."
+msgstr "Этот список используется файрволом (nftables/iptables) для маркировки трафика к указанным IP и подсетям для проксирования в режиме fake-ip whitelist. Вводите по одному IPv4-адресу или CIDR на строку (например, 8.8.8.8 или 1.2.3.0/24). Строки, начинающиеся с #, считаются комментариями. Сохранение применяет изменения немедленно без перезапуска Mihomo."
+
+msgid "IP-CIDR whitelist saved and firewall rules updated."
+msgstr "Белый список IP-CIDR сохранён, правила файрвола обновлены."
+
+msgid "IP-CIDR whitelist saved, but firewall update failed: %s"
+msgstr "Белый список IP-CIDR сохранён, но обновление файрвола не удалось: %s"
+
+msgid "Failed to save IP-CIDR whitelist: %s"
+msgstr "Не удалось сохранить белый список IP-CIDR: %s"
+
+### Модуль settings.js ###
+
+msgid "WAN Interfaces"
+msgstr "WAN-интерфейсы"
+
+msgid "Ethernet Interfaces"
+msgstr "Ethernet-интерфейсы"
+
+msgid "WiFi Interfaces"
+msgstr "Wi-Fi интерфейсы"
+
+msgid "USB Interfaces"
+msgstr "USB-интерфейсы"
+
+msgid "VPN Interfaces"
+msgstr "VPN-интерфейсы"
+
+msgid "Virtual Interfaces"
+msgstr "Виртуальные интерфейсы"
+
+msgid "Other Interfaces"
+msgstr "Прочие интерфейсы"
+
+msgid "Mihomo Kernel Management"
+msgstr "Управление ядром Mihomo"
+
+msgid "Download and manage the Mihomo (Clash Meta) kernel binary."
+msgstr "Загрузка и управление исполняемым файлом ядра Mihomo (Clash Meta)."
+
+msgid "Interface Processing Mode"
+msgstr "Режим обработки интерфейсов"
+
+msgid "Choose how to handle network interfaces for proxy processing."
+msgstr "Выберите, как обрабатывать сетевые интерфейсы для проксирования."
+
+msgid "Proxy Mode"
+msgstr "Режим проксирования"
+
+msgid "Choose how traffic is redirected to Clash: TPROXY (all traffic), TUN (all traffic via virtual interface), or MIXED (TCP via TPROXY, UDP via TUN — best for gaming)."
+msgstr "Выберите, как перенаправлять трафик в Clash: TPROXY (весь трафик), TUN (весь трафик через виртуальный интерфейс) или MIXED (TCP через TPROXY, UDP через TUN — оптимально для игр)."
+
+msgid "Transparent proxy mode. Routes both TCP and UDP through TPROXY port 7894. Best compatibility, requires kernel TPROXY support."
+msgstr "Прозрачный режим прокси. Направляет как TCP, так и UDP через TPROXY-порт 7894. Максимальная совместимость, требуется поддержка TPROXY в ядре."
+
+msgid "TUN interface mode. Creates virtual network interface for all traffic. Better performance, works without TPROXY. Requires TUN kernel module."
+msgstr "Режим TUN-интерфейса. Создаёт виртуальный сетевой интерфейс для всего трафика. Лучшая производительность, работает без TPROXY. Требуется модуль ядра TUN."
+
+msgid "Hybrid mode (best for gaming). TCP via TPROXY (stable), UDP via TUN (low latency). Optimal for online games requiring fast UDP."
+msgstr "Гибридный режим (лучший для игр). TCP через TPROXY (стабильно), UDP через TUN (низкая задержка). Оптимален для онлайн‑игр, требующих быстрого UDP."
+
+msgid "TUN Stack"
+msgstr "Стек TUN"
+
+msgid "Choose Mihomo TUN stack. `system` is fastest but depends on kernel capabilities; `gvisor` is more compatible; `mixed` combines both."
+msgstr "Выберите стек TUN для Mihomo. `system` самый быстрый, но зависит от возможностей ядра; `gvisor` более совместим; `mixed` сочетает оба подхода."
+
+msgid "system: kernel network stack. If TCP in TUN fails on your device, try gvisor."
+msgstr "system: сетевой стек ядра. Если TCP в TUN не работает на вашем устройстве, попробуйте gvisor."
+
+msgid "gvisor: userspace stack, usually most compatible across routers."
+msgstr "gvisor: userspace-стек, обычно самый совместимый на разных роутерах."
+
+msgid "mixed: hybrid stack mode supported by some Mihomo builds."
+msgstr "mixed: гибридный режим стека, поддерживаемый некоторыми сборками Mihomo."
+
+msgid "Automatic Interface Detection"
+msgstr "Автоматическое определение интерфейсов"
+
+msgid "Additional Settings"
+msgstr "Дополнительные настройки"
+
+msgid "Exclude Mode (Universal approach)"
+msgstr "Режим исключения (универсальный)"
+
+msgid "Process traffic from ALL interfaces except selected ones. Automatically detects and excludes WAN. Recommended for most users."
+msgstr "Обрабатывать трафик со всех интерфейсов, кроме выбранных. Автоматически обнаруживает и исключает WAN. Рекомендуется для большинства пользователей."
+
+msgid "Explicit Mode (Precise control)"
+msgstr "Явный режим (точный контроль)"
+
+msgid "Process traffic ONLY from selected interfaces. More secure but requires manual configuration. Recommended for advanced users."
+msgstr "Обрабатывать трафик только с выбранных интерфейсов. Более безопасно, но требует ручной настройки. Рекомендуется для опытных пользователей."
+
+msgid "Automatically detect LAN bridge interface"
+msgstr "Автоматически определять LAN-мост"
+
+msgid "When enabled, automatically finds the main LAN bridge. Disable to manually select specific interfaces."
+msgstr "Если включено, автоматически находит основной LAN-мост. Отключите для ручного выбора интерфейсов."
+
+msgid "Automatically detect WAN interface"
+msgstr "Автоматически определять WAN-интерфейс"
+
+msgid "When enabled, automatically detects and excludes WAN interface. Disable to manually select interfaces to exclude."
+msgstr "Если включено, автоматически обнаруживает и исключает WAN-интерфейс. Отключите для ручного выбора интерфейсов для исключения."
+
+msgid "Select interfaces to process"
+msgstr "Выберите интерфейсы для обработки"
+
+msgid "Traffic from these interfaces will be processed by the proxy."
+msgstr "Трафик с этих интерфейсов будет обработан прокси."
+
+msgid "Select interfaces to exclude"
+msgstr "Выберите интерфейсы для исключения"
+
+msgid "Traffic from these interfaces will bypass the proxy (direct routing)."
+msgstr "Трафик с этих интерфейсов будет идти в обход прокси (прямая маршрутизация)."
+
+msgid "Block QUIC traffic (UDP port 443)"
+msgstr "Блокировать трафик QUIC (UDP-порт 443)"
+
+msgid "When enabled, blocks QUIC traffic on UDP port 443. This can improve proxy effectiveness for some services like YouTube."
+msgstr "Если включено, блокирует трафик QUIC по порту 443 (UDP). Это может улучшить эффективность прокси для таких сервисов, как YouTube."
+
+msgid "Kernel Status"
+msgstr "Статус ядра"
+
+msgid "Installed"
+msgstr "Установлено"
+
+msgid "Not Installed"
+msgstr "Не установлено"
+
+msgid "Version"
+msgstr "Версия"
+
+msgid "System Architecture"
+msgstr "Архитектура системы"
+
+msgid "Latest Available"
+msgstr "Последняя доступная"
+
+msgid "Update Available"
+msgstr "Доступно обновление"
+
+msgid "Kernel is up to date"
+msgstr "Ядро обновлено до последней версии"
+
+msgid "Mihomo kernel binary not found"
+msgstr "Исполняемый файл ядра Mihomo не найден"
+
+msgid "Failed to check latest version"
+msgstr "Не удалось проверить последнюю версию"
+
+msgid "Error checking status"
+msgstr "Ошибка проверки статуса"
+
+msgid "Mihomo (version detected)"
+msgstr "Mihomo (версия определена)"
+
+msgid "Installed (%dMB)"
+msgstr "Установлено (%d МБ)"
+
+msgid "Download Latest Kernel"
+msgstr "Скачать последнее ядро"
+
+msgid "Download Update"
+msgstr "Скачать обновление"
+
+msgid "Reinstall Kernel"
+msgstr "Переустановить ядро"
+
+msgid "Downloading..."
+msgstr "Загрузка..."
+
+msgid "Checking..."
+msgstr "Проверка..."
+
+msgid "Refresh Status"
+msgstr "Обновить статус"
+
+msgid "Restart Service"
+msgstr "Перезапустить службу"
+
+msgid "Save Settings"
+msgstr "Сохранить настройки"
+
+msgid "Clear All Interfaces"
+msgstr "Очистить выбор"
+
+msgid "Mode: Explicit (process only selected)"
+msgstr "Режим: Явный (обрабатывать только выбранные)"
+
+msgid "Mode: Exclude (process all except selected)"
+msgstr "Режим: Исключения (обрабатывать все, кроме выбранных)"
+
+msgid "Auto-detected LAN: %s ✓"
+msgstr "Авто-определение LAN: %s ✓"
+
+msgid "Auto-detected WAN: %s ✓"
+msgstr "Авто-определение WAN: %s ✓"
+
+msgid "Manual selection: %s"
+msgstr "Ручной выбор: %s"
+
+msgid "Manual exclusions: %s"
+msgstr "Ручные исключения: %s"
+
+msgid "No interfaces configured"
+msgstr "Интерфейсы не настроены"
+
+msgid "No exclusions configured"
+msgstr "Исключения не настроены"
+
+msgid "Available LAN bridge: %s"
+msgstr "Доступный LAN-мост: %s"
+
+msgid "No LAN bridge detected"
+msgstr "LAN-мост не обнаружен"
+
+msgid "Available WAN interface: %s"
+msgstr "Доступный WAN-интерфейс: %s"
+
+msgid "No WAN interface detected"
+msgstr "WAN-интерфейс не обнаружен"
+
+msgid "Settings saved. Please restart the Clash service for changes to take effect."
+msgstr "Настройки сохранены. Для вступления изменений в силу перезапустите службу Clash."
+
+msgid "Failed to save settings: %s"
+msgstr "Не удалось сохранить настройки: %s"
+
+msgid "Clash service restarted successfully."
+msgstr "Служба Clash успешно перезапущена."
+
+msgid "Failed to restart Clash service: %s"
+msgstr "Не удалось перезапустить службу Clash: %s"
+
+msgid "Downloading mihomo kernel..."
+msgstr "Загрузка ядра mihomo..."
+
+msgid "Mihomo kernel downloaded and installed successfully!"
+msgstr "Ядро Mihomo успешно загружено и установлено!"
+
+msgid "Failed to download mihomo kernel: %s"
+msgstr "Не удалось загрузить ядро mihomo: %s"
+
+msgid "Failed to get release information"
+msgstr "Не удалось получить информацию о релизе"
+
+msgid "No binary found for architecture: %s"
+msgstr "Не найден исполняемый файл для архитектуры: %s"
+
+msgid "HTTP %d: %s"
+msgstr "HTTP %d: %s"
+
+msgid "Latest release is a pre-release"
+msgstr "Последний релиз является предварительным"
+
+msgid "Download failed"
+msgstr "Загрузка не удалась"
+
+msgid "Extraction failed"
+msgstr "Распаковка не удалась"
+
+msgid "Failed to read /sys/class/net:"
+msgstr "Не удалось прочитать /sys/class/net:"
+
+msgid "Failed to execute ip link:"
+msgstr "Не удалось выполнить ip link:"
+
+msgid "LuCI network API not available:"
+msgstr "Сетевой API LuCI недоступен:"
+
+msgid "LuCI network.getNetworks() not available:"
+msgstr "LuCI network.getNetworks() недоступен:"
+
+msgid "No network interfaces found on this system"
+msgstr "Сетевые интерфейсы в системе не найдены"
+
+msgid "UCI network detection failed, using fallback:"
+msgstr "Определение сети через UCI не удалось, используется резервный метод:"
+
+msgid "Failed to detect LAN bridge via ip command:"
+msgstr "Не удалось определить LAN-мост через команду ip:"
+
+msgid "Failed to detect LAN bridge:"
+msgstr "Не удалось обнаружить LAN-мост:"
+
+msgid "UCI WAN detection failed, using fallback:"
+msgstr "Определение WAN через UCI не удалось, используется резервный метод:"
+
+msgid "Failed to read route table:"
+msgstr "Не удалось прочитать таблицу маршрутизации:"
+
+msgid "Failed to detect WAN interface:"
+msgstr "Не удалось обнаружить WAN-интерфейс:"
+
+msgid "Failed to detect architecture:"
+msgstr "Не удалось определить архитектуру:"
+
+msgid "Failed to get latest release:"
+msgstr "Не удалось получить последний релиз:"
+
+msgid "Failed to update kernel status:"
+msgstr "Не удалось обновить статус ядра:"
+
+msgid "Failed to update interface checkboxes:"
+msgstr "Не удалось обновить флажки интерфейсов:"
+
+msgid "Failed to update auto detect settings:"
+msgstr "Не удалось обновить настройки автоопределения:"
+
+msgid "Failed to detect interfaces:"
+msgstr "Не удалось обнаружить интерфейсы:"
+
+msgid "Failed to re-detect interfaces:"
+msgstr "Не удалось повторно обнаружить интерфейсы:"
+
+msgid "Failed to uncheck detected %s interface:"
+msgstr "Не удалось снять выбор с определенного интерфейса %s:"
+
+msgid "Restart Clash service after installing or updating the kernel"
+msgstr "Перезапустите службу Clash после установки или обновления ядра"
+
+msgid "Restart Clash service after saving changes"
+msgstr "Перезапустите службу Clash после сохранения изменений"
+
+msgid "AUTO"
+msgstr "АВТО"
+
+msgid "Store rules and proxy providers in RAM (tmpfs)"
+msgstr "Хранить правила и proxy-providers в RAM (tmpfs)"
+
+msgid "When enabled, rulesets and proxy-providers directories are placed on tmpfs for faster access (at the cost of using RAM). Disable to keep them on persistent storage."
+msgstr "Если включено, каталоги rulesets и proxy-providers размещаются в tmpfs для более быстрого доступа (за счёт использования оперативной памяти). Отключите, чтобы хранить их на постоянном носителе."
+
+### HWID-заголовки ###
+
+msgid "Add HWID headers to subscriptions"
+msgstr "Добавить HWID-заголовки к подпискам"
+
+msgid "Automatically adds HWID headers to proxy-providers for device tracking (Remnawave compatibility)."
+msgstr "Автоматически добавляет HWID-заголовки к proxy-providers для отслеживания устройства (совместимость с Remnawave)."
+
+msgid "User-Agent"
+msgstr "User-Agent"
+
+msgid "Application identifier sent in HTTP headers"
+msgstr "Идентификатор приложения в HTTP-заголовках"
+
+msgid "Device OS"
+msgstr "ОС устройства"
+
+msgid "Operating system name sent in headers"
+msgstr "Имя операционной системы в заголовках"
+
+msgid "Auto-generated values:"
+msgstr "Автоматически генерируемые значения:"
+
+msgid "Adding HWID headers to configuration..."
+msgstr "Добавление HWID-заголовков в конфигурацию..."
+
+### Simo UI strings ###
+
+msgid "Control Center"
+msgstr "Центр управления"
+
+msgid "Checking service..."
+msgstr "Проверка службы..."
+
+msgid "Configuration applied and service reloaded."
+msgstr "Конфигурация применена, служба перезагружена."
+
+msgid "Configuration saved."
+msgstr "Конфигурация сохранена."
+
+msgid "Download failed: %s"
+msgstr "Ошибка загрузки: %s"
+
+msgid "Download Subscription"
+msgstr "Скачать подписку"
+
+msgid "Downloaded file is empty."
+msgstr "Загруженный файл пуст."
+
+msgid "Editor with safe YAML validation: invalid changes are automatically rolled back."
+msgstr "Редактор с безопасной проверкой YAML: некорректные изменения автоматически откатываются."
+
+msgid "Failed to apply configuration: %s"
+msgstr "Не удалось применить конфигурацию: %s"
+
+msgid "Failed to apply subscription: %s"
+msgstr "Не удалось применить подписку: %s"
+
+msgid "Failed to initialize editor: %s"
+msgstr "Не удалось инициализировать редактор: %s"
+
+msgid "Failed to save configuration: %s"
+msgstr "Не удалось сохранить конфигурацию: %s"
+
+msgid "Failed to save URL: %s"
+msgstr "Не удалось сохранить URL: %s"
+
+msgid "Invalid subscription URL."
+msgstr "Некорректный URL подписки."
+
+msgid "Loading versions..."
+msgstr "Загрузка версий..."
+
+msgid "Simo Control Center"
+msgstr "Центр управления Simo"
+
+msgid "Simo Log"
+msgstr "Журнал Simo"
+
+msgid "Simo: %s  |  Mihomo: %s  |  OpenWrt: %s"
+msgstr "Simo: %s  |  Mihomo: %s  |  OpenWrt: %s"
+
+msgid "Open the remaining Simo sections."
+msgstr "Откройте остальные разделы Simo."
+
+msgid "Quick Navigation"
+msgstr "Быстрая навигация"
+
+msgid "Real-time Clash service logs."
+msgstr "Логи службы Clash в реальном времени."
+
+msgid "Restart"
+msgstr "Перезапуск"
+
+msgid "Save & Apply"
+msgstr "Сохранить и применить"
+
+msgid "Save URL"
+msgstr "Сохранить URL"
+
+msgid "Save your subscription URL and download config directly to /opt/simo/cores/mihomo/config.yaml with automatic YAML validation."
+msgstr "Сохраните URL подписки и загрузите конфиг напрямую в /opt/simo/cores/mihomo/config.yaml с автоматической проверкой YAML."
+
+msgid "Service running"
+msgstr "Служба запущена"
+
+msgid "Service stopped"
+msgstr "Служба остановлена"
+
+msgid "Start"
+msgstr "Запуск"
+
+msgid "Stop"
+msgstr "Остановка"
+
+msgid "Subscription downloaded, validated and applied."
+msgstr "Подписка загружена, проверена и применена."
+
+msgid "Subscription URL"
+msgstr "URL подписки"
+
+msgid "Subscription URL is empty."
+msgstr "URL подписки пуст."
+
+msgid "Subscription URL saved."
+msgstr "URL подписки сохранен."
+
+msgid "Unable to toggle service: %s"
+msgstr "Не удалось переключить состояние службы: %s"
+
+msgid "Validate YAML"
+msgstr "Проверить YAML"
+
+msgid "YAML Configuration"
+msgstr "YAML-конфигурация"
+
+msgid "YAML validation failed: %s"
+msgstr "Проверка YAML не пройдена: %s"
+
+msgid "YAML validation passed."
+msgstr "Проверка YAML пройдена."
+
+### Missing UI translations (config.js) ###
+
+msgid "unknown"
+msgstr "неизвестно"
+
+msgid "Control"
+msgstr "Управление"
+
+msgid "Dashboard"
+msgstr "Панель"
+
+msgid "Mode"
+msgstr "Режим"
+
+msgid "Switch theme"
+msgstr "Сменить тему"
+
+msgid "Switch to dark theme"
+msgstr "Переключить на тёмную тему"
+
+msgid "Switch to light theme"
+msgstr "Переключить на светлую тему"
+
+msgid "Config"
+msgstr "Конфиг"
+
+msgid "Logs"
+msgstr "Логи"
+
+msgid "Main Config"
+msgstr "Основной конфиг"
+
+msgid "Traffic Scope"
+msgstr "Область трафика"
+
+msgid "Exclude mode: proxy all interfaces except selected ones"
+msgstr "Режим исключений: проксировать все интерфейсы, кроме выбранных"
+
+msgid "Explicit mode: proxy only selected interfaces"
+msgstr "Явный режим: проксировать только выбранные интерфейсы"
+
+msgid "Auto Detection"
+msgstr "Автоопределение"
+
+msgid "Auto detect LAN bridge"
+msgstr "Автоопределение LAN-моста"
+
+msgid "Auto detect WAN interface"
+msgstr "Автоопределение WAN-интерфейса"
+
+msgid "Detected LAN: %s"
+msgstr "Обнаружен LAN: %s"
+
+msgid "Detected WAN: %s"
+msgstr "Обнаружен WAN: %s"
+
+msgid "Interfaces"
+msgstr "Интерфейсы"
+
+msgid "Choose interfaces that should bypass proxy."
+msgstr "Выберите интерфейсы, которые должны обходить прокси."
+
+msgid "Choose interfaces that should go through proxy."
+msgstr "Выберите интерфейсы, трафик которых должен идти через прокси."
+
+msgid "WAN"
+msgstr "WAN"
+
+msgid "Ethernet"
+msgstr "Ethernet"
+
+msgid "Wi-Fi"
+msgstr "Wi-Fi"
+
+msgid "Other"
+msgstr "Прочее"
+
+msgid "Additional"
+msgstr "Дополнительно"
+
+msgid "Block QUIC (UDP/443)"
+msgstr "Блокировать QUIC (UDP/443)"
+
+msgid "Store rules/providers on tmpfs"
+msgstr "Хранить rules/providers в tmpfs"
+
+msgid "Inject HWID headers into proxy-providers"
+msgstr "Добавлять HWID-заголовки в proxy-providers"
+
+msgid "Clear Interface Selection"
+msgstr "Очистить выбор интерфейсов"
+
+msgid "Mode: Exclude (proxy all except selected interfaces)"
+msgstr "Режим: исключения (проксировать всё, кроме выбранных интерфейсов)"
+
+msgid "Auto WAN: %s"
+msgstr "Авто WAN: %s"
+
+msgid "Proxy mode: %s"
+msgstr "Режим прокси: %s"
+
+msgid "Tun stack: %s"
+msgstr "Стек TUN: %s"
+
+msgid "Refresh"
+msgstr "Обновить"
+
+msgid "Kernel"
+msgstr "Ядро"
+
+msgid "Status: %s"
+msgstr "Статус: %s"
+
+msgid "Installed version: %s"
+msgstr "Установленная версия: %s"
+
+msgid "Not installed"
+msgstr "Не установлено"
+
+msgid "Mihomo kernel is not installed."
+msgstr "Ядро Mihomo не установлено."
+
+msgid "Install Kernel"
+msgstr "Установить ядро"
+
+msgid "Update Kernel"
+msgstr "Обновить ядро"
+
+msgid "Install Simo"
+msgstr "Установить Simo"
+
+msgid "Update Simo"
+msgstr "Обновить Simo"
+
+msgid "Reinstall Simo"
+msgstr "Переустановить Simo"
+
+msgid "Settings saved."
+msgstr "Настройки сохранены."
+
+msgid "Settings saved and Clash service restarted."
+msgstr "Настройки сохранены, служба Clash перезапущена."
+
+msgid "Settings saved, but failed to restart Clash service: %s"
+msgstr "Настройки сохранены, но перезапустить службу Clash не удалось: %s"
+
+msgid "Kernel installed and service restarted."
+msgstr "Ядро установлено, служба перезапущена."
+
+msgid "Kernel installed, but failed to restart service: %s"
+msgstr "Ядро установлено, но перезапустить службу не удалось: %s"
+
+### Multi-config profiles (config.js) ###
+
+msgid "Main Config #1"
+msgstr "Основной конфиг #1"
+
+msgid "Backup Config #2"
+msgstr "Резервный конфиг #2"
+
+msgid "Backup Config #3"
+msgstr "Резервный конфиг #3"
+
+msgid "Set as Main"
+msgstr "Сделать главным"
+
+msgid "Selected config will be swapped with Main config, saved, and Clash will restart. Continue?"
+msgstr "Выбранный конфиг будет обменян с основным, сохранён, и Clash будет перезапущен. Продолжить?"
+
+msgid "Failed to load config profile: %s"
+msgstr "Не удалось загрузить профиль конфига: %s"
+
+msgid "Failed to set main config: %s"
+msgstr "Не удалось сделать конфиг главным: %s"
+
+msgid "%s is now main config."
+msgstr "%s теперь основной конфиг."
+
+msgid "%s downloaded and saved."
+msgstr "%s загружен и сохранён."
+
+msgid "%s saved."
+msgstr "%s сохранён."
+
+### Added missing strings ###
+
+msgid "A ruleset with this name already exists."
+msgstr "Список с таким именем уже существует."
+
+msgid "Architecture: %s"
+msgstr "Архитектура: %s"
+
+msgid "Are you sure you want to delete \"%s\"?"
+msgstr "Вы уверены, что хотите удалить \"%s\"?"
+
+msgid "Are you sure you want to delete the list \"%s\"? This action cannot be undone."
+msgstr "Вы уверены, что хотите удалить список \"%s\"? Это действие необратимо."
+
+msgid "Auto LAN: %s"
+msgstr "Авто LAN: %s"
+
+msgid "Cannot save proxy mode."
+msgstr "Не удалось сохранить режим прокси."
+
+msgid "Clear"
+msgstr "Очистить"
+
+msgid "Clear Editor"
+msgstr "Очистить редактор"
+
+msgid "Clear editor?"
+msgstr "Очистить редактор?"
+
+msgid "Close"
+msgstr "Закрыть"
+
+msgid "Download Kernel"
+msgstr "Скачать ядро"
+
+msgid "Example usage in config.yaml"
+msgstr "Пример использования в config.yaml"
+
+msgid "Failed to create ruleset."
+msgstr "Не удалось создать список правил."
+
+msgid "Failed to delete list \"%s\": %s"
+msgstr "Не удалось удалить список \"%s\": %s"
+
+msgid "Failed to load kernel information: %s"
+msgstr "Не удалось загрузить информацию о ядре: %s"
+
+msgid "Failed to open rulesets: %s"
+msgstr "Не удалось открыть списки правил: %s"
+
+msgid "Failed to refresh logs: %s"
+msgstr "Не удалось обновить журналы: %s"
+
+msgid "Failed to save IP-CIDR list: %s"
+msgstr "Не удалось сохранить список IP-CIDR: %s"
+
+msgid "Failed to save list \"%s\": %s"
+msgstr "Не удалось сохранить список \"%s\": %s"
+
+msgid "Failed to save ruleset: %s"
+msgstr "Не удалось сохранить список правил: %s"
+
+msgid "Failed to save theme preference: %s"
+msgstr "Не удалось сохранить предпочтение темы: %s"
+
+msgid "Failed to switch proxy mode: %s"
+msgstr "Не удалось переключить режим прокси: %s"
+
+msgid "Invalid name. Use letters, numbers, \"_\" or \"-\"."
+msgstr "Некорректное имя. Используйте буквы, цифры, \"_\" или \"-\"."
+
+msgid "IP-CIDR list saved and firewall rules updated."
+msgstr "Список IP-CIDR сохранён, правила файрвола обновлены."
+
+msgid "IP-CIDR list saved, but firewall update failed: %s"
+msgstr "Список IP-CIDR сохранён, но обновление файрвола не удалось: %s"
+
+msgid "Kernel download failed: %s"
+msgstr "Ошибка загрузки ядра: %s"
+
+msgid "Kernel Settings"
+msgstr "Настройки ядра"
+
+msgid "Latest release: %s"
+msgstr "Последний релиз: %s"
+
+msgid "List \"%s\" has been deleted."
+msgstr "Список \"%s\" удалён."
+
+msgid "List \"%s\" saved successfully."
+msgstr "Список \"%s\" успешно сохранён."
+
+msgid "Manage local .txt lists for rule-providers."
+msgstr "Управление локальными .txt списками для rule-providers."
+
+msgid "Manual interfaces: %s"
+msgstr "Интерфейсы вручную: %s"
+
+msgid "Mihomo kernel downloaded and installed."
+msgstr "Ядро Mihomo загружено и установлено."
+
+msgid "Downloading Simo package..."
+msgstr "Загрузка пакета Simo..."
+
+msgid "Simo package downloaded and installed."
+msgstr "Пакет Simo загружен и установлен."
+
+msgid "Simo package installed. Reloading interface..."
+msgstr "Пакет Simo установлен. Перезагрузка интерфейса..."
+
+msgid "Connection interrupted while finalizing Simo update. Reloading interface..."
+msgstr "Соединение прервалось во время завершения обновления Simo. Перезагрузка интерфейса..."
+
+msgid "Failed to update Simo: %s"
+msgstr "Не удалось обновить Simo: %s"
+
+msgid "Failed to load Simo release information: %s"
+msgstr "Не удалось загрузить информацию о релизе Simo: %s"
+
+msgid "No supported package manager found (apk/opkg)."
+msgstr "Не найден поддерживаемый пакетный менеджер (apk/opkg)."
+
+msgid "Failed to update package index."
+msgstr "Не удалось обновить индекс пакетов."
+
+msgid "Failed to install Simo dependencies."
+msgstr "Не удалось установить зависимости Simo."
+
+msgid "Failed to install Simo package."
+msgstr "Не удалось установить пакет Simo."
+
+msgid "Command failed"
+msgstr "Команда завершилась ошибкой"
+
+msgid "Mode: Explicit (proxy only selected interfaces)"
+msgstr "Режим: Явный (прокси только для выбранных интерфейсов)"
+
+msgid "New list \"%s\" created."
+msgstr "Новый список \"%s\" создан."
+
+msgid "new-list-name"
+msgstr "новый-список"
+
+msgid "No file selected"
+msgstr "Файл не выбран"
+
+msgid "No interfaces detected."
+msgstr "Интерфейсы не обнаружены."
+
+msgid "No ruleset selected. Create one to begin."
+msgstr "Список правил не выбран. Создайте его для начала."
+
+msgid "No rulesets yet."
+msgstr "Списков правил пока нет."
+
+msgid "One IPv4/CIDR per line. Save applies firewall update without restarting Mihomo."
+msgstr "По одному IPv4/CIDR в строке. Сохранение обновляет файрвол без перезапуска Mihomo."
+
+msgid "Proxy mode switched to %s. Service restarted."
+msgstr "Режим прокси переключён на %s. Служба перезапущена."
+
+msgid "Remnawave blocked /mihomo path (HTTP 403). Disable \"Disable Subscription Access by Path\" in Remnawave response-rules settings."
+msgstr "Remnawave заблокировал путь /mihomo (HTTP 403). Отключите \"Disable Subscription Access by Path\" в настройках response-rules Remnawave."
+
+msgid "Ruleset \"%s\" created."
+msgstr "Список правил \"%s\" создан."
+
+msgid "Ruleset \"%s\" deleted."
+msgstr "Список правил \"%s\" удалён."
+
+msgid "Ruleset \"%s\" saved."
+msgstr "Список правил \"%s\" сохранён."
+
+msgid "Save IP-CIDR List"
+msgstr "Сохранить список IP-CIDR"
+
+msgid "Save URL / Update Config"
+msgstr "Сохранить URL / Обновить конфиг"
+
+msgid "Subscription downloaded and applied (Remnawave /mihomo fallback)."
+msgstr "Подписка загружена и применена (fallback Remnawave /mihomo)."
+
+msgid "Subscription downloaded and applied."
+msgstr "Подписка загружена и применена."
+
+msgid "The subscription server returned links/base64 instead of Clash YAML. For Remnawave use the /mihomo subscription path."
+msgstr "Сервер подписки вернул links/base64 вместо Clash YAML. Для Remnawave используйте путь подписки /mihomo."
+
+msgid "Subscription download failed for both original URL and /mihomo fallback: %s"
+msgstr "Не удалось загрузить подписку ни по исходному URL, ни через fallback /mihomo: %s"
+
+msgid "Original URL returned links/base64 and /mihomo fallback failed: %s"
+msgstr "Исходный URL вернул links/base64, а fallback /mihomo завершился ошибкой: %s"
+
+msgid "Both original URL and /mihomo returned links/base64 instead of Clash YAML. Check provider export type."
+msgstr "И исходный URL, и /mihomo вернули links/base64 вместо Clash YAML. Проверьте тип экспорта у провайдера."
+
+msgid "This name is reserved."
+msgstr "Это имя зарезервировано."
+
+msgid "This will clear only editor content. File is not modified until you click Save."
+msgstr "Это очистит только содержимое редактора. Файл не изменится, пока вы не нажмёте \"Сохранить\"."
+
+msgid "Unable to read downloaded file"
+msgstr "Не удалось прочитать загруженный файл"
+
+msgid "Unavailable"
+msgstr "Недоступно"
+
+msgid "Updated: %s"
+msgstr "Обновлено: %s"
+
+msgid "Virtual"
+msgstr "Виртуальные"
+
+msgid "VPN / Tunnel"
+msgstr "VPN / Туннель"
+
+msgid "YAML validation failed."
+msgstr "Проверка YAML завершилась ошибкой."
+
+msgid "Internet only through Simo"
+msgstr "Интернет только через Simo"
+
+msgid "Blocks direct external traffic from clients. If Simo is stopped or fails, the internet is blocked while local network access remains available."
+msgstr "Блокирует прямой внешний трафик от клиентов. Если Simo остановлен или упал, интернет блокируется, а доступ к локальной сети остаётся доступным."
+
+msgid "Guard"
+msgstr "Защита"
+
+msgid "ON"
+msgstr "ВКЛ"
+
+msgid "OFF"
+msgstr "ВЫКЛ"
+
+msgid "Network access is blocked by \"Internet only through Simo\". Start the service or disable this option in Settings to update."
+msgstr "Сетевой доступ заблокирован опцией \"Интернет только через Simo\". Запустите службу или отключите эту опцию в настройках, чтобы обновить."
+
+msgid "Auto-hide notifications"
+msgstr "Автоматически скрывать уведомления"
+
+msgid "Release channel"
+msgstr "Канал релизов"
+
+msgid "Release only"
+msgstr "Только релизы"
+
+msgid "Release + pre-release"
+msgstr "Релизы + pre-release"

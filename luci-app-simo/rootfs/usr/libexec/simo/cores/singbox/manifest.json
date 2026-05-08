@@ -1,0 +1,9 @@
+{
+  "id": "singbox",
+  "title": "sing-box",
+  "bin": "/opt/simo/cores/singbox/bin/sing-box",
+  "configDir": "/opt/simo/cores/singbox",
+  "mainConfig": "/opt/simo/cores/singbox/config.json",
+  "releaseApi": "https://api.github.com/repos/SagerNet/sing-box/releases/latest"
+}
+

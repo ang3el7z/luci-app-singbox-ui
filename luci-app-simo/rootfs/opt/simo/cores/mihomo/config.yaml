@@ -1,0 +1,188 @@
+mode: rule
+redir-port: 7892
+tproxy-port: 7894
+ipv6: false
+log-level: error
+allow-lan: false
+unified-delay: true
+tcp-concurrent: true
+external-controller: 0.0.0.0:9090
+external-ui: ./ui
+external-ui-url: 'https://github.com/Zephyruso/zashboard/releases/latest/download/dist-no-fonts.zip'
+
+# DNS server settings
+# This section is optional. When not present, the DNS server will be disabled.
+dns:
+  enable: true
+  listen: 0.0.0.0:7874
+  ipv6: false
+  # Bootstrap DNS
+  default-nameserver: ['1.1.1.1', '1.0.0.1', '8.8.8.8', '8.8.4.4']
+  # Rules for specific domains
+  nameserver-policy:
+    '+.polaris-iot.com': [77.88.8.8, 77.88.8.1]
+  # Upstream DNS
+  nameserver: ['https://cloudflare-dns.com/dns-query', 'https://dns.google/dns-query']
+  # nameserver: ['https://cloudflare-dns.com/dns-query#PROXY', 'https://dns.google/dns-query#PROXY']
+
+# find-process-mode: off
+# global-client-fingerprint: chrome
+
+profile:
+  store-selected: true
+  store-fake-ip: true
+
+# Provides a default traffic mark for outbound connections on Linux
+routing-mark: 2 # Prevent cyclic redirection
+
+sniffer:
+  enable: true
+  sniff:
+    HTTP:
+      ports: [80, 8080-8880]
+      override-destination: true
+    TLS:
+      ports: [443, 8443]
+    # QUIC:
+    #   ports: [443, 8443]
+  skip-domain:
+    - 'Mijia Cloud'
+    - '+.lan'
+    - '+.local'
+    - '+.push.apple.com'
+    - '+.apple.com'
+  # To avoid sniffing a specific device on your network
+  # skip-src-address:
+  #   - 192.168.1.100/32
+  # skip-dst-address:
+  #   - 192.168.1.100/32
+
+proxies:
+  # vless
+  - name: 'XX-reality' # change it
+    type: vless
+    server: xx-reality-server-IP # change it
+    port: 443
+    uuid: 528aeb97-a633-468d-81f7-8185d26bcb64 # change it
+    network: tcp
+    tls: true
+    udp: true
+    flow: xtls-rprx-vision
+    servername: masking-domain.example.com # change it
+    reality-opts:
+      public-key: 2R_qtReOBExLOx1aZj8s4N8x-Ru_wbo-o2neemZEDB0 # change it
+      short-id: ae380de2eeded283 # change it
+    client-fingerprint: chrome
+
+  - name: 'YY-reality' # change it
+    type: vless
+    server: yy-reality-server-IP # change it
+    port: 443
+    uuid: 3f0d4ce6-e4fe-46f9-804c-cce633e22785 # change it
+    network: tcp
+    tls: true
+    udp: true
+    flow: xtls-rprx-vision
+    servername: masking-domain.example.org # change it
+    reality-opts:
+      public-key: beAHvGPT-mhlYQAvX7u_rQQfnJqTXaStmRFkTnkUolE # change it
+      short-id: 0890fec52c6dd1ca # change it
+    client-fingerprint: chrome
+
+proxy-providers:
+  # Provider name
+  provider1:
+    type: http
+    url: "https://provider-domain.example.org/subscription-url" # change it
+    path: ./proxy_providers/provider1.yaml
+    interval: 600
+    # proxy: PROXY
+
+proxy-groups:
+  # Select (used for selecting proxy or proxy group)
+  - name: PROXY
+    type: select
+    # disable-udp: true
+    proxies: [XX-reality, YY-reality] # change it, add the others
+
+  # Fallback
+  - name: FALLBACK
+    type: fallback
+    proxies: [XX-reality, YY-reality] # change it, add the others
+    url: 'https://www.gstatic.com/generate_204' # or https://cp.cloudflare.com/generate_204
+    interval: 300
+
+  # Load-balance
+  - name: LB-PROXY
+    type: load-balance
+    proxies: [XX-reality, YY-reality] # change it, add the others
+    url: 'https://www.gstatic.com/generate_204'
+    interval: 300
+    strategy: consistent-hashing # or round-robin
+
+  # Subscriptions
+  - name: SUBS
+    type: select
+    use: [provider1]
+    # filter: 'Игры|VPN'
+    # exclude-filter: 'Russia|Россия|Обход'
+
+rule-providers:
+  direct-domain:
+    behavior: classical
+    type: http
+    format: text
+    url: 'https://YOUR_URL/direct-domain.list' # change it
+    interval: 1800
+    path: ./ruleset/direct-domain.txt
+    # proxy: PROXY
+  direct-ip:
+    behavior: classical
+    type: http
+    format: text
+    url: 'https://YOUR_URL/direct-ip.list' # change it
+    interval: 1800
+    path: ./ruleset/direct-ip.txt
+    # proxy: PROXY
+  proxy-domain:
+    behavior: classical
+    type: http
+    format: text
+    url: 'https://YOUR_URL/proxy-domain.list' # change it
+    interval: 1800
+    path: ./ruleset/proxy-domain.txt
+    # proxy: PROXY
+  local-list-proxy-domain:
+    behavior: classical
+    type: file
+    format: text
+    path: ./lst/local-list-proxy-domain.txt # change it
+  proxy-ip:
+    behavior: classical
+    type: http
+    format: text
+    url: 'https://YOUR_URL/proxy-ip.list' # change it
+    interval: 1800
+    path: ./ruleset/proxy-ip.txt
+    # proxy: PROXY
+  antifilter-ip:
+    behavior: classical
+    type: http
+    format: text
+    url: 'https://YOUR_URL/antifilter-ip.list' # change it
+    interval: 43200
+    path: ./ruleset/antifilter-ip.txt
+    # proxy: PROXY
+
+rules:
+  # - SRC-IP-CIDR,192.168.1.101/32,DIRECT # To exclude a specific device on your network
+  # - IP-CIDR,192.168.1.101/32,DIRECT # To exclude a specific device on your network
+  # - SRC-PORT,123,DIRECT # To exclude a specific port on your network
+  # - DST-PORT,123,DIRECT # To exclude a specific port on your network
+  - RULE-SET,direct-domain,DIRECT
+  - RULE-SET,direct-ip,DIRECT
+  - RULE-SET,proxy-domain,PROXY
+  - RULE-SET,local-list-proxy-domain,PROXY
+  - RULE-SET,proxy-ip,PROXY
+  - RULE-SET,antifilter-ip,PROXY
+  - MATCH,DIRECT

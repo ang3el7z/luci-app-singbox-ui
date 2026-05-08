@@ -1,5 +1,8 @@
 # Keep OpenWrt shell scripts LF-only to avoid "/bin/sh^M" runtime failures.
 *.sh text eol=lf
-luci-app-singbox-ui/root/usr/bin/singbox-ui/* text eol=lf
-luci-app-singbox-ui/root/etc/init.d/* text eol=lf
-luci-app-singbox-ui/root/etc/uci-defaults/* text eol=lf
+luci-app-simo/Makefile text eol=lf
+luci-app-simo/rootfs/etc/init.d/* text eol=lf
+luci-app-simo/rootfs/etc/hotplug.d/**/* text eol=lf
+luci-app-simo/rootfs/usr/bin/simo/* text eol=lf
+luci-app-simo/rootfs/usr/libexec/simo/cores/**/*.sh text eol=lf
+luci-app-simo/rootfs/usr/libexec/simo/cores/**/*.nft text eol=lf

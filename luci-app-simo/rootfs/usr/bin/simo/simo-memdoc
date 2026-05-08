@@ -1,0 +1,32 @@
+#!/bin/sh
+
+SERVICE_NAME='simo-memdoc-service'
+THRESHOLD=15000
+MIN_RESTART_INTERVAL=60
+CHECK_INTERVAL=10
+last_restart=0
+
+enabled() {
+	[ "$(uci -q get simo.main.memdoc_service_state 2>/dev/null)" = "1" ]
+}
+
+logger -t "$SERVICE_NAME" "starting"
+
+while true; do
+	enabled || exit 0
+	free_mem="$(awk '/MemAvailable/ { print $2 }' /proc/meminfo)"
+	now="$(date +%s)"
+	if [ -n "$free_mem" ] && [ "$free_mem" -le "$THRESHOLD" ]; then
+		elapsed=$((now - last_restart))
+		if [ "$elapsed" -ge "$MIN_RESTART_INTERVAL" ]; then
+			if /etc/init.d/simo status 2>/dev/null | grep -q running; then
+				logger -t "$SERVICE_NAME" "low memory: ${free_mem}KB <= ${THRESHOLD}KB, restarting simo"
+				/etc/init.d/simo restart
+				last_restart="$now"
+				sleep 60
+			fi
+		fi
+	fi
+	sleep "$CHECK_INTERVAL"
+done
+

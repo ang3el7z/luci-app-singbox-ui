@@ -1,5 +1,5 @@
 FROM itdoginfo/openwrt-sdk-apk:09102025
 
-COPY ./luci-app-singbox-ui /builder/package/feeds/luci/luci-app-singbox-ui
+COPY ./luci-app-simo /builder/package/feeds/luci/luci-app-simo
 
-RUN make defconfig && make package/luci-app-singbox-ui/compile  V=s -j4
+RUN make defconfig && make package/luci-app-simo/compile V=s -j4

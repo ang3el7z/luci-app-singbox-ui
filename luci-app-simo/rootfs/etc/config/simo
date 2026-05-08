@@ -1,0 +1,8 @@
+config simo 'main'
+	option core 'mihomo'
+	option mode 'tproxy'
+	option autoupdater_service_state '0'
+	option health_autoupdater_service_state '0'
+	option memdoc_service_state '0'
+	option autohide_notification_state '1'
+

@@ -1,0 +1,14 @@
+{
+	"admin/services/simo": {
+		"title": "Simo",
+		"order": 42,
+		"action": {
+			"type": "view",
+			"path": "simo/cores"
+		},
+		"depends": {
+			"acl": [ "luci-app-simo" ]
+		},
+		"i18n": "simo"
+	}
+}

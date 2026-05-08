@@ -1,0 +1,75 @@
+#!/bin/sh
+
+SERVICE_NAME='simo-health-autoupdater-service'
+ERROR_FLAG='/tmp/simo-health-error.flag'
+INTERVAL=90
+CHECKS_TO_UPDATE=60
+MAX_FAILS=2
+
+enabled() {
+	[ "$(uci -q get simo.main.health_autoupdater_service_state 2>/dev/null)" = "1" ]
+}
+
+active_core() {
+	uci -q get simo.main.core 2>/dev/null || echo mihomo
+}
+
+url_file_for_core() {
+	case "$1" in
+		singbox) echo /opt/simo/cores/singbox/url_config.json ;;
+		mihomo) echo /opt/simo/cores/mihomo/url_config.yaml ;;
+	esac
+}
+
+check_server() {
+	local url_file url code
+	url_file="$(url_file_for_core "$(active_core)")"
+	url="$(cat "$url_file" 2>/dev/null)" || return 1
+	[ -n "$url" ] || return 1
+	code="$(curl -s -o /dev/null -w '%{http_code}' -m 5 "$url")"
+	[ "$code" -ge 200 ] && [ "$code" -lt 400 ]
+}
+
+logger -t "$SERVICE_NAME" "starting"
+enabled || {
+	logger -t "$SERVICE_NAME" "disabled via UCI"
+	/etc/init.d/"$SERVICE_NAME" stop
+	exit 0
+}
+
+success_counter=0
+fail_counter=0
+
+while true; do
+	core="$(active_core)"
+	if check_server; then
+		success_counter=$((success_counter + 1))
+		fail_counter=0
+		if [ -f "$ERROR_FLAG" ]; then
+			/usr/bin/simo/simo-core "$core" update_config
+			code="$?"
+			if [ "$code" = 0 ] || [ "$code" = 2 ]; then
+				/etc/init.d/simo start
+				rm -f "$ERROR_FLAG"
+				success_counter=0
+			fi
+		elif [ "$success_counter" -ge "$CHECKS_TO_UPDATE" ]; then
+			/usr/bin/simo/simo-core "$core" update_config
+			case "$?" in
+				0) /etc/init.d/simo reload ;;
+				2) : ;;
+				*) touch "$ERROR_FLAG" ;;
+			esac
+			success_counter=0
+		fi
+	else
+		fail_counter=$((fail_counter + 1))
+		success_counter=0
+		if [ "$fail_counter" -ge "$MAX_FAILS" ] && [ ! -f "$ERROR_FLAG" ]; then
+			/etc/init.d/simo stop
+			touch "$ERROR_FLAG"
+		fi
+	fi
+	sleep "$INTERVAL"
+	enabled || exit 0
+done

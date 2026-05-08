@@ -1,0 +1,43 @@
+#!/bin/sh
+
+SERVICE_NAME='simo-autoupdater-service'
+INTERVAL=3600
+
+enabled() {
+	[ "$(uci -q get simo.main.autoupdater_service_state 2>/dev/null)" = "1" ]
+}
+
+active_core() {
+	uci -q get simo.main.core 2>/dev/null || echo mihomo
+}
+
+wait_for_service() {
+	while ! /etc/init.d/simo status 2>/dev/null | grep -q running; do
+		logger -t "$SERVICE_NAME" "waiting for simo..."
+		sleep 30
+	done
+}
+
+logger -t "$SERVICE_NAME" "starting"
+enabled || {
+	logger -t "$SERVICE_NAME" "disabled via UCI"
+	/etc/init.d/"$SERVICE_NAME" stop
+	exit 0
+}
+
+wait_for_service
+while true; do
+	core="$(active_core)"
+	logger -t "$SERVICE_NAME" "updating $core config"
+	/usr/bin/simo/simo-core "$core" update_config
+	code=$?
+	case "$code" in
+		0) logger -t "$SERVICE_NAME" "config updated, reloading simo"; /etc/init.d/simo reload ;;
+		2) logger -t "$SERVICE_NAME" "no changes" ;;
+		*) logger -t "$SERVICE_NAME" "update failed: $code" ;;
+	esac
+	sleep "$INTERVAL"
+	enabled || exit 0
+	wait_for_service
+done
+

@@ -1,0 +1,9 @@
+{
+  "id": "mihomo",
+  "title": "Mihomo",
+  "bin": "/opt/simo/cores/mihomo/bin/mihomo",
+  "configDir": "/opt/simo/cores/mihomo",
+  "mainConfig": "/opt/simo/cores/mihomo/config.yaml",
+  "releaseApi": "https://api.github.com/repos/MetaCubeX/mihomo/releases/latest"
+}
+

@@ -1,0 +1,84 @@
+{
+  "luci-app-simo": {
+    "description": "Grant access to Simo procedures",
+    "read": {
+      "file": {
+        "/etc/config/simo": ["read"],
+        "/etc/openwrt_release": ["read"],
+        "/usr/lib/opkg/status": ["read"],
+        "/usr/lib/apk/db/installed": ["read"],
+        "/lib/apk/db/installed": ["read"],
+        "/usr/libexec/simo/cores/*/manifest.json": ["read"],
+        "/opt/simo/cores/mihomo/*": ["read", "stat"],
+        "/opt/simo/cores/mihomo/bin/mihomo": ["read", "stat", "exec"],
+        "/opt/simo/cores/mihomo/bin/mihomo-rules": ["read", "stat", "exec"],
+        "/opt/simo/cores/mihomo/lst/": ["list"],
+        "/opt/simo/cores/mihomo/lst/*.txt": ["read"],
+        "/opt/simo/cores/singbox/*": ["read", "stat"],
+        "/opt/simo/cores/singbox/bin/sing-box": ["read", "stat", "exec"],
+        "/tmp/simo-*": ["read", "stat"],
+        "/tmp/simo/*": ["read", "stat"],
+        "/proc/net/dev": ["read"],
+        "/proc/net/route": ["read"],
+        "/sys/class/net": ["list"],
+        "/sys/class/net/*": ["list", "read"],
+        "/sys/class/net/*/address": ["read"],
+        "/tmp/sysinfo/model": ["read"],
+        "/sbin/logread": ["exec"],
+        "/bin/opkg": ["exec"],
+        "/usr/bin/opkg": ["exec"],
+        "/bin/apk": ["exec"],
+        "/usr/bin/apk": ["exec"],
+        "/bin/ls": ["exec"],
+        "/sbin/ip": ["exec"],
+        "/sbin/uci": ["exec"],
+        "/usr/sbin/brctl": ["exec"],
+        "/bin/sh": ["exec"],
+        "/bin/cat": ["exec"],
+        "/usr/bin/tr": ["exec"],
+        "/usr/bin/md5sum": ["exec"],
+        "/usr/bin/cut": ["exec"],
+        "/usr/bin/simo/*": ["exec"]
+      },
+      "uci": ["simo"],
+      "ubus": {
+        "file": ["read", "stat", "exec"],
+        "service": ["list"]
+      }
+    },
+    "write": {
+      "file": {
+        "/etc/config/simo": ["write"],
+        "/opt/simo/cores/mihomo/*": ["write"],
+        "/opt/simo/cores/mihomo/bin/mihomo": ["write", "exec"],
+        "/opt/simo/cores/mihomo/bin/mihomo-rules": ["exec"],
+        "/opt/simo/cores/mihomo/lst/*.txt": ["write", "remove"],
+        "/opt/simo/cores/singbox/*": ["write"],
+        "/opt/simo/cores/singbox/bin/sing-box": ["write", "exec"],
+        "/tmp/mihomo-*": ["write", "remove"],
+        "/tmp/simo-*": ["write", "remove"],
+        "/tmp/simo/*": ["write", "remove", "exec"],
+        "/etc/init.d/simo": ["exec"],
+        "/etc/init.d/simo-autoupdater-service": ["exec"],
+        "/etc/init.d/simo-health-autoupdater-service": ["exec"],
+        "/etc/init.d/simo-memdoc-service": ["exec"],
+        "/usr/bin/simo/*": ["exec"],
+        "/sbin/uci": ["exec"],
+        "/usr/libexec/simo/cores/*/core.sh": ["exec"],
+        "/usr/bin/curl": ["exec"],
+        "/bin/gzip": ["exec"],
+        "/bin/tar": ["exec"],
+        "/bin/mv": ["exec"],
+        "/bin/chmod": ["exec"],
+        "/usr/bin/chmod": ["exec"],
+        "/bin/mkdir": ["exec"],
+        "/bin/rm": ["exec"],
+        "/usr/bin/openssl": ["exec"]
+      },
+      "uci": ["simo"],
+      "ubus": {
+        "file": ["write", "exec"]
+      }
+    }
+  }
+}

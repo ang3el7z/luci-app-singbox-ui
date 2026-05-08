@@ -1,0 +1,21 @@
+#!/bin/sh
+set -e
+
+CORE="${1:-}"
+if [ -z "$CORE" ] || [ ! -x "/usr/libexec/simo/cores/$CORE/core.sh" ]; then
+	CORE="$(uci -q get simo.main.core 2>/dev/null || echo mihomo)"
+else
+	shift
+fi
+
+ACTION="${1:-status}"
+[ "$#" -gt 0 ] && shift
+
+PROVIDER="/usr/libexec/simo/cores/$CORE/core.sh"
+[ -x "$PROVIDER" ] || {
+	echo "Unknown Simo core: $CORE" >&2
+	exit 1
+}
+
+exec "$PROVIDER" "$ACTION" "$@"
+
