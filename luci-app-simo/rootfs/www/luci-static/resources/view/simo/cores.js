@@ -70,6 +70,7 @@ async function loadState() {
 	const flags = {};
 	for (const item of SERVICE_FLAGS)
 		flags[item.id] = await readUci(item.option, '0') === '1';
+	flags.guard = await readUci('internet_only', '0') === '1';
 
 	const statuses = {};
 	for (const core of CORES)
@@ -144,18 +145,22 @@ function renderHtml(state) {
   <div class="simo-grid">${CORES.map(core => coreCard(core, state)).join('')}</div>
 
   <div class="simo-card">
-    <h3>Sing-box Modes</h3>
+    <h3>Core Rules</h3>
+    <div class="simo-muted">Actions are routed to the active provider: <span class="simo-code">/opt/simo/cores/${esc(state.activeCore)}/bin/${esc(state.activeCore === 'singbox' ? 'singbox-rules' : 'mihomo-rules')}</span></div>
     <div class="simo-row">
       <button class="cbi-button cbi-button-apply" data-mode="enable-tun">Enable TUN</button>
       <button class="cbi-button cbi-button-neutral" data-mode="disable-tun">Disable TUN</button>
       <button class="cbi-button cbi-button-apply" data-mode="enable-tproxy">Enable TPROXY</button>
       <button class="cbi-button cbi-button-neutral" data-mode="disable-tproxy">Disable TPROXY</button>
+      <button class="cbi-button cbi-button-reload" data-mode="repair_policy">Repair Policy</button>
+      <button class="cbi-button cbi-button-neutral" data-mode="validate_policy">Validate Policy</button>
     </div>
   </div>
 
   <div class="simo-card">
     <h3>Services</h3>
     <div class="simo-row">
+      <button class="cbi-button ${state.flags.guard ? 'cbi-button-negative' : 'cbi-button-positive'}" data-guard>${state.flags.guard ? 'Stop' : 'Start'} Guard</button>
       ${SERVICE_FLAGS.map(item => `<button class="cbi-button ${state.flags[item.id] ? 'cbi-button-negative' : 'cbi-button-positive'}" data-helper="${item.id}">${state.flags[item.id] ? 'Stop' : 'Start'} ${esc(item.title)}</button>`).join('')}
     </div>
   </div>
@@ -217,13 +222,27 @@ function bind(root, state) {
 	root.querySelectorAll('[data-mode]').forEach(btn => {
 		btn.onclick = async () => {
 			try {
-				await exec('/usr/bin/simo/simo-mode-switch', [btn.dataset.mode]);
-				notify('info', 'Mode command completed');
+				await exec('/usr/bin/simo/simo-core', [state.activeCore, 'rules', btn.dataset.mode]);
+				notify('info', state.activeCore + ' rules command completed');
 			} catch (e) {
 				notify('error', e.message);
 			}
 		};
 	});
+
+	const guardBtn = root.querySelector('[data-guard]');
+	if (guardBtn) {
+		guardBtn.onclick = async () => {
+			const next = state.flags.guard ? '0' : '1';
+			try {
+				await writeUci('internet_only', next);
+				await exec('/usr/bin/simo/simo-core', [state.activeCore, 'rules', 'guard_refresh']);
+				await refresh(root);
+			} catch (e) {
+				notify('error', e.message);
+			}
+		};
+	}
 
 	root.querySelectorAll('[data-helper]').forEach(btn => {
 		btn.onclick = async () => {
@@ -252,4 +271,3 @@ return view.extend({
 		return root;
 	}
 });
-

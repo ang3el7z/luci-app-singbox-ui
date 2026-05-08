@@ -4,6 +4,7 @@ set -e
 CORE_ID="singbox"
 CORE_DIR="/opt/simo/cores/singbox"
 BIN="$CORE_DIR/bin/sing-box"
+RULES="$CORE_DIR/bin/singbox-rules"
 CONFIG="$CORE_DIR/config.json"
 RELEASE_API="https://api.github.com/repos/SagerNet/sing-box/releases/latest"
 
@@ -29,10 +30,15 @@ arch_name() {
 prepare() {
 	mkdir -p "$CORE_DIR/bin"
 	[ -f "$CONFIG" ] || printf '{}\n' > "$CONFIG"
+	[ -x "$RULES" ] || {
+		echo "singbox-rules script is not installed: $RULES" >&2
+		return 1
+	}
 	[ -x "$BIN" ] || {
 		echo "sing-box core is not installed: $BIN" >&2
 		return 1
 	}
+	"$RULES" start >/dev/null 2>&1 || true
 }
 
 run() {
@@ -99,8 +105,15 @@ update_config() {
 }
 
 cleanup() {
-	/usr/bin/simo/simo-mode-switch disable-tproxy >/dev/null 2>&1 || true
-	/usr/bin/simo/simo-mode-switch disable-tun >/dev/null 2>&1 || true
+	[ -x "$RULES" ] && "$RULES" full_cleanup >/dev/null 2>&1 || true
+}
+
+rules() {
+	[ -x "$RULES" ] || {
+		echo "singbox-rules script is not installed: $RULES" >&2
+		return 1
+	}
+	"$RULES" "$@"
 }
 
 case "${1:-status}" in
@@ -113,8 +126,8 @@ case "${1:-status}" in
 	version) version ;;
 	install_latest|update_core) download_latest ;;
 	update_config) shift; update_config "$@" ;;
+	rules|mode) shift; rules "$@" ;;
 	cleanup) cleanup ;;
 	status) [ -x "$BIN" ] && echo installed || echo missing ;;
 	*) echo "Usage: $0 {id|bin|config|prepare|run|check|version|install_latest|update_config|cleanup|status}" >&2; exit 1 ;;
 esac
-

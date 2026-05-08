@@ -1,6 +1,9 @@
 #!/bin/sh
-# Usage: simo-mode-switch <action>
-# Actions: enable-tun | disable-tun | enable-tproxy | disable-tproxy
+# Usage: singbox-rules <action>
+# Actions:
+#   enable-tun | disable-tun | enable-tproxy | disable-tproxy
+#   start | stop | restart | validate_policy | repair_policy | full_cleanup
+#   guard_start | guard_stop | guard_refresh
 
 set -e
 ACTION="${1:-unknown}"
@@ -9,6 +12,9 @@ NFT_RULE_FILE="/opt/simo/cores/singbox/tproxy.nft"
 NFT_RULE_TEMPLATE="/usr/libexec/simo/cores/singbox/tproxy.nft"
 SYSCTL_CONF_FILE="/etc/sysctl.d/99-singbox-tproxy.conf"
 TUN_IFACE="singtun0"
+GUARD_NFT_TABLE="simo_guard"
+GUARD_FORWARD_CHAIN="SIMO_GUARD_FORWARD"
+GUARD_OUTPUT_CHAIN="SIMO_GUARD_OUTPUT"
 
 # ── UI helpers ────────────────────────────────────────────────────────────────
 
@@ -27,7 +33,7 @@ done_() { echo -e "${INDENT}${CHECK} ${FG_SUCCESS}$1${RESET}"; }
 on_exit() {
     rc="$?"
     [ "$rc" -eq 0 ] && return 0
-    echo -e "${INDENT}${CROSS} ${FG_ERROR}Mode switch failed (action: ${ACTION})${RESET}" >&2
+    echo -e "${INDENT}${CROSS} ${FG_ERROR}singbox-rules failed (action: ${ACTION})${RESET}" >&2
 }
 
 trap on_exit EXIT
@@ -171,6 +177,87 @@ cleanup_tproxy_routing() {
     uci commit network
 }
 
+validate_tproxy_policy() {
+    ip rule show 2>/dev/null | grep -Eq 'fwmark (0x0*1|1)(/[0-9xa-fA-F]+)? .*lookup 100( |$)' || return 1
+    ip route show table 100 2>/dev/null | grep -q 'local 0.0.0.0/0 dev lo' || return 1
+}
+
+repair_tproxy_policy() {
+    setup_tproxy_routing
+    validate_tproxy_policy
+}
+
+guard_enabled() {
+    [ "$(uci -q get simo.main.internet_only 2>/dev/null)" = "1" ]
+}
+
+detect_wan_ifaces() {
+    local configured
+    configured="$(uci -q get simo.main.guard_wan_ifaces 2>/dev/null || true)"
+    if [ -n "$configured" ]; then
+        printf '%s\n' "$configured"
+        return 0
+    fi
+    ip route show default 2>/dev/null | awk '{ for (i = 1; i <= NF; i++) if ($i == "dev") print $(i + 1) }' | sort -u
+}
+
+apply_guard_rules() {
+    local ifaces iface
+    ifaces="$(detect_wan_ifaces)"
+    [ -n "$ifaces" ] || return 0
+
+    if command -v nft >/dev/null 2>&1; then
+        nft delete table inet "$GUARD_NFT_TABLE" 2>/dev/null || true
+        nft add table inet "$GUARD_NFT_TABLE"
+        nft add chain inet "$GUARD_NFT_TABLE" forward '{ type filter hook forward priority 1; policy accept; }'
+        nft add chain inet "$GUARD_NFT_TABLE" output '{ type filter hook output priority 1; policy accept; }'
+        nft add rule inet "$GUARD_NFT_TABLE" forward iifname "$TUN_IFACE" accept 2>/dev/null || true
+        nft add rule inet "$GUARD_NFT_TABLE" forward oifname "$TUN_IFACE" accept 2>/dev/null || true
+        echo "$ifaces" | while IFS= read -r iface; do
+            [ -n "$iface" ] || continue
+            nft add rule inet "$GUARD_NFT_TABLE" forward oifname "$iface" drop comment "simo-guard" 2>/dev/null || true
+            nft add rule inet "$GUARD_NFT_TABLE" output oifname "$iface" drop comment "simo-guard" 2>/dev/null || true
+        done
+        return 0
+    fi
+
+    if command -v iptables >/dev/null 2>&1; then
+        iptables -N "$GUARD_FORWARD_CHAIN" 2>/dev/null || true
+        iptables -N "$GUARD_OUTPUT_CHAIN" 2>/dev/null || true
+        iptables -F "$GUARD_FORWARD_CHAIN" 2>/dev/null || true
+        iptables -F "$GUARD_OUTPUT_CHAIN" 2>/dev/null || true
+        iptables -C FORWARD -j "$GUARD_FORWARD_CHAIN" 2>/dev/null || iptables -A FORWARD -j "$GUARD_FORWARD_CHAIN"
+        iptables -C OUTPUT -j "$GUARD_OUTPUT_CHAIN" 2>/dev/null || iptables -A OUTPUT -j "$GUARD_OUTPUT_CHAIN"
+        iptables -A "$GUARD_FORWARD_CHAIN" -i "$TUN_IFACE" -j RETURN 2>/dev/null || true
+        iptables -A "$GUARD_FORWARD_CHAIN" -o "$TUN_IFACE" -j RETURN 2>/dev/null || true
+        echo "$ifaces" | while IFS= read -r iface; do
+            [ -n "$iface" ] || continue
+            iptables -A "$GUARD_FORWARD_CHAIN" -o "$iface" -j DROP 2>/dev/null || true
+            iptables -A "$GUARD_OUTPUT_CHAIN" -o "$iface" -j DROP 2>/dev/null || true
+        done
+    fi
+}
+
+remove_guard_rules() {
+    nft delete table inet "$GUARD_NFT_TABLE" 2>/dev/null || true
+    if command -v iptables >/dev/null 2>&1; then
+        while iptables -D FORWARD -j "$GUARD_FORWARD_CHAIN" 2>/dev/null; do :; done
+        while iptables -D OUTPUT -j "$GUARD_OUTPUT_CHAIN" 2>/dev/null; do :; done
+        iptables -F "$GUARD_FORWARD_CHAIN" 2>/dev/null || true
+        iptables -X "$GUARD_FORWARD_CHAIN" 2>/dev/null || true
+        iptables -F "$GUARD_OUTPUT_CHAIN" 2>/dev/null || true
+        iptables -X "$GUARD_OUTPUT_CHAIN" 2>/dev/null || true
+    fi
+}
+
+refresh_guard_rules() {
+    if guard_enabled; then
+        apply_guard_rules
+    else
+        remove_guard_rules
+    fi
+}
+
 # ── service helpers ──────────────────────────────────────────────────────────
 
 reload_firewall() {
@@ -183,10 +270,33 @@ reload_network() {
     ifup proxy 2>/dev/null || true
 }
 
+set_simo_mode() {
+    uci set simo.main.mode="$1"
+    uci commit simo
+}
+
 # ── actions ──────────────────────────────────────────────────────────────────
 
 case "$1" in
+    start)
+        if guard_enabled; then
+            step "Applying Simo guard..."
+            apply_guard_rules
+        else
+            remove_guard_rules
+        fi
+        echo "ok"
+        ;;
+    stop)
+        remove_guard_rules
+        echo "ok"
+        ;;
+    restart)
+        "$0" stop
+        "$0" start
+        ;;
     enable-tun)
+        set_simo_mode "tun"
         step "Configuring network proxy interface..."
         configure_proxy
         step "Configuring firewall TUN zone..."
@@ -196,6 +306,7 @@ case "$1" in
         step "Reloading network..."
         reload_network
         done_ "TUN mode enabled"
+        refresh_guard_rules
         echo "ok"
         ;;
     disable-tun)
@@ -208,9 +319,11 @@ case "$1" in
         step "Reloading network..."
         reload_network
         done_ "TUN mode disabled"
+        refresh_guard_rules
         echo "ok"
         ;;
     enable-tproxy)
+        set_simo_mode "tproxy"
         step "Setting up policy routing..."
         setup_tproxy_routing
         step "Installing sysctl config..."
@@ -224,6 +337,7 @@ case "$1" in
         step "Reloading firewall..."
         reload_firewall
         done_ "TPROXY mode enabled"
+        refresh_guard_rules
         echo "ok"
         ;;
     disable-tproxy)
@@ -238,10 +352,37 @@ case "$1" in
         step "Uninstalling sysctl config..."
         uninstall_sysctl_config
         done_ "TPROXY mode disabled"
+        refresh_guard_rules
+        echo "ok"
+        ;;
+    validate_policy)
+        validate_tproxy_policy
+        echo "ok"
+        ;;
+    repair_policy)
+        repair_tproxy_policy
+        echo "ok"
+        ;;
+    guard_start)
+        apply_guard_rules
+        echo "ok"
+        ;;
+    guard_stop)
+        remove_guard_rules
+        echo "ok"
+        ;;
+    guard_refresh)
+        refresh_guard_rules
+        echo "ok"
+        ;;
+    full_cleanup)
+        "$0" disable-tproxy >/dev/null 2>&1 || true
+        "$0" disable-tun >/dev/null 2>&1 || true
+        remove_guard_rules
         echo "ok"
         ;;
     *)
-        echo "Usage: $0 {enable-tun|disable-tun|enable-tproxy|disable-tproxy}" >&2
+        echo "Usage: $0 {start|stop|restart|enable-tun|disable-tun|enable-tproxy|disable-tproxy|validate_policy|repair_policy|guard_start|guard_stop|guard_refresh|full_cleanup}" >&2
         exit 1
         ;;
 esac

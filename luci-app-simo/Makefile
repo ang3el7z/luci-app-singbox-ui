@@ -45,6 +45,7 @@ define Package/$(PKG_NAME)/conffiles
 /opt/simo/cores/singbox/url_config.json
 /opt/simo/cores/singbox/url_config2.json
 /opt/simo/cores/singbox/url_config3.json
+/opt/simo/cores/singbox/tproxy.nft
 endef
 
 define Package/$(PKG_NAME)/install
@@ -78,6 +79,7 @@ define Package/$(PKG_NAME)/install
 	$(INSTALL_DATA) ./rootfs/opt/simo/cores/singbox/url_config2.json $(1)/opt/simo/cores/singbox/
 	$(INSTALL_DATA) ./rootfs/opt/simo/cores/singbox/url_config3.json $(1)/opt/simo/cores/singbox/
 	$(INSTALL_DIR) $(1)/opt/simo/cores/singbox/bin
+	$(INSTALL_BIN) ./rootfs/opt/simo/cores/singbox/bin/singbox-rules $(1)/opt/simo/cores/singbox/bin/
 
 	$(INSTALL_DIR) $(1)/usr/bin/simo
 	$(INSTALL_BIN) ./rootfs/usr/bin/simo/* $(1)/usr/bin/simo/
@@ -134,8 +136,8 @@ define Package/$(PKG_NAME)/prerm
 	[ -x /etc/init.d/simo-health-autoupdater-service ] && /etc/init.d/simo-health-autoupdater-service stop >/dev/null 2>&1 || true
 	[ -x /etc/init.d/simo-memdoc-service ] && /etc/init.d/simo-memdoc-service stop >/dev/null 2>&1 || true
 	[ -x /etc/init.d/simo ] && /etc/init.d/simo stop >/dev/null 2>&1 || true
-	[ -x /usr/bin/simo/simo-mode-switch ] && /usr/bin/simo/simo-mode-switch disable-tproxy >/dev/null 2>&1 || true
-	[ -x /usr/bin/simo/simo-mode-switch ] && /usr/bin/simo/simo-mode-switch disable-tun >/dev/null 2>&1 || true
+	[ -x /usr/bin/simo/simo-core ] && /usr/bin/simo/simo-core mihomo rules full_cleanup >/dev/null 2>&1 || true
+	[ -x /usr/bin/simo/simo-core ] && /usr/bin/simo/simo-core singbox rules full_cleanup >/dev/null 2>&1 || true
 }
 exit 0
 endef

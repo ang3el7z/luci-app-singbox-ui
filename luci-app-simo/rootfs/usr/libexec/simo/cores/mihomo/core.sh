@@ -99,8 +99,52 @@ update_config() {
 	/usr/bin/simo/simo-updater "$CORE_ID" "$url_file" "$target"
 }
 
+set_setting() {
+	local key="$1"
+	local value="$2"
+	local tmp="$CORE_DIR/.settings.$$"
+	mkdir -p "$CORE_DIR"
+	if [ -f "$CORE_DIR/settings" ]; then
+		grep -v "^${key}=" "$CORE_DIR/settings" > "$tmp" || true
+	else
+		: > "$tmp"
+	fi
+	printf '%s=%s\n' "$key" "$value" >> "$tmp"
+	mv "$tmp" "$CORE_DIR/settings"
+}
+
+set_simo_mode() {
+	uci set simo.main.mode="$1"
+	uci commit simo
+}
+
 cleanup() {
 	[ -x "$RULES" ] && "$RULES" stop >/dev/null 2>&1 || true
+}
+
+rules() {
+	[ -x "$RULES" ] || {
+		echo "mihomo-rules script is not installed: $RULES" >&2
+		return 1
+	}
+	case "${1:-}" in
+		enable-tun)
+			set_simo_mode tun
+			set_setting PROXY_MODE tun
+			"$RULES" restart
+			;;
+		enable-tproxy)
+			set_simo_mode tproxy
+			set_setting PROXY_MODE tproxy
+			"$RULES" restart
+			;;
+		disable-tun|disable-tproxy)
+			"$RULES" stop
+			;;
+		*)
+			"$RULES" "$@"
+			;;
+	esac
 }
 
 case "${1:-status}" in
@@ -113,7 +157,8 @@ case "${1:-status}" in
 	version) version ;;
 	install_latest|update_core) download_latest ;;
 	update_config) shift; update_config "$@" ;;
+	rules|mode) shift; rules "$@" ;;
 	cleanup) cleanup ;;
 	status) [ -x "$BIN" ] && echo installed || echo missing ;;
-	*) echo "Usage: $0 {id|bin|config|prepare|run|check|version|install_latest|update_config|cleanup|status}" >&2; exit 1 ;;
+	*) echo "Usage: $0 {id|bin|config|prepare|run|check|version|install_latest|update_config|rules|cleanup|status}" >&2; exit 1 ;;
 esac
