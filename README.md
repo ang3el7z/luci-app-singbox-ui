@@ -48,6 +48,7 @@ provider-specific work is routed through the active core provider.
 - Core install/update from LuCI
 - Shared `/etc/init.d/simo` service
 - Shared TUN/TPROXY/Mixed mode controls
+- Shared DNS/TUN settings with provider adapters for Mihomo YAML and sing-box JSON
 - Config autoupdater service
 - Health autoupdater service
 - Low-memory restart service

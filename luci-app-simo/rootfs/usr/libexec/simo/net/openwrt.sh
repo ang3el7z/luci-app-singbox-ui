@@ -28,6 +28,7 @@ SIMO_TPROXY_PORT="${SIMO_TPROXY_PORT:-7894}"
 SIMO_DNS_PORT="${SIMO_DNS_PORT:-}"
 SIMO_BYPASS_MARK="${SIMO_BYPASS_MARK:-0x0002}"
 SIMO_RULE_PORTS="${SIMO_RULE_PORTS:-7890-7894}"
+SIMO_BLOCK_QUIC="${SIMO_BLOCK_QUIC:-$(uci -q get simo.main.block_quic 2>/dev/null || echo 1)}"
 
 MARK_TPROXY="${SIMO_MARK_TPROXY:-0x0001}"
 MARK_TUN_UDP="${SIMO_MARK_TUN_UDP:-0x0003}"
@@ -211,7 +212,7 @@ validate_policy() {
 }
 
 write_tproxy_nft_file() {
-	local current_mode udp_rule tcp_rule
+	local current_mode udp_rule tcp_rule block_quic_rule
 	current_mode="$(mode)"
 	tcp_rule="ip protocol tcp tproxy to 127.0.0.1:${SIMO_TPROXY_PORT} meta mark set \$PROXY_FWMARK"
 	case "$current_mode" in
@@ -221,6 +222,10 @@ write_tproxy_nft_file() {
 		*)
 			udp_rule="ip protocol udp tproxy to 127.0.0.1:${SIMO_TPROXY_PORT} meta mark set \$PROXY_FWMARK"
 			;;
+	esac
+	case "$SIMO_BLOCK_QUIC" in
+		1|true|yes|on) block_quic_rule="        udp dport 443 drop" ;;
+		*) block_quic_rule="" ;;
 	esac
 	mkdir -p "$(dirname "$NFT_RULE_FILE")"
 	cat > "$NFT_RULE_FILE" << EOF
@@ -257,6 +262,7 @@ table ip $NFT_TABLE {
         udp dport ${SIMO_RULE_PORTS} return
         tcp sport ${SIMO_RULE_PORTS} return
         udp sport ${SIMO_RULE_PORTS} return
+${block_quic_rule}
         $tcp_rule
         $udp_rule
     }

@@ -55,13 +55,22 @@ active_mode() {
 	uci -q get simo.main.mode 2>/dev/null || echo tproxy
 }
 
+active_tun_stack() {
+	case "$(uci -q get simo.main.tun_stack 2>/dev/null)" in
+		gvisor) echo gvisor ;;
+		*) echo system ;;
+	esac
+}
+
 prepare_runtime_config() {
-	local mode tmp
+	local mode tmp tun_stack
 	mode="$(active_mode)"
+	tun_stack="$(active_tun_stack)"
 	tmp="$CONFIG.tmp.$$"
 	jq \
 		--arg mode "$mode" \
 		--arg tun_iface "$TUN_IFACE" \
+		--arg tun_stack "$tun_stack" \
 		--argjson tproxy_port "$TPROXY_PORT" \
 		'
 		.log = (.log // {"level":"info"})
@@ -83,7 +92,7 @@ prepare_runtime_config() {
 					"mtu":9000,
 					"auto_route":false,
 					"strict_route":false,
-					"stack":"system"
+					"stack":$tun_stack
 				}]
 			  elif $mode == "mixed" then
 				. + [
@@ -96,7 +105,7 @@ prepare_runtime_config() {
 						"mtu":9000,
 						"auto_route":false,
 						"strict_route":false,
-						"stack":"system"
+						"stack":$tun_stack
 					}
 				]
 			  else
