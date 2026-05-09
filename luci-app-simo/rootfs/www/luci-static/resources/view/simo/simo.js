@@ -3,7 +3,7 @@
 'require fs';
 'require ui';
 
-const CORES = [
+const FALLBACK_CORES = [
 	{
 		id: 'mihomo',
 		title: 'Mihomo',
@@ -23,11 +23,10 @@ const CORES = [
 ];
 
 const CORE_MANIFEST_DIR = '/usr/libexec/simo/cores';
-
 const SERVICE_FLAGS = [
-	{ id: 'autoupdater', title: 'Autoupdate', option: 'autoupdater_service_state', service: 'simo-autoupdater-service' },
-	{ id: 'health', title: 'Health', option: 'health_autoupdater_service_state', service: 'simo-health-autoupdater-service' },
-	{ id: 'memdoc', title: 'Memory', option: 'memdoc_service_state', service: 'simo-memdoc-service' },
+	{ id: 'autoupdater', title: 'Autoupdate Service', option: 'autoupdater_service_state', service: 'simo-autoupdater-service' },
+	{ id: 'health', title: 'Health Service', option: 'health_autoupdater_service_state', service: 'simo-health-autoupdater-service' },
+	{ id: 'memdoc', title: 'Memory Service', option: 'memdoc_service_state', service: 'simo-memdoc-service' },
 ];
 
 function basename(path) {
@@ -54,6 +53,20 @@ async function exec(path, args) {
 	return String(result?.stdout || '').trim();
 }
 
+async function readFile(path, fallback) {
+	if (!path) return fallback || '';
+	try {
+		return String(await fs.read(path));
+	} catch (_) {
+		return fallback || '';
+	}
+}
+
+async function writeFile(path, content) {
+	if (!path) throw new Error('file path is not configured');
+	await fs.write(path, String(content || '').trimEnd() + '\n');
+}
+
 async function readUci(option, fallback) {
 	try {
 		const out = await exec('/sbin/uci', ['get', 'simo.main.' + option]);
@@ -61,6 +74,11 @@ async function readUci(option, fallback) {
 	} catch (_) {
 		return fallback;
 	}
+}
+
+async function writeUci(option, value) {
+	await exec('/sbin/uci', ['set', 'simo.main.' + option + '=' + value]);
+	await exec('/sbin/uci', ['commit', 'simo']);
 }
 
 function normalizeManifest(data, fallbackId) {
@@ -95,12 +113,7 @@ async function loadCores() {
 		}
 		if (cores.length) return cores;
 	} catch (_) {}
-	return CORES.slice();
-}
-
-async function writeUci(option, value) {
-	await exec('/sbin/uci', ['set', 'simo.main.' + option + '=' + value]);
-	await exec('/sbin/uci', ['commit', 'simo']);
+	return FALLBACK_CORES.slice();
 }
 
 async function coreStatus(core) {
@@ -119,10 +132,27 @@ async function serviceRunning(name) {
 	}
 }
 
+function activeProvider(state) {
+	return state.cores.find(c => c.id === state.activeCore) || state.cores[0] || FALLBACK_CORES[0];
+}
+
+async function loadLogs() {
+	try {
+		return await exec('/sbin/logread', ['-e', 'simo']);
+	} catch (_) {}
+	try {
+		const raw = await exec('/sbin/logread', []);
+		return raw.split('\n').filter(line => /(simo|mihomo|sing-box|singbox|clash)/i.test(line)).join('\n');
+	} catch (_) {
+		return '';
+	}
+}
+
 async function loadState() {
 	const activeCore = await readUci('core', 'mihomo');
 	const mode = await readUci('mode', 'tproxy');
 	const cores = await loadCores();
+	const provider = cores.find(c => c.id === activeCore) || cores[0] || FALLBACK_CORES[0];
 	const flags = {};
 	for (const item of SERVICE_FLAGS)
 		flags[item.id] = await readUci(item.option, '0') === '1';
@@ -133,17 +163,19 @@ async function loadState() {
 		statuses[core.id] = await coreStatus(core.id);
 
 	return {
-		activeCore,
+		activeCore: provider.id,
 		mode,
 		cores,
 		flags,
 		statuses,
 		running: await serviceRunning('simo'),
+		configContent: await readFile(provider.config, ''),
+		urlContent: await readFile(provider.urlConfig, ''),
 	};
 }
 
 const CSS = `
-.simo-page{--bg:#111214;--panel:#17191d;--border:#2a2d33;--text:#e3e6eb;--muted:#8f97a3;--accent:#5c7088;--ok:#2ecc71;--bad:#f85149;color:var(--text)}
+.simo-page{--panel:#17191d;--border:#2a2d33;--text:#e3e6eb;--muted:#8f97a3;--ok:#2ecc71;--bad:#f85149;color:var(--text)}
 .simo-head{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:8px;margin-bottom:12px;color:var(--muted);font-size:13px}
 .simo-head strong{color:var(--text)}
 .simo-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px}
@@ -156,6 +188,9 @@ const CSS = `
 .simo-pill-off{border-color:rgba(248,81,73,.35);color:#ff8f89;background:rgba(248,81,73,.12)}
 .simo-select{min-width:160px}
 .simo-code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12px;color:var(--muted)}
+.simo-editor,.simo-log{width:100%;min-height:320px;box-sizing:border-box;border:1px solid var(--border);border-radius:6px;background:#111214;color:var(--text);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12px;line-height:1.45;padding:10px}
+.simo-log{min-height:180px;white-space:pre-wrap;overflow:auto}
+.simo-input{min-width:260px;flex:1}
 `;
 
 function coreCard(core, state) {
@@ -164,25 +199,30 @@ function coreCard(core, state) {
 	return `
 <div class="simo-card">
   <h3>${esc(core.title)} ${active ? '<span class="simo-pill simo-pill-on">active</span>' : ''}</h3>
-  <div class="simo-muted">Binary: <span class="simo-code">${esc(status.status)}</span></div>
+  <div class="simo-muted">Engine: <span class="simo-code">${esc(status.status)}</span></div>
   <div class="simo-muted">Version: <span class="simo-code">${esc(status.version)}</span></div>
   <div class="simo-muted">Config: <span class="simo-code">${esc(core.config)}</span></div>
   <div class="simo-muted">URL: <span class="simo-code">${esc(core.urlConfig || 'provider url')}</span></div>
   <div class="simo-row">
     <button class="cbi-button cbi-button-apply" data-core="${core.id}" data-action="activate">Activate</button>
-    <button class="cbi-button cbi-button-positive" data-core="${core.id}" data-action="install">Install / Update Core</button>
+    <button class="cbi-button cbi-button-positive" data-core="${core.id}" data-action="install">Install / Update Engine</button>
     <button class="cbi-button cbi-button-neutral" data-core="${core.id}" data-action="check">Check Config</button>
   </div>
 </div>`;
 }
 
+function modeButtonClass(mode, activeMode) {
+	return mode === activeMode ? 'cbi-button-positive' : 'cbi-button-apply';
+}
+
 function renderHtml(state) {
+	const provider = activeProvider(state);
 	return `
 <style>${CSS}</style>
 <div class="simo-page">
   <div class="simo-head">
     <strong>Simo</strong>
-    <span>active core</span>
+    <span>active engine</span>
     <select id="simo-active-core" class="simo-select">
       ${state.cores.map(c => `<option value="${c.id}"${state.activeCore === c.id ? ' selected' : ''}>${esc(c.title)}</option>`).join('')}
     </select>
@@ -190,29 +230,46 @@ function renderHtml(state) {
   </div>
 
   <div class="simo-card">
-    <h3>Control</h3>
+    <h3>Service Control</h3>
     <div class="simo-row">
       <button class="cbi-button cbi-button-positive" data-service="start">Start</button>
       <button class="cbi-button cbi-button-negative" data-service="stop">Stop</button>
       <button class="cbi-button cbi-button-reload" data-service="restart">Restart</button>
       <button class="cbi-button cbi-button-apply" data-service="reload">Reload</button>
-      <a class="cbi-button cbi-button-neutral" href="${L.url('admin/services/simo/config')}">Mihomo Config UI</a>
     </div>
   </div>
 
   <div class="simo-grid">${state.cores.map(core => coreCard(core, state)).join('')}</div>
 
   <div class="simo-card">
-    <h3>Core Rules</h3>
-    <div class="simo-muted">Actions are routed to the active provider: <span class="simo-code">${esc((state.cores.find(c => c.id === state.activeCore) || {}).rules || 'provider rules')}</span></div>
+    <h3>Network Mode</h3>
+    <div class="simo-muted">Commands are routed to the active engine provider: <span class="simo-code">${esc(provider.rules || 'provider rules')}</span></div>
     <div class="simo-row">
-      <button class="cbi-button cbi-button-apply" data-mode="enable-tun">Enable TUN</button>
+      <button class="cbi-button ${modeButtonClass('tun', state.mode)}" data-mode="enable-tun">Use TUN</button>
+      <button class="cbi-button ${modeButtonClass('tproxy', state.mode)}" data-mode="enable-tproxy">Use TPROXY</button>
+      <button class="cbi-button ${modeButtonClass('mixed', state.mode)}" data-mode="enable-mixed">Use Mixed</button>
       <button class="cbi-button cbi-button-neutral" data-mode="disable-tun">Disable TUN</button>
-      <button class="cbi-button cbi-button-apply" data-mode="enable-tproxy">Enable TPROXY</button>
-      <button class="cbi-button cbi-button-apply" data-mode="enable-mixed">Enable Mixed</button>
       <button class="cbi-button cbi-button-neutral" data-mode="disable-tproxy">Disable TPROXY</button>
       <button class="cbi-button cbi-button-reload" data-mode="repair_policy">Repair Policy</button>
       <button class="cbi-button cbi-button-neutral" data-mode="validate_policy">Validate Policy</button>
+    </div>
+  </div>
+
+  <div class="simo-card">
+    <h3>Provider Config</h3>
+    <div class="simo-muted">Active engine: <span class="simo-code">${esc(provider.title)}</span></div>
+    <div class="simo-muted">Config file: <span class="simo-code">${esc(provider.config)}</span></div>
+    <div class="simo-row">
+      <input id="simo-url-config" class="cbi-input-text simo-input" type="text" value="${esc(String(state.urlContent || '').trim())}" placeholder="Subscription or remote config URL" />
+      <button class="cbi-button cbi-button-apply" data-config-action="save-url">Save URL</button>
+      <button class="cbi-button cbi-button-positive" data-config-action="update-config">Update Config</button>
+    </div>
+    <textarea id="simo-config-editor" class="simo-editor" spellcheck="false">${esc(state.configContent)}</textarea>
+    <div class="simo-row">
+      <button class="cbi-button cbi-button-positive" data-config-action="save-config">Save Config</button>
+      <button class="cbi-button cbi-button-apply" data-config-action="check-config">Check Config</button>
+      <button class="cbi-button cbi-button-reload" data-config-action="reload-config">Reload From Disk</button>
+      <button class="cbi-button cbi-button-reload" data-config-action="restart-service">Restart Service</button>
     </div>
   </div>
 
@@ -223,6 +280,14 @@ function renderHtml(state) {
       ${SERVICE_FLAGS.map(item => `<button class="cbi-button ${state.flags[item.id] ? 'cbi-button-negative' : 'cbi-button-positive'}" data-helper="${item.id}">${state.flags[item.id] ? 'Stop' : 'Start'} ${esc(item.title)}</button>`).join('')}
     </div>
   </div>
+
+  <div class="simo-card">
+    <h3>Logs</h3>
+    <div class="simo-row">
+      <button class="cbi-button cbi-button-apply" data-log-refresh>Refresh Logs</button>
+    </div>
+    <pre id="simo-log" class="simo-log"></pre>
+  </div>
 </div>`;
 }
 
@@ -232,14 +297,23 @@ async function refresh(root) {
 	bind(root, state);
 }
 
+async function reloadActiveConfig(root, state) {
+	const provider = activeProvider(state);
+	const editor = root.querySelector('#simo-config-editor');
+	const input = root.querySelector('#simo-url-config');
+	if (editor) editor.value = await readFile(provider.config, '');
+	if (input) input.value = String(await readFile(provider.urlConfig, '')).trim();
+}
+
 function bind(root, state) {
+	const provider = activeProvider(state);
 	const selector = root.querySelector('#simo-active-core');
 	if (selector) {
 		selector.onchange = async () => {
 			try {
 				await exec('/etc/init.d/simo', ['stop']);
 				await writeUci('core', selector.value);
-				notify('info', 'Active core changed to ' + selector.value);
+				notify('info', 'Active engine changed to ' + selector.value);
 				await refresh(root);
 			} catch (e) {
 				notify('error', e.message);
@@ -282,7 +356,43 @@ function bind(root, state) {
 		btn.onclick = async () => {
 			try {
 				await exec('/usr/bin/simo/simo-core', [state.activeCore, 'rules', btn.dataset.mode]);
-				notify('info', state.activeCore + ' rules command completed');
+				notify('info', state.activeCore + ' network command completed');
+				await refresh(root);
+			} catch (e) {
+				notify('error', e.message);
+			}
+		};
+	});
+
+	root.querySelectorAll('[data-config-action]').forEach(btn => {
+		btn.onclick = async () => {
+			const action = btn.dataset.configAction;
+			const editor = root.querySelector('#simo-config-editor');
+			const url = root.querySelector('#simo-url-config');
+			try {
+				if (action === 'save-config') {
+					await writeFile(provider.config, editor ? editor.value : '');
+					notify('info', 'Config saved');
+				} else if (action === 'save-url') {
+					await writeFile(provider.urlConfig, url ? url.value : '');
+					notify('info', 'URL saved');
+				} else if (action === 'update-config') {
+					await writeFile(provider.urlConfig, url ? url.value : '');
+					await exec('/usr/bin/simo/simo-core', [state.activeCore, 'update_config']);
+					await reloadActiveConfig(root, state);
+					notify('info', 'Config updated');
+				} else if (action === 'check-config') {
+					await writeFile(provider.config, editor ? editor.value : '');
+					await exec('/usr/bin/simo/simo-core', [state.activeCore, 'check']);
+					notify('info', 'Config is valid');
+				} else if (action === 'reload-config') {
+					await reloadActiveConfig(root, state);
+					notify('info', 'Config reloaded');
+				} else if (action === 'restart-service') {
+					await writeFile(provider.config, editor ? editor.value : '');
+					await exec('/etc/init.d/simo', ['restart']);
+					await refresh(root);
+				}
 			} catch (e) {
 				notify('error', e.message);
 			}
@@ -317,6 +427,18 @@ function bind(root, state) {
 			}
 		};
 	});
+
+	const logBtn = root.querySelector('[data-log-refresh]');
+	if (logBtn) {
+		logBtn.onclick = async () => {
+			const log = root.querySelector('#simo-log');
+			try {
+				if (log) log.textContent = await loadLogs();
+			} catch (e) {
+				notify('error', e.message);
+			}
+		};
+	}
 }
 
 return view.extend({

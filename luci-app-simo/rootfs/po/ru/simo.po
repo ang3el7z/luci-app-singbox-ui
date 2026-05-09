@@ -48,7 +48,7 @@ msgstr "Сохранить"
 msgid "Delete"
 msgstr "Удалить"
 
-### Модуль config.js ###
+### Модуль simo.js ###
 
 msgid "Open Dashboard"
 msgstr "Открыть панель управления"
@@ -666,7 +666,7 @@ msgstr "Проверка YAML не пройдена: %s"
 msgid "YAML validation passed."
 msgstr "Проверка YAML пройдена."
 
-### Missing UI translations (config.js) ###
+### Missing UI translations (simo.js) ###
 
 msgid "unknown"
 msgstr "неизвестно"
@@ -818,7 +818,7 @@ msgstr "Ядро установлено, служба перезапущена."
 msgid "Kernel installed, but failed to restart service: %s"
 msgstr "Ядро установлено, но перезапустить службу не удалось: %s"
 
-### Multi-config profiles (config.js) ###
+### Multi-config profiles (simo.js) ###
 
 msgid "Main Config #1"
 msgstr "Основной конфиг #1"

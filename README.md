@@ -38,13 +38,16 @@ OpenWrt-specific TUN, TPROXY, firewall, policy-routing and guard work is shared
 through `simo-net`; providers only publish their network parameters through
 `netenv`.
 
+LuCI has a single Simo entrypoint at `view/simo/simo.js`. Buttons are shared;
+provider-specific work is routed through the active core provider.
+
 ## Features
 
-- MiClash-style LuCI base and Mihomo rules/dashboard assets
+- Single Simo LuCI page for service, engine, network mode and config control
 - Core switcher for `mihomo` and `sing-box`
 - Core install/update from LuCI
 - Shared `/etc/init.d/simo` service
-- sing-box TUN/TPROXY mode switch
+- Shared TUN/TPROXY/Mixed mode controls
 - Config autoupdater service
 - Health autoupdater service
 - Low-memory restart service
