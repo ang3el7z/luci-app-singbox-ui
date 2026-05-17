@@ -1,0 +1,355 @@
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+msgid "Main Config #1"
+msgstr "Основная конфигурация #1"
+
+msgid "Backup Config #2"
+msgstr "Резервная конфигурация #2"
+
+msgid "Backup Config #3"
+msgstr "Резервная конфигурация #3"
+
+msgid "Running"
+msgstr "Работает"
+
+msgid "Error"
+msgstr "Ошибка"
+
+msgid "Inactive"
+msgstr "Неактивен"
+
+msgid "Stop"
+msgstr "Остановить"
+
+msgid "Start"
+msgstr "Запустить"
+
+msgid "Stop "
+msgstr "Остановить "
+
+msgid "Start "
+msgstr "Запустить "
+
+msgid "Sing-Box & Health Autoupdater"
+msgstr "Sing-Box и автообновлятор с проверкой"
+
+msgid "Sing-Box & Autoupdater"
+msgstr "Sing-Box и автообновлятор"
+
+msgid "Sing-Box"
+msgstr "Sing-Box"
+
+msgid "Restart"
+msgstr "Перезапустить"
+
+msgid "Stop Autoupdater"
+msgstr "Остановить автообновлятор"
+
+msgid "Autoupdater"
+msgstr "Автообновлятор"
+
+msgid "Stop periodic config update from subscription URL"
+msgstr "Остановить периодическое обновление конфигурации по URL подписки"
+
+msgid "Start periodic config update from subscription URL"
+msgstr "Запустить периодическое обновление конфигурации по URL подписки"
+
+msgid "Stop Health Autoupdater"
+msgstr "Остановить автообновлятор с проверкой"
+
+msgid "Health Autoupdater"
+msgstr "Автообновлятор с проверкой"
+
+msgid "Stop config update on outbound health failure"
+msgstr "Остановить обновление конфигурации при сбое проверки исходящего трафика"
+
+msgid "Update config when outbound health check fails"
+msgstr "Обновлять конфигурацию при сбое проверки исходящего трафика"
+
+msgid "Stop Memdoc"
+msgstr "Остановить монитор памяти"
+
+msgid "Memdoc"
+msgstr "Монитор памяти"
+
+msgid "Stop memory monitor"
+msgstr "Остановить монитор памяти"
+
+msgid "Restart sing-box when free RAM is low"
+msgstr "Перезапускать sing-box при нехватке памяти"
+
+msgid "Auto Hide Notif"
+msgstr "Автоскрытие уведомлений"
+
+msgid "Success: 6s, Error: 10s"
+msgstr "Успех: 6с, Ошибка: 10с"
+
+msgid "custom setup"
+msgstr "пользовательский режим"
+
+msgid "fix: tproxy + tun conflict"
+msgstr "исправить: конфликт tproxy + tun"
+
+msgid "mode"
+msgstr "режим"
+
+msgid "Dashboard"
+msgstr "Панель управления"
+
+msgid "Control"
+msgstr "Управление"
+
+msgid "Services"
+msgstr "Службы"
+
+msgid "Settings"
+msgstr "Настройки"
+
+msgid "Config"
+msgstr "Конфигурация"
+
+msgid "Logs"
+msgstr "Журналы"
+
+msgid "Subscription URL"
+msgstr "URL подписки"
+
+msgid "Save URL"
+msgstr "Сохранить URL"
+
+msgid "Update"
+msgstr "Обновить"
+
+msgid "Format"
+msgstr "Форматировать"
+
+msgid "Save"
+msgstr "Сохранить"
+
+msgid "Set as Main"
+msgstr "Сделать основной"
+
+msgid "Clear All"
+msgstr "Очистить всё"
+
+msgid "Scroll to bottom"
+msgstr "Прокрутить вниз"
+
+msgid "Bottom"
+msgstr "Вниз"
+
+msgid "Sing-Box stopped"
+msgstr "Sing-Box остановлен"
+
+msgid "Sing-Box started"
+msgstr "Sing-Box запущен"
+
+msgid "Operation failed: "
+msgstr "Операция не удалась: "
+
+msgid "Sing-Box restarted"
+msgstr "Sing-Box перезапущен"
+
+msgid "Restart failed: "
+msgstr "Перезапуск не удался: "
+
+msgid "Autoupdater stopped"
+msgstr "Автообновлятор остановлен"
+
+msgid "Autoupdater started"
+msgstr "Автообновлятор запущен"
+
+msgid "Health Autoupdater stopped"
+msgstr "Автообновлятор с проверкой остановлен"
+
+msgid "Health Autoupdater started"
+msgstr "Автообновлятор с проверкой запущен"
+
+msgid "Memdoc stopped"
+msgstr "Монитор памяти остановлен"
+
+msgid "Memdoc started"
+msgstr "Монитор памяти запущен"
+
+msgid "Toggle failed: "
+msgstr "Переключение не удалось: "
+
+msgid "Auto hide notifications "
+msgstr "Автоскрытие уведомлений "
+
+msgid "enabled"
+msgstr "включено"
+
+msgid "disabled"
+msgstr "отключено"
+
+msgid "Settings update failed: "
+msgstr "Обновление настроек не удалось: "
+
+msgid "URL is empty"
+msgstr "URL пуст"
+
+msgid "Invalid URL"
+msgstr "Неверный URL"
+
+msgid "URL saved"
+msgstr "URL сохранён"
+
+msgid "No changes detected"
+msgstr "Изменений не обнаружено"
+
+msgid "Update failed"
+msgstr "Обновление не удалось"
+
+msgid "updated"
+msgstr "обновлено"
+
+msgid "Config updated"
+msgstr "Конфигурация обновлена"
+
+msgid "Sing-Box reloaded"
+msgstr "Sing-Box перезагружен"
+
+msgid "Save URL failed: "
+msgstr "Сохранение URL не удалось: "
+
+msgid "Update failed: "
+msgstr "Обновление не удалось: "
+
+msgid "Editor not ready"
+msgstr "Редактор не готов"
+
+msgid "Nothing to format"
+msgstr "Нечего форматировать"
+
+msgid "Formatted"
+msgstr "Отформатировано"
+
+msgid "Format config"
+msgstr "Форматировать конфигурацию"
+
+msgid "validates and reorders keys per schema."
+msgstr "проверяет и переупорядочивает ключи по схеме."
+
+msgid "fixes indentation, preserves comments and key order."
+msgstr "исправляет отступы, сохраняет комментарии и порядок ключей."
+
+msgid "Config is empty"
+msgstr "Конфигурация пуста"
+
+msgid "Config saved"
+msgstr "Конфигурация сохранена"
+
+msgid "Save failed: "
+msgstr "Сохранение не удалось: "
+
+msgid "is now main config"
+msgstr "теперь основная конфигурация"
+
+msgid "Set as main failed: "
+msgstr "Установка основной конфигурации не удалась: "
+
+msgid "Clear all data?"
+msgstr "Очистить все данные?"
+
+msgid "Config and URL for"
+msgstr "Конфигурация и URL для"
+
+msgid "will be erased."
+msgstr "будут удалены."
+
+msgid "This cannot be undone."
+msgstr "Это действие необратимо."
+
+msgid "Clear"
+msgstr "Очистить"
+
+msgid "Config cleared, services stopped"
+msgstr "Конфигурация очищена, службы остановлены"
+
+msgid "cleared"
+msgstr "очищено"
+
+msgid "Clear failed: "
+msgstr "Очистка не удалась: "
+
+msgid "Switching mode\u2026"
+msgstr "Переключение режима\u2026"
+
+msgid "Mode switched, reloading\u2026"
+msgstr "Режим переключён, перезагрузка\u2026"
+
+msgid "Mode switch failed: "
+msgstr "Переключение режима не удалось: "
+
+msgid "Switch to tproxy mode?"
+msgstr "Переключиться в режим tproxy?"
+
+msgid "tun interface"
+msgstr "интерфейс tun"
+
+msgid "will be removed."
+msgstr "будет удалён."
+
+msgid "tproxy nft rules and policy routing will be applied."
+msgstr "Будут применены правила nft tproxy и политика маршрутизации."
+
+msgid "Switch to tproxy"
+msgstr "Переключиться на tproxy"
+
+msgid "Switch to tun mode?"
+msgstr "Переключиться в режим tun?"
+
+msgid "tproxy nft rules will be removed."
+msgstr "Правила nft tproxy будут удалены."
+
+msgid "and firewall zone will be configured."
+msgstr "и будет настроена зона брандмауэра."
+
+msgid "Switch to tun"
+msgstr "Переключиться на tun"
+
+msgid "Conflict: tproxy + tun both active"
+msgstr "Конфликт: tproxy и tun активны одновременно"
+
+msgid "Both modes are active simultaneously. Disable one to resolve:"
+msgstr "Оба режима активны одновременно. Отключите один для устранения:"
+
+msgid "Keep tproxy (disable tun)"
+msgstr "Оставить tproxy (отключить tun)"
+
+msgid "Keep tun (disable tproxy)"
+msgstr "Оставить tun (отключить tproxy)"
+
+msgid "Updated"
+msgstr "Обновлено"
+
+msgid "Cancel"
+msgstr "Отмена"
+
+msgid "Editor failed to load: "
+msgstr "Не удалось загрузить редактор: "
+
+msgid "Page init failed: "
+msgstr "Ошибка инициализации страницы: "
+
+msgid "Config error: "
+msgstr "Ошибка конфигурации: "
+
+msgid "validation failed"
+msgstr "проверка не прошла"
+
+msgid "Validation error: "
+msgstr "Ошибка проверки: "
+
+msgid "Format failed: "
+msgstr "Форматирование не удалось: "
+
+msgid "unknown error"
+msgstr "неизвестная ошибка"
+
+msgid "Format error: "
+msgstr "Ошибка форматирования: "

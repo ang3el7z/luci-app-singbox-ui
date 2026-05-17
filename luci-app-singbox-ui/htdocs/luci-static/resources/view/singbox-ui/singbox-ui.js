@@ -2,6 +2,7 @@
 'require view';
 'require ui';
 'require fs';
+'require rpc';
 
 // ============================================================
 // Constants
@@ -16,9 +17,9 @@ const UCI_SECTION      = 'main';
 const ACE_BASE         = '/luci-static/resources/view/singbox-ui/ace/';
 
 const CONFIGS = [
-	{ name: 'config.json',  label: 'Main Config #1' },
-	{ name: 'config2.json', label: 'Backup Config #2' },
-	{ name: 'config3.json', label: 'Backup Config #3' },
+	{ name: 'config.json',  label: _('Main Config #1') },
+	{ name: 'config2.json', label: _('Backup Config #2') },
+	{ name: 'config3.json', label: _('Backup Config #3') },
 ];
 
 // ============================================================
@@ -295,10 +296,10 @@ async function isValidConfig(content) {
 		if (r.code === 0) return true;
 		let msg = String(r.stderr || '').trim();
 		if (msg.includes(tmp)) msg = msg.substring(msg.indexOf(tmp) + tmp.length + 1).trim();
-		notify('error', 'Config error: ' + (msg || 'validation failed'));
+		notify('error', _('Config error: ') + (msg || _('validation failed')));
 		return false;
 	} catch (e) {
-		notify('error', 'Validation error: ' + e.message);
+		notify('error', _('Validation error: ') + e.message);
 		return false;
 	} finally {
 		try { await fs.remove(tmp); } catch (_) {}
@@ -314,12 +315,12 @@ async function formatConfig(content) {
 		if (r.code !== 0) {
 			let msg = String(r.stderr || r.stdout || '').trim();
 			if (msg.includes(tmp)) msg = msg.substring(msg.indexOf(tmp) + tmp.length + 1).trim();
-			notify('error', 'Format failed: ' + (msg || 'unknown error'));
+			notify('error', _('Format failed: ') + (msg || _('unknown error')));
 			return null;
 		}
 		return await loadFile(tmp);
 	} catch (e) {
-		notify('error', 'Format error: ' + e.message);
+		notify('error', _('Format error: ') + e.message);
 		return null;
 	} finally {
 		try { await fs.remove(tmp); } catch (_) {}
@@ -434,7 +435,7 @@ function showModeModal(options) {
   <div class="sbox-modal-body">${options.body}</div>
   <div class="sbox-modal-actions">
     ${btns}
-    <button type="button" class="cbi-button cbi-button-neutral" data-cancel>Cancel</button>
+    <button type="button" class="cbi-button cbi-button-neutral" data-cancel>${_('Cancel')}</button>
   </div>
 </div>`;
 
@@ -843,15 +844,15 @@ function buildControlInner(state) {
 	const sk = state.singboxRunning
 		? 'running'
 		: (state.singboxStatus === 'error' ? 'error' : 'inactive');
-	const statusLabel = sk === 'running' ? 'Running' : (sk === 'error' ? 'Error' : 'Inactive');
+	const statusLabel = sk === 'running' ? _('Running') : (sk === 'error' ? _('Error') : _('Inactive'));
 
 	const btn = (cls, action, label, title) =>
 		`<button type="button" class="cbi-button cbi-button-${cls}" data-action="${action}"${title ? ` title="${title}"` : ''}>${label}</button>`;
 
 	const svcLabel = () => {
-		if (state.healthAutoupdaterServiceTempFlag) return 'Sing-Box & Health Autoupdater';
-		if (state.autoupdaterServiceTempFlag)       return 'Sing-Box & Autoupdater';
-		return 'Sing-Box';
+		if (state.healthAutoupdaterServiceTempFlag) return _('Sing-Box & Health Autoupdater');
+		if (state.autoupdaterServiceTempFlag)       return _('Sing-Box & Autoupdater');
+		return _('Sing-Box');
 	};
 
 	const ctrlBtns = [
@@ -859,11 +860,11 @@ function buildControlInner(state) {
 			? btn(
 				state.singboxRunning ? 'remove' : 'apply',
 				'startStop',
-				state.singboxRunning ? 'Stop' : 'Start',
-				(state.singboxRunning ? 'Stop ' : 'Start ') + svcLabel())
+				state.singboxRunning ? _('Stop') : _('Start'),
+				(state.singboxRunning ? _('Stop ') : _('Start ')) + svcLabel())
 			: '',
 		state.singboxRunning && state.isInitialConfigValid
-			? btn('reload', 'restart', 'Restart') : '',
+			? btn('reload', 'restart', _('Restart')) : '',
 	].filter(Boolean).join('');
 
 	return `
@@ -884,27 +885,27 @@ function buildServiceInner(state) {
 			? btn(
 				state.autoupdaterEnabled ? 'negative' : 'positive',
 				'toggleAutoupdater',
-				state.autoupdaterEnabled ? 'Stop Autoupdater' : 'Autoupdater',
+				state.autoupdaterEnabled ? _('Stop Autoupdater') : _('Autoupdater'),
 				state.autoupdaterEnabled
-					? 'Stop periodic config update from subscription URL'
-					: 'Start periodic config update from subscription URL')
+					? _('Stop periodic config update from subscription URL')
+					: _('Start periodic config update from subscription URL'))
 			: '',
 		state.mainConfigHasUrl && !state.autoupdaterEnabled
 			? btn(
 				state.healthAutoupdaterEnabled ? 'negative' : 'positive',
 				'toggleHealthAutoupdater',
-				state.healthAutoupdaterEnabled ? 'Stop Health Autoupdater' : 'Health Autoupdater',
+				state.healthAutoupdaterEnabled ? _('Stop Health Autoupdater') : _('Health Autoupdater'),
 				state.healthAutoupdaterEnabled
-					? 'Stop config update on outbound health failure'
-					: 'Update config when outbound health check fails')
+					? _('Stop config update on outbound health failure')
+					: _('Update config when outbound health check fails'))
 			: '',
 		btn(
 			state.memdocEnabled ? 'negative' : 'positive',
 			'toggleMemdoc',
-			state.memdocEnabled ? 'Stop Memdoc' : 'Memdoc',
+			state.memdocEnabled ? _('Stop Memdoc') : _('Memdoc'),
 			state.memdocEnabled
-				? 'Stop memory monitor'
-				: 'Restart sing-box when free RAM is low'),
+				? _('Stop memory monitor')
+				: _('Restart sing-box when free RAM is low')),
 	].filter(Boolean).join('');
 
 	return `
@@ -914,12 +915,12 @@ function buildServiceInner(state) {
 function buildSettingsInner(state) {
 	const enabled = !!state.autoHideNotificationEnabled;
 	const cls     = enabled ? 'positive' : 'negative';
-	const label   = 'Auto Hide Notif';
+	const label   = _('Auto Hide Notif');
 
 	return `
   <div class="sbox-row">
     <button type="button" class="cbi-button cbi-button-${cls}" data-action="toggleAutoHideNotification">${label}</button>
-    <span class="sbox-muted">Success: 6s, Error: 10s</span>
+    <span class="sbox-muted">${_('Success: 6s, Error: 10s')}</span>
   </div>`;
 }
 
@@ -940,17 +941,17 @@ function buildPageHtml(state) {
   sing-box <strong>${v.singbox}</strong>
   ${dot}
   <span id="sbox-mode-badge" class="sbox-header-mode${proxyMode === 'conflict' ? ' sbox-header-mode-conflict' : ''}${proxyMode !== 'custom' ? ' sbox-header-mode-btn' : ''}" data-mode="${proxyMode}">${
-		proxyMode === 'custom'   ? 'custom setup' :
-		proxyMode === 'conflict' ? '\u26A0 fix: tproxy + tun conflict' :
-		proxyMode + ' mode'
+		proxyMode === 'custom'   ? _('custom setup') :
+		proxyMode === 'conflict' ? '\u26A0 ' + _('fix: tproxy + tun conflict') :
+		proxyMode + ' ' + _('mode')
 	}</span>
-  <button type="button" id="sbox-header-dash" class="cbi-button cbi-button-apply sbox-header-dash"${(state.singboxRunning && state.dashboardPort) ? '' : ' style="display:none"'}>Dashboard</button>
+  <button type="button" id="sbox-header-dash" class="cbi-button cbi-button-apply sbox-header-dash"${(state.singboxRunning && state.dashboardPort) ? '' : ' style="display:none"'}>${_('Dashboard')}</button>
 </div>
 <div class="sbox-card" id="sbox-ctrl-svc">
   <div class="sbox-card-tabs">
-    <button type="button" class="sbox-tab sbox-tab-active" data-tab="control">Control</button>
-    <button type="button" class="sbox-tab" data-tab="services">Services</button>
-    <button type="button" class="sbox-tab" data-tab="settings">Settings</button>
+    <button type="button" class="sbox-tab sbox-tab-active" data-tab="control">${_('Control')}</button>
+    <button type="button" class="sbox-tab" data-tab="services">${_('Services')}</button>
+    <button type="button" class="sbox-tab" data-tab="settings">${_('Settings')}</button>
   </div>
   <div id="sbox-tab-control">${buildControlInner(state)}</div>
   <div id="sbox-tab-services" style="display:none">${buildServiceInner(state)}</div>
@@ -958,23 +959,23 @@ function buildPageHtml(state) {
 </div>
 <div class="sbox-card" id="sbox-config">
   <div class="sbox-card-tabs">
-    <button type="button" class="sbox-tab sbox-tab-active" data-tab="config">Config</button>
-    <button type="button" class="sbox-tab" data-tab="logs">Logs</button>
+    <button type="button" class="sbox-tab sbox-tab-active" data-tab="config">${_('Config')}</button>
+    <button type="button" class="sbox-tab" data-tab="logs">${_('Logs')}</button>
   </div>
   <div id="sbox-tab-config">
     <div class="sbox-cfg-top">
       <select id="sbox-config-select" class="sbox-select">${opts}</select>
-      <input type="url" id="sbox-url" class="sbox-input" placeholder="Subscription URL: https://\u2026" />
-      ${cbtn('positive', 'saveUrl', 'Save URL')}
-      ${cbtn('reload',   'update',  'Update')}
+      <input type="url" id="sbox-url" class="sbox-input" placeholder="${_('Subscription URL')}: https://\u2026" />
+      ${cbtn('positive', 'saveUrl', _('Save URL'))}
+      ${cbtn('reload',   'update',  _('Update'))}
     </div>
     <div id="sbox-ace" class="sbox-editor"></div>
     <div class="sbox-actions">
-      ${cbtn('apply',    'format',   'Format')}
-      ${cbtn('positive', 'save',     'Save')}
+      ${cbtn('apply',    'format',   _('Format'))}
+      ${cbtn('positive', 'save',     _('Save'))}
       <button type="button" class="cbi-button cbi-button-apply"
-        data-config-action="setAsMain" id="sbox-set-main-btn" style="display:none">Set as Main</button>
-      ${cbtn('negative', 'clear', 'Clear All')}
+        data-config-action="setAsMain" id="sbox-set-main-btn" style="display:none">${_('Set as Main')}</button>
+      ${cbtn('negative', 'clear', _('Clear All'))}
     </div>
   </div>
   <div id="sbox-tab-logs" style="display:none">
@@ -983,7 +984,7 @@ function buildPageHtml(state) {
     </div>
     <div class="sbox-log-viewer">
       <pre id="sbox-log-content" class="sbox-log-content"></pre>
-      <button type="button" class="sbox-log-scroll-btn" id="sbox-log-scroll-btn" title="Scroll to bottom">\u2193 Bottom</button>
+      <button type="button" class="sbox-log-scroll-btn" id="sbox-log-scroll-btn" title="${_('Scroll to bottom')}">\u2193 ${_('Bottom')}</button>
     </div>
   </div>
 </div>`;
@@ -1035,7 +1036,7 @@ function initPage(page, state, mainContent, mainUrl) {
 								await execServiceLifecycle('singbox-ui-autoupdater-service', 'stop');
 							else if (state.healthAutoupdaterServiceTempFlag)
 								await execServiceLifecycle('singbox-ui-health-autoupdater-service', 'stop');
-							notify('info', 'Sing-Box stopped');
+							notify('info', _('Sing-Box stopped'));
 						} else {
 							await execService('sing-box', 'start');
 							if (state.tproxyActive) await enableTproxy();
@@ -1043,10 +1044,10 @@ function initPage(page, state, mainContent, mainUrl) {
 								await execServiceLifecycle('singbox-ui-autoupdater-service', 'start');
 							else if (state.healthAutoupdaterServiceTempFlag)
 								await execServiceLifecycle('singbox-ui-health-autoupdater-service', 'start');
-							notify('info', 'Sing-Box started');
+							notify('info', _('Sing-Box started'));
 						}
 					} catch (e) {
-						notify('error', 'Operation failed: ' + e.message);
+						notify('error', _('Operation failed: ') + e.message);
 					}
 					await refreshControlCard();
 				});
@@ -1060,9 +1061,9 @@ function initPage(page, state, mainContent, mainUrl) {
 							await execServiceLifecycle('singbox-ui-autoupdater-service', 'restart');
 						else if (state.healthAutoupdaterServiceTempFlag)
 							await execServiceLifecycle('singbox-ui-health-autoupdater-service', 'restart');
-						notify('info', 'Sing-Box restarted');
+						notify('info', _('Sing-Box restarted'));
 					} catch (e) {
-						notify('error', 'Restart failed: ' + e.message);
+						notify('error', _('Restart failed: ') + e.message);
 					}
 					await refreshControlCard();
 				});
@@ -1128,15 +1129,15 @@ function initPage(page, state, mainContent, mainUrl) {
 						if (state.autoupdaterEnabled) {
 							await execServiceLifecycle('singbox-ui-autoupdater-service', 'stop');
 							await writeUciFlag('autoupdater_service_state', false);
-							notify('info', 'Autoupdater stopped');
+							notify('info', _('Autoupdater stopped'));
 						} else {
 							await execServiceLifecycle('singbox-ui-health-autoupdater-service', 'stop');
 							await writeUciFlag('health_autoupdater_service_state', false);
 							await writeUciFlag('autoupdater_service_state', true);
 							await execServiceLifecycle('singbox-ui-autoupdater-service', 'start');
-							notify('info', 'Autoupdater started');
+							notify('info', _('Autoupdater started'));
 						}
-					} catch (e) { notify('error', 'Toggle failed: ' + e.message); }
+					} catch (e) { notify('error', _('Toggle failed: ') + e.message); }
 					await refreshServiceCard();
 				});
 			},
@@ -1147,15 +1148,15 @@ function initPage(page, state, mainContent, mainUrl) {
 						if (state.healthAutoupdaterEnabled) {
 							await execServiceLifecycle('singbox-ui-health-autoupdater-service', 'stop');
 							await writeUciFlag('health_autoupdater_service_state', false);
-							notify('info', 'Health Autoupdater stopped');
+							notify('info', _('Health Autoupdater stopped'));
 						} else {
 							await execServiceLifecycle('singbox-ui-autoupdater-service', 'stop');
 							await writeUciFlag('autoupdater_service_state', false);
 							await writeUciFlag('health_autoupdater_service_state', true);
 							await execServiceLifecycle('singbox-ui-health-autoupdater-service', 'start');
-							notify('info', 'Health Autoupdater started');
+							notify('info', _('Health Autoupdater started'));
 						}
-					} catch (e) { notify('error', 'Toggle failed: ' + e.message); }
+					} catch (e) { notify('error', _('Toggle failed: ') + e.message); }
 					await refreshServiceCard();
 				});
 			},
@@ -1165,12 +1166,12 @@ function initPage(page, state, mainContent, mainUrl) {
 					try {
 						if (state.memdocEnabled) {
 							await execServiceLifecycle('singbox-ui-memdoc-service', 'stop');
-							notify('info', 'Memdoc stopped');
+							notify('info', _('Memdoc stopped'));
 						} else {
 							await execServiceLifecycle('singbox-ui-memdoc-service', 'start');
-							notify('info', 'Memdoc started');
+							notify('info', _('Memdoc started'));
 						}
-					} catch (e) { notify('error', 'Toggle failed: ' + e.message); }
+					} catch (e) { notify('error', _('Toggle failed: ') + e.message); }
 					await refreshServiceCard();
 				});
 			},
@@ -1204,9 +1205,9 @@ function initPage(page, state, mainContent, mainUrl) {
 						state.autoHideNotificationEnabled = !state.autoHideNotificationEnabled;
 						autoHideNotificationEnabled = state.autoHideNotificationEnabled;
 						await writeUciFlag('autohide_notification_state', state.autoHideNotificationEnabled);
-						notify('info', 'Auto hide notifications ' + (state.autoHideNotificationEnabled ? 'enabled' : 'disabled'));
+						notify('info', _('Auto hide notifications ') + (state.autoHideNotificationEnabled ? _('enabled') : _('disabled')));
 					} catch (e) {
-						notify('error', 'Settings update failed: ' + e.message);
+						notify('error', _('Settings update failed: ') + e.message);
 					}
 					await refreshSettingsCard();
 				});
@@ -1228,37 +1229,37 @@ function initPage(page, state, mainContent, mainUrl) {
 	const configActions = {
 		async saveUrl(b) {
 			const url = urlEl?.value.trim() || '';
-			if (!url)             return notify('error', 'URL is empty');
-			if (!isValidUrl(url)) return notify('error', 'Invalid URL');
+			if (!url)             return notify('error', _('URL is empty'));
+			if (!isValidUrl(url)) return notify('error', _('Invalid URL'));
 			await withButtons(b, async () => {
 				try {
 					await saveFile('/etc/sing-box/url_' + currentConfig.name, url);
-					notify('info', 'URL saved');
+					notify('info', _('URL saved'));
 					const r = await fs.exec(UPDATER_BIN, [
 						'/etc/sing-box/url_' + currentConfig.name,
 						'/etc/sing-box/' + currentConfig.name,
 					]);
 					if (r.code === 2) {
-						notify('info', 'No changes detected');
+						notify('info', _('No changes detected'));
 					} else if (r.code !== 0) {
-						notify('error', r.stderr || r.stdout || 'Update failed');
+						notify('error', r.stderr || r.stdout || _('Update failed'));
 					} else {
 						const newContent = await loadFile('/etc/sing-box/' + currentConfig.name);
 						const ed = window.singboxEditor;
 						if (ed) { ed.setValue(newContent, -1); ed.clearSelection(); }
-						notify('info', currentConfig.label + ' updated');
-				if (currentConfig.name === 'config.json') {
-						await execService('sing-box', 'reload');
-						notify('info', 'Sing-Box reloaded');
-						state.isInitialConfigValid = await isValidConfig(newContent);
-						state.mainConfigHasUrl = true;
-						state.dashboardPort = parseDashboardPort(newContent);
-						await refreshControlCard();
-						await refreshServiceCard();
-					}
+						notify('info', currentConfig.label + ' ' + _('updated'));
+						if (currentConfig.name === 'config.json') {
+							await execService('sing-box', 'reload');
+							notify('info', _('Sing-Box reloaded'));
+							state.isInitialConfigValid = await isValidConfig(newContent);
+							state.mainConfigHasUrl = true;
+							state.dashboardPort = parseDashboardPort(newContent);
+							await refreshControlCard();
+							await refreshServiceCard();
+						}
 					}
 				} catch (e) {
-					notify('error', 'Save URL failed: ' + e.message);
+					notify('error', _('Save URL failed: ') + e.message);
 				}
 			});
 		},
@@ -1270,41 +1271,43 @@ function initPage(page, state, mainContent, mainUrl) {
 						'/etc/sing-box/url_' + currentConfig.name,
 						'/etc/sing-box/' + currentConfig.name,
 					]);
-					if (r.code === 2) return notify('info', 'No changes detected');
-					if (r.code !== 0) return notify('error', r.stderr || r.stdout || 'Update failed');
+					if (r.code === 2) return notify('info', _('No changes detected'));
+					if (r.code !== 0) return notify('error', r.stderr || r.stdout || _('Update failed'));
 					const newContent = await loadFile('/etc/sing-box/' + currentConfig.name);
 					const ed = window.singboxEditor;
 					if (ed) { ed.setValue(newContent, -1); ed.clearSelection(); }
-					notify('info', currentConfig.label + ' updated');
+					notify('info', _('Config updated'));
 					if (currentConfig.name === 'config.json') {
 						await execService('sing-box', 'reload');
-						notify('info', 'Sing-Box reloaded');
+						notify('info', _('Sing-Box reloaded'));
 						state.isInitialConfigValid = await isValidConfig(newContent);
 						state.dashboardPort = parseDashboardPort(newContent);
 						await refreshControlCard();
 					}
-				} catch (e) { notify('error', 'Update failed: ' + e.message); }
+				} catch (e) {
+					notify('error', _('Update failed: ') + e.message);
+				}
 			});
 		},
 
 		format(b) {
 			const ed = window.singboxEditor;
-			if (!ed) return notify('error', 'Editor not ready');
+			if (!ed) return notify('error', _('Editor not ready'));
 			const val = ed.getValue();
-			if (!val?.trim()) return notify('info', 'Nothing to format');
+			if (!val?.trim()) return notify('info', _('Nothing to format'));
 
 			const applyFormatted = async (formatted) => {
 				if (formatted != null) {
 					ed.setValue(formatted, -1);
 					ed.clearSelection();
-					notify('info', 'Formatted');
+					notify('info', _('Formatted'));
 				}
 			};
 
 			showModeModal({
-				title: 'Format config',
-				body: '<b>sing-box</b> — validates and reorders keys per schema.<br>'
-				    + '<b>JSON5</b> — fixes indentation, preserves comments and key order.',
+				title: _('Format config'),
+				body: '<b>sing-box</b> — ' + _('validates and reorders keys per schema.') + '<br>'
+				    + '<b>JSON5</b> — ' + _('fixes indentation, preserves comments and key order.'),
 				buttons: [
 					{
 						cls: 'apply', label: 'sing-box',
@@ -1326,20 +1329,20 @@ function initPage(page, state, mainContent, mainUrl) {
 			const ed = window.singboxEditor;
 			if (!ed) return;
 			const val = ed.getValue();
-			if (!val) return notify('error', 'Config is empty');
+			if (!val) return notify('error', _('Config is empty'));
 			await withButtons(b, async () => {
 				try {
 					if (!(await isValidConfig(val))) return;
 					await saveFile('/etc/sing-box/' + currentConfig.name, val);
-					notify('info', 'Config saved');
+					notify('info', _('Config saved'));
 					if (currentConfig.name === 'config.json') {
 						await execService('sing-box', 'reload');
-						notify('info', 'Sing-Box reloaded');
+						notify('info', _('Sing-Box reloaded'));
 						state.isInitialConfigValid = true;
 						state.dashboardPort = parseDashboardPort(val);
 						await refreshControlCard();
 					}
-				} catch (e) { notify('error', 'Save failed: ' + e.message); }
+				} catch (e) { notify('error', _('Save failed: ') + e.message); }
 			});
 		},
 
@@ -1358,9 +1361,9 @@ function initPage(page, state, mainContent, mainUrl) {
 					await saveFile('/etc/sing-box/url_config.json',           nu);
 					await saveFile('/etc/sing-box/url_' + currentConfig.name, ou);
 					await execService('sing-box', 'reload');
-					notify('info', currentConfig.label + ' is now main config');
+					notify('info', currentConfig.label + ' ' + _('is now main config'));
 				} catch (e) {
-					notify('error', 'Set as main failed: ' + e.message);
+					notify('error', _('Set as main failed: ') + e.message);
 				} finally {
 					reloadPage();
 				}
@@ -1369,10 +1372,10 @@ function initPage(page, state, mainContent, mainUrl) {
 
 		clear(b) {
 			showModeModal({
-				title: 'Clear all data?',
-				body:  `Config and URL for <b>${currentConfig.label}</b> will be erased.<br>This cannot be undone.`,
+				title: _('Clear all data?'),
+				body:  _('Config and URL for') + ` <b>${currentConfig.label}</b> ` + _('will be erased.') + '<br>' + _('This cannot be undone.'),
 				buttons: [{
-					cls: 'remove', label: 'Clear',
+					cls: 'remove', label: _('Clear'),
 					action: async () => {
 						await withButtons(b, async () => {
 							try {
@@ -1383,12 +1386,12 @@ function initPage(page, state, mainContent, mainUrl) {
 									await execService('sing-box', 'stop');
 									await execServiceLifecycle('singbox-ui-autoupdater-service', 'stop');
 									await execServiceLifecycle('singbox-ui-health-autoupdater-service', 'stop');
-									notify('info', 'Config cleared, services stopped');
+									notify('info', _('Config cleared, services stopped'));
 								} else {
-									notify('info', currentConfig.label + ' cleared');
+									notify('info', currentConfig.label + ' ' + _('cleared'));
 								}
 							} catch (e) {
-								notify('error', 'Clear failed: ' + e.message);
+								notify('error', _('Clear failed: ') + e.message);
 							} finally {
 								reloadPage();
 							}
@@ -1438,46 +1441,46 @@ function initPage(page, state, mainContent, mainUrl) {
 		const mode = modeBadge.dataset.mode;
 
 		const switchTo = async (disable, enable) => {
-			notify('info', 'Switching mode\u2026');
+			notify('info', _('Switching mode\u2026'));
 			try {
 				if (disable) await execModeSwitch(disable);
 				if (enable)  await execModeSwitch(enable);
-				notify('info', 'Mode switched, reloading\u2026');
+				notify('info', _('Mode switched, reloading\u2026'));
 				reloadPage(1200);
 			} catch (e) {
-				notify('error', 'Mode switch failed: ' + e.message);
+				notify('error', _('Mode switch failed: ') + e.message);
 			}
 		};
 
 		if (mode === 'tun') {
 			modeBadge.onclick = () => showModeModal({
-				title: 'Switch to tproxy mode?',
-				body:  'tun interface <b>singtun0</b> will be removed.<br>tproxy nft rules and policy routing will be applied.',
+				title: _('Switch to tproxy mode?'),
+				body:  _('tun interface') + ' <b>singtun0</b> ' + _('will be removed.') + '<br>' + _('tproxy nft rules and policy routing will be applied.'),
 				buttons: [{
-					cls: 'apply', label: 'Switch to tproxy',
+					cls: 'apply', label: _('Switch to tproxy'),
 					action: () => switchTo('disable-tun', 'enable-tproxy'),
 				}],
 			});
 		} else if (mode === 'tproxy') {
 			modeBadge.onclick = () => showModeModal({
-				title: 'Switch to tun mode?',
-				body:  'tproxy nft rules will be removed.<br>tun interface <b>singtun0</b> and firewall zone will be configured.',
+				title: _('Switch to tun mode?'),
+				body:  _('tproxy nft rules will be removed.') + '<br>' + _('tun interface') + ' <b>singtun0</b> ' + _('and firewall zone will be configured.'),
 				buttons: [{
-					cls: 'apply', label: 'Switch to tun',
+					cls: 'apply', label: _('Switch to tun'),
 					action: () => switchTo('disable-tproxy', 'enable-tun'),
 				}],
 			});
 		} else if (mode === 'conflict') {
 			modeBadge.onclick = () => showModeModal({
-				title: '\u26A0 Conflict: tproxy + tun both active',
-				body:  'Both modes are active simultaneously. Disable one to resolve:',
+				title: '\u26A0 ' + _('Conflict: tproxy + tun both active'),
+				body:  _('Both modes are active simultaneously. Disable one to resolve:'),
 				buttons: [
 					{
-						cls: 'apply', label: 'Keep tproxy (disable tun)',
+						cls: 'apply', label: _('Keep tproxy (disable tun)'),
 						action: () => switchTo('disable-tun', null),
 					},
 					{
-						cls: 'reload', label: 'Keep tun (disable tproxy)',
+						cls: 'reload', label: _('Keep tun (disable tproxy)'),
 						action: () => switchTo('disable-tproxy', null),
 					},
 				],
@@ -1541,7 +1544,7 @@ function initPage(page, state, mainContent, mainUrl) {
 			if (logContent) logContent.innerHTML = colorizeLog(raw);
 			if (logUpdated) {
 				const t = new Date();
-				logUpdated.textContent = `Updated ${t.getHours().toString().padStart(2,'0')}:${t.getMinutes().toString().padStart(2,'0')}:${t.getSeconds().toString().padStart(2,'0')}`;
+				logUpdated.textContent = _('Updated') + ' ' + `${t.getHours().toString().padStart(2,'0')}:${t.getMinutes().toString().padStart(2,'0')}:${t.getSeconds().toString().padStart(2,'0')}`;
 			}
 		} catch (_) {}
 		if (atBottom && logContent) logContent.scrollTop = logContent.scrollHeight;
@@ -1597,7 +1600,7 @@ function initPage(page, state, mainContent, mainUrl) {
 	if (aceEl) {
 		initAceEditor(aceEl, mainContent).catch(e => {
 			console.error('[singbox-ui] Ace init error:', e);
-			notify('error', 'Editor failed to load: ' + e.message);
+			notify('error', _('Editor failed to load: ') + e.message);
 		});
 	}
 }
@@ -1669,7 +1672,7 @@ return view.extend({
 				initPage(page, state, mainContent, mainUrl);
 			} catch (e) {
 				console.error('[singbox-ui] initPage error:', e);
-				notify('error', 'Page init failed: ' + e.message);
+				notify('error', _('Page init failed: ') + e.message);
 			}
 		}, 50);
 
