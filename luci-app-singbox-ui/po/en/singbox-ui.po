@@ -1,0 +1,355 @@
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+msgid "Main Config #1"
+msgstr ""
+
+msgid "Backup Config #2"
+msgstr ""
+
+msgid "Backup Config #3"
+msgstr ""
+
+msgid "Running"
+msgstr ""
+
+msgid "Error"
+msgstr ""
+
+msgid "Inactive"
+msgstr ""
+
+msgid "Stop"
+msgstr ""
+
+msgid "Start"
+msgstr ""
+
+msgid "Stop "
+msgstr ""
+
+msgid "Start "
+msgstr ""
+
+msgid "Sing-Box & Health Autoupdater"
+msgstr ""
+
+msgid "Sing-Box & Autoupdater"
+msgstr ""
+
+msgid "Sing-Box"
+msgstr ""
+
+msgid "Restart"
+msgstr ""
+
+msgid "Stop Autoupdater"
+msgstr ""
+
+msgid "Autoupdater"
+msgstr ""
+
+msgid "Stop periodic config update from subscription URL"
+msgstr ""
+
+msgid "Start periodic config update from subscription URL"
+msgstr ""
+
+msgid "Stop Health Autoupdater"
+msgstr ""
+
+msgid "Health Autoupdater"
+msgstr ""
+
+msgid "Stop config update on outbound health failure"
+msgstr ""
+
+msgid "Update config when outbound health check fails"
+msgstr ""
+
+msgid "Stop Memdoc"
+msgstr ""
+
+msgid "Memdoc"
+msgstr ""
+
+msgid "Stop memory monitor"
+msgstr ""
+
+msgid "Restart sing-box when free RAM is low"
+msgstr ""
+
+msgid "Auto Hide Notif"
+msgstr ""
+
+msgid "Success: 6s, Error: 10s"
+msgstr ""
+
+msgid "custom setup"
+msgstr ""
+
+msgid "fix: tproxy + tun conflict"
+msgstr ""
+
+msgid "mode"
+msgstr ""
+
+msgid "Dashboard"
+msgstr ""
+
+msgid "Control"
+msgstr ""
+
+msgid "Services"
+msgstr ""
+
+msgid "Settings"
+msgstr ""
+
+msgid "Config"
+msgstr ""
+
+msgid "Logs"
+msgstr ""
+
+msgid "Subscription URL"
+msgstr ""
+
+msgid "Save URL"
+msgstr ""
+
+msgid "Update"
+msgstr ""
+
+msgid "Format"
+msgstr ""
+
+msgid "Save"
+msgstr ""
+
+msgid "Set as Main"
+msgstr ""
+
+msgid "Clear All"
+msgstr ""
+
+msgid "Scroll to bottom"
+msgstr ""
+
+msgid "Bottom"
+msgstr ""
+
+msgid "Sing-Box stopped"
+msgstr ""
+
+msgid "Sing-Box started"
+msgstr ""
+
+msgid "Operation failed: "
+msgstr ""
+
+msgid "Sing-Box restarted"
+msgstr ""
+
+msgid "Restart failed: "
+msgstr ""
+
+msgid "Autoupdater stopped"
+msgstr ""
+
+msgid "Autoupdater started"
+msgstr ""
+
+msgid "Health Autoupdater stopped"
+msgstr ""
+
+msgid "Health Autoupdater started"
+msgstr ""
+
+msgid "Memdoc stopped"
+msgstr ""
+
+msgid "Memdoc started"
+msgstr ""
+
+msgid "Toggle failed: "
+msgstr ""
+
+msgid "Auto hide notifications "
+msgstr ""
+
+msgid "enabled"
+msgstr ""
+
+msgid "disabled"
+msgstr ""
+
+msgid "Settings update failed: "
+msgstr ""
+
+msgid "URL is empty"
+msgstr ""
+
+msgid "Invalid URL"
+msgstr ""
+
+msgid "URL saved"
+msgstr ""
+
+msgid "No changes detected"
+msgstr ""
+
+msgid "Update failed"
+msgstr ""
+
+msgid "updated"
+msgstr ""
+
+msgid "Config updated"
+msgstr ""
+
+msgid "Sing-Box reloaded"
+msgstr ""
+
+msgid "Save URL failed: "
+msgstr ""
+
+msgid "Update failed: "
+msgstr ""
+
+msgid "Editor not ready"
+msgstr ""
+
+msgid "Nothing to format"
+msgstr ""
+
+msgid "Formatted"
+msgstr ""
+
+msgid "Format config"
+msgstr ""
+
+msgid "validates and reorders keys per schema."
+msgstr ""
+
+msgid "fixes indentation, preserves comments and key order."
+msgstr ""
+
+msgid "Config is empty"
+msgstr ""
+
+msgid "Config saved"
+msgstr ""
+
+msgid "Save failed: "
+msgstr ""
+
+msgid "is now main config"
+msgstr ""
+
+msgid "Set as main failed: "
+msgstr ""
+
+msgid "Clear all data?"
+msgstr ""
+
+msgid "Config and URL for"
+msgstr ""
+
+msgid "will be erased."
+msgstr ""
+
+msgid "This cannot be undone."
+msgstr ""
+
+msgid "Clear"
+msgstr ""
+
+msgid "Config cleared, services stopped"
+msgstr ""
+
+msgid "cleared"
+msgstr ""
+
+msgid "Clear failed: "
+msgstr ""
+
+msgid "Switching mode\u2026"
+msgstr ""
+
+msgid "Mode switched, reloading\u2026"
+msgstr ""
+
+msgid "Mode switch failed: "
+msgstr ""
+
+msgid "Switch to tproxy mode?"
+msgstr ""
+
+msgid "tun interface"
+msgstr ""
+
+msgid "will be removed."
+msgstr ""
+
+msgid "tproxy nft rules and policy routing will be applied."
+msgstr ""
+
+msgid "Switch to tproxy"
+msgstr ""
+
+msgid "Switch to tun mode?"
+msgstr ""
+
+msgid "tproxy nft rules will be removed."
+msgstr ""
+
+msgid "and firewall zone will be configured."
+msgstr ""
+
+msgid "Switch to tun"
+msgstr ""
+
+msgid "Conflict: tproxy + tun both active"
+msgstr ""
+
+msgid "Both modes are active simultaneously. Disable one to resolve:"
+msgstr ""
+
+msgid "Keep tproxy (disable tun)"
+msgstr ""
+
+msgid "Keep tun (disable tproxy)"
+msgstr ""
+
+msgid "Updated"
+msgstr ""
+
+msgid "Cancel"
+msgstr ""
+
+msgid "Editor failed to load: "
+msgstr ""
+
+msgid "Page init failed: "
+msgstr ""
+
+msgid "Config error: "
+msgstr ""
+
+msgid "validation failed"
+msgstr ""
+
+msgid "Validation error: "
+msgstr ""
+
+msgid "Format failed: "
+msgstr ""
+
+msgid "unknown error"
+msgstr ""
+
+msgid "Format error: "
+msgstr ""

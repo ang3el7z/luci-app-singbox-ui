@@ -9,10 +9,7 @@
         "depends": {
             "acl": [
                 "luci-app-singbox-ui"
-            ],
-            "uci": {
-                "singbox-ui": true
-            }
+            ]
         }
     }
 }

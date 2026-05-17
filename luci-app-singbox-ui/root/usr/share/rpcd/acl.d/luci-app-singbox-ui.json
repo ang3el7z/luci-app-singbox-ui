@@ -2,6 +2,7 @@
     "luci-app-singbox-ui": {
         "description": "Singbox-UI management access",
         "read": {
+            "session": ["access"],
             "file": {
                 "/etc/init.d/sing-box": ["exec"],
                 "/etc/init.d/singbox-ui-autoupdater-service": ["exec"],

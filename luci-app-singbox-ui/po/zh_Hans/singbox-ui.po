@@ -1,0 +1,355 @@
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+msgid "Main Config #1"
+msgstr "主配置 #1"
+
+msgid "Backup Config #2"
+msgstr "备用配置 #2"
+
+msgid "Backup Config #3"
+msgstr "备用配置 #3"
+
+msgid "Running"
+msgstr "运行中"
+
+msgid "Error"
+msgstr "错误"
+
+msgid "Inactive"
+msgstr "未激活"
+
+msgid "Stop"
+msgstr "停止"
+
+msgid "Start"
+msgstr "启动"
+
+msgid "Stop "
+msgstr "停止 "
+
+msgid "Start "
+msgstr "启动 "
+
+msgid "Sing-Box & Health Autoupdater"
+msgstr "Sing-Box & 健康自动更新器"
+
+msgid "Sing-Box & Autoupdater"
+msgstr "Sing-Box & 自动更新器"
+
+msgid "Sing-Box"
+msgstr "Sing-Box"
+
+msgid "Restart"
+msgstr "重启"
+
+msgid "Stop Autoupdater"
+msgstr "停止自动更新器"
+
+msgid "Autoupdater"
+msgstr "自动更新器"
+
+msgid "Stop periodic config update from subscription URL"
+msgstr "停止从订阅 URL 定期更新配置"
+
+msgid "Start periodic config update from subscription URL"
+msgstr "从订阅 URL 定期更新配置"
+
+msgid "Stop Health Autoupdater"
+msgstr "停止健康自动更新器"
+
+msgid "Health Autoupdater"
+msgstr "健康自动更新器"
+
+msgid "Stop config update on outbound health failure"
+msgstr "停止出站健康检查失败时的配置更新"
+
+msgid "Update config when outbound health check fails"
+msgstr "出站健康检查失败时更新配置"
+
+msgid "Stop Memdoc"
+msgstr "停止内存监控"
+
+msgid "Memdoc"
+msgstr "内存监控"
+
+msgid "Stop memory monitor"
+msgstr "停止内存监控器"
+
+msgid "Restart sing-box when free RAM is low"
+msgstr "内存不足时重启 sing-box"
+
+msgid "Auto Hide Notif"
+msgstr "自动隐藏通知"
+
+msgid "Success: 6s, Error: 10s"
+msgstr "成功: 6秒, 错误: 10秒"
+
+msgid "custom setup"
+msgstr "自定义模式"
+
+msgid "fix: tproxy + tun conflict"
+msgstr "修复: tproxy + tun 冲突"
+
+msgid "mode"
+msgstr "模式"
+
+msgid "Dashboard"
+msgstr "面板"
+
+msgid "Control"
+msgstr "控制"
+
+msgid "Services"
+msgstr "服务"
+
+msgid "Settings"
+msgstr "设置"
+
+msgid "Config"
+msgstr "配置"
+
+msgid "Logs"
+msgstr "日志"
+
+msgid "Subscription URL"
+msgstr "订阅 URL"
+
+msgid "Save URL"
+msgstr "保存 URL"
+
+msgid "Update"
+msgstr "更新"
+
+msgid "Format"
+msgstr "格式化"
+
+msgid "Save"
+msgstr "保存"
+
+msgid "Set as Main"
+msgstr "设为主配置"
+
+msgid "Clear All"
+msgstr "清除全部"
+
+msgid "Scroll to bottom"
+msgstr "滚动到底部"
+
+msgid "Bottom"
+msgstr "底部"
+
+msgid "Sing-Box stopped"
+msgstr "Sing-Box 已停止"
+
+msgid "Sing-Box started"
+msgstr "Sing-Box 已启动"
+
+msgid "Operation failed: "
+msgstr "操作失败: "
+
+msgid "Sing-Box restarted"
+msgstr "Sing-Box 已重启"
+
+msgid "Restart failed: "
+msgstr "重启失败: "
+
+msgid "Autoupdater stopped"
+msgstr "自动更新器已停止"
+
+msgid "Autoupdater started"
+msgstr "自动更新器已启动"
+
+msgid "Health Autoupdater stopped"
+msgstr "健康自动更新器已停止"
+
+msgid "Health Autoupdater started"
+msgstr "健康自动更新器已启动"
+
+msgid "Memdoc stopped"
+msgstr "内存监控已停止"
+
+msgid "Memdoc started"
+msgstr "内存监控已启动"
+
+msgid "Toggle failed: "
+msgstr "切换失败: "
+
+msgid "Auto hide notifications "
+msgstr "自动隐藏通知 "
+
+msgid "enabled"
+msgstr "已启用"
+
+msgid "disabled"
+msgstr "已禁用"
+
+msgid "Settings update failed: "
+msgstr "设置更新失败: "
+
+msgid "URL is empty"
+msgstr "URL 为空"
+
+msgid "Invalid URL"
+msgstr "无效的 URL"
+
+msgid "URL saved"
+msgstr "URL 已保存"
+
+msgid "No changes detected"
+msgstr "未检测到更改"
+
+msgid "Update failed"
+msgstr "更新失败"
+
+msgid "updated"
+msgstr "已更新"
+
+msgid "Config updated"
+msgstr "配置已更新"
+
+msgid "Sing-Box reloaded"
+msgstr "Sing-Box 已重载"
+
+msgid "Save URL failed: "
+msgstr "保存 URL 失败: "
+
+msgid "Update failed: "
+msgstr "更新失败: "
+
+msgid "Editor not ready"
+msgstr "编辑器未就绪"
+
+msgid "Nothing to format"
+msgstr "没有可格式化的内容"
+
+msgid "Formatted"
+msgstr "已格式化"
+
+msgid "Format config"
+msgstr "格式化配置"
+
+msgid "validates and reorders keys per schema."
+msgstr "按 schema 验证并重新排列键。"
+
+msgid "fixes indentation, preserves comments and key order."
+msgstr "修复缩进，保留注释和键顺序。"
+
+msgid "Config is empty"
+msgstr "配置为空"
+
+msgid "Config saved"
+msgstr "配置已保存"
+
+msgid "Save failed: "
+msgstr "保存失败: "
+
+msgid "is now main config"
+msgstr "已设为主配置"
+
+msgid "Set as main failed: "
+msgstr "设为主配置失败: "
+
+msgid "Clear all data?"
+msgstr "清除所有数据？"
+
+msgid "Config and URL for"
+msgstr "配置和 URL 中的"
+
+msgid "will be erased."
+msgstr "将被清除。"
+
+msgid "This cannot be undone."
+msgstr "此操作不可撤销。"
+
+msgid "Clear"
+msgstr "清除"
+
+msgid "Config cleared, services stopped"
+msgstr "配置已清除，服务已停止"
+
+msgid "cleared"
+msgstr "已清除"
+
+msgid "Clear failed: "
+msgstr "清除失败: "
+
+msgid "Switching mode\u2026"
+msgstr "正在切换模式\u2026"
+
+msgid "Mode switched, reloading\u2026"
+msgstr "模式已切换，正在重载\u2026"
+
+msgid "Mode switch failed: "
+msgstr "模式切换失败: "
+
+msgid "Switch to tproxy mode?"
+msgstr "切换到 tproxy 模式？"
+
+msgid "tun interface"
+msgstr "tun 接口"
+
+msgid "will be removed."
+msgstr "将被移除。"
+
+msgid "tproxy nft rules and policy routing will be applied."
+msgstr "将应用 tproxy nft 规则和策略路由。"
+
+msgid "Switch to tproxy"
+msgstr "切换到 tproxy"
+
+msgid "Switch to tun mode?"
+msgstr "切换到 tun 模式？"
+
+msgid "tproxy nft rules will be removed."
+msgstr "tproxy nft 规则将被移除。"
+
+msgid "and firewall zone will be configured."
+msgstr "并配置防火墙区域。"
+
+msgid "Switch to tun"
+msgstr "切换到 tun"
+
+msgid "Conflict: tproxy + tun both active"
+msgstr "冲突: tproxy + tun 同时激活"
+
+msgid "Both modes are active simultaneously. Disable one to resolve:"
+msgstr "两种模式同时激活，请禁用其中一个以解决冲突："
+
+msgid "Keep tproxy (disable tun)"
+msgstr "保留 tproxy（禁用 tun）"
+
+msgid "Keep tun (disable tproxy)"
+msgstr "保留 tun（禁用 tproxy）"
+
+msgid "Updated"
+msgstr "已更新"
+
+msgid "Cancel"
+msgstr "取消"
+
+msgid "Editor failed to load: "
+msgstr "编辑器加载失败: "
+
+msgid "Page init failed: "
+msgstr "页面初始化失败: "
+
+msgid "Config error: "
+msgstr "配置错误: "
+
+msgid "validation failed"
+msgstr "验证失败"
+
+msgid "Validation error: "
+msgstr "验证错误: "
+
+msgid "Format failed: "
+msgstr "格式化失败: "
+
+msgid "unknown error"
+msgstr "未知错误"
+
+msgid "Format error: "
+msgstr "格式化错误: "
